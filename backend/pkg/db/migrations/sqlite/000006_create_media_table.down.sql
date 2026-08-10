@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS profile_avatars;
+DROP TABLE IF EXISTS media;
