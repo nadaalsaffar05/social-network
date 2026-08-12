@@ -1,17 +1,21 @@
 package auth
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"social-network/internal/enums"
+)
 
 type User struct {
-	ID           string  `json:"id"`
-	Email        string  `json:"email"`
-	PasswordHash string  `json:"-"`
-	FirstName    string  `json:"first_name"`
-	LastName     string  `json:"last_name"`
-	DateOfBirth  string  `json:"date_of_birth"`
-	Nickname     *string `json:"nickname,omitempty"`
-	AboutMe      *string `json:"about_me,omitempty"`
-	Privacy      string  `json:"privacy"`
+	ID           string               `json:"id"`
+	Email        string               `json:"email"`
+	PasswordHash string               `json:"-"`
+	FirstName    string               `json:"first_name"`
+	LastName     string               `json:"last_name"`
+	DateOfBirth  string               `json:"date_of_birth"`
+	Nickname     *string              `json:"nickname,omitempty"`
+	AboutMe      *string              `json:"about_me,omitempty"`
+	Privacy      enums.ProfilePrivacy `json:"privacy"`
 }
 
 type RegisterRequest struct {
