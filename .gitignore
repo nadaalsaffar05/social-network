@@ -3,3 +3,5 @@ backend/pkg/db/*.db
 backend/pkg/db/*.db-journal
 backend/pkg/db/*.db-shm
 backend/pkg/db/*.db-wal
+
+backend\internal\db\social-network.db
