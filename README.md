@@ -23,15 +23,6 @@ npm install
 open the FE port! for me it's `http://localhost:5173/`
 
 
-
------------
-
-TODOs:
-1. decide on how to org FE as folders (needs some research)
-2. maybe consider stuff in the optional project
-3. IMPORTANT: decide on design/colors/FE components
-***better if it was in figma
-
 -----------
 
 ## Nada's notes (new stuff)
@@ -89,3 +80,61 @@ The profile/group URLs with an ID are just testing the dynamic route. You can re
 4. Click logout, then try logging in again at `/login`.
 
 If you only want to test the backend, use `http://localhost:8080/test-auth`.
+
+
+
+## fetching using the BuildAPIUrl func
+
+```js
+import { buildApiUrl } from './api';
+
+async function fetchUser(userId) {
+  const url = buildApiUrl(['users', userId], { includeProfile: true });
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+```
+
+```js
+import { useEffect, useState } from 'react';
+import { buildApiUrl } from './api';
+
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(buildApiUrl(['users', userId]), { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        return res.json();
+      })
+      .then(setUser)
+      .catch((err) => {
+        if (err.name !== 'AbortError') setError(err.message);
+      });
+
+    return () => controller.abort();
+  }, [userId]);
+
+  if (error) return <div>Error: {error}</div>;
+  if (!user) return <div>Loading…</div>;
+
+  return <div>{user.name}</div>;
+}
+
+export default UserProfile;
+```
