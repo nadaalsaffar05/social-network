@@ -15,6 +15,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/home" element={<HomePage />} />
+      <Route path="/profile" element={<ProfilePage />} />
       <Route path="/profile/:id" element={<ProfilePage />} />
       <Route path="/groups" element={<GroupsPage />} />
       <Route path="/groups/:id" element={<GroupPage />} />
