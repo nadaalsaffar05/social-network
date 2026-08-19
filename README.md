@@ -15,7 +15,7 @@ npm install
 
 
 1. open VS code or any IDE you like
-2. open the root and type `go run main.go`
+2. navigate to `backend` and type `go run ./cmd/main.go`
  plain and simple :)
 
 
