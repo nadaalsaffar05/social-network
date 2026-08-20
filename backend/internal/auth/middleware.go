@@ -76,8 +76,7 @@ func CurrentUser(
 ) *User {
 
 	user, ok := r.Context().
-		Value(currentUserKey).
-		(*User)
+		Value(currentUserKey).(*User)
 
 	if !ok {
 		return nil

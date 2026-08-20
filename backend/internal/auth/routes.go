@@ -9,30 +9,30 @@ func RegisterRoutes(
 	mux *http.ServeMux,
 	db *sql.DB,
 ) {
-	handler := &Handler{
+	authHandler := &Handler{
 		DB: db,
 	}
 
 	mux.HandleFunc(
 		"/api/register",
-		handler.Register,
+		authHandler.Register,
 	)
 
 	mux.HandleFunc(
 		"/api/login",
-		handler.Login,
+		authHandler.Login,
 	)
 
 	mux.HandleFunc(
 		"/api/logout",
-		handler.Logout,
+		authHandler.Logout,
 	)
 
 	mux.Handle(
 		"/api/me",
 		Middleware(
 			db,
-			http.HandlerFunc(handler.Me),
+			http.HandlerFunc(authHandler.Me),
 		),
 	)
 }
