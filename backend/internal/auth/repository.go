@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 
+	"social-network/internal/models"
+
 	"github.com/gofrs/uuid/v5"
 )
 
@@ -22,16 +24,16 @@ const userQuery = `
 	JOIN profiles p ON p.user_id = u.id
 `
 
-func getUserByEmail(db *sql.DB, email string) (*User, error) {
+func getUserByEmail(db *sql.DB, email string) (*models.User, error) {
 	return getUser(db, userQuery+"WHERE u.email = ?", email)
 }
 
-func getUserByID(db *sql.DB, userID string) (*User, error) {
+func getUserByID(db *sql.DB, userID string) (*models.User, error) {
 	return getUser(db, userQuery+"WHERE u.id = ?", userID)
 }
 
-func getUser(db *sql.DB, query string, value string) (*User, error) {
-	user := &User{}
+func getUser(db *sql.DB, query string, value string) (*models.User, error) {
+	user := &models.User{}
 	err := db.QueryRow(query, value).Scan(
 		&user.ID,
 		&user.Email,
@@ -53,7 +55,7 @@ func getUser(db *sql.DB, query string, value string) (*User, error) {
 	return user, nil
 }
 
-func createUser(db *sql.DB, request RegisterRequest, passwordHash string) (*User, error) {
+func createUser(db *sql.DB, request models.RegisterRequest, passwordHash string) (*models.User, error) {
 	userID, err := uuid.NewV4()
 	if err != nil {
 		return nil, err

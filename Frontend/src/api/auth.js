@@ -14,10 +14,6 @@ export function loginUser(credentials) {
   })
 }
 
-export function getCurrentUser() {
-  return request(['api', 'me'])
-}
-
 export function logoutUser() {
   return request(['api', 'logout'], { method: 'POST' })
 }

@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+
+	"social-network/internal/helpers"
+	"social-network/internal/models"
 )
 
 type contextKey string
@@ -24,7 +27,7 @@ func Middleware(
 				r.Cookie(sessionCookieName)
 
 			if err != nil {
-				writeError(
+				helpers.WriteError(
 					w,
 					http.StatusUnauthorized,
 					"authentication required",
@@ -38,7 +41,7 @@ func Middleware(
 			)
 
 			if err != nil {
-				writeError(
+				helpers.WriteError(
 					w,
 					http.StatusInternalServerError,
 					"authentication error",
@@ -49,7 +52,7 @@ func Middleware(
 			if user == nil {
 				clearSessionCookie(w)
 
-				writeError(
+				helpers.WriteError(
 					w,
 					http.StatusUnauthorized,
 					"session expired or invalid",
@@ -73,10 +76,10 @@ func Middleware(
 
 func CurrentUser(
 	r *http.Request,
-) *User {
+) *models.User {
 
 	user, ok := r.Context().
-		Value(currentUserKey).(*User)
+		Value(currentUserKey).(*models.User)
 
 	if !ok {
 		return nil
