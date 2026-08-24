@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getCurrentUser, logoutUser } from '../../../api/auth'
+import { logoutUser } from '../../../api/auth'
+import { getProfile } from '../../../api/users'
 
 export default function HomePage() {
   const navigate = useNavigate()
@@ -12,7 +13,7 @@ export default function HomePage() {
 
     async function loadUser() {
       try {
-        const currentUser = await getCurrentUser()
+        const currentUser = await getProfile()
         if (isMounted) setUser(currentUser)
       } catch (requestError) {
         if (requestError.message === 'unauthorized') {

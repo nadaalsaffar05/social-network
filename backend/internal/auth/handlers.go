@@ -1,357 +1,154 @@
 package auth
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
+
+	"social-network/internal/helpers"
+	"social-network/internal/models"
 )
 
-func writeJSON(
-	w http.ResponseWriter,
-	status int,
-	data interface{},
-) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	_ = json.NewEncoder(w).Encode(data)
+type Handler struct {
+	DB *sql.DB
 }
 
-func writeError(
-	w http.ResponseWriter,
-	status int,
-	message string,
-) {
-	writeJSON(
-		w,
-		status,
-		map[string]string{
-			"error": message,
-		},
-	)
+func requireMethod(w http.ResponseWriter, r *http.Request, method string) bool {
+	if r.Method == method {
+		return true
+	}
+
+	helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+	return false
 }
 
-func (h *Handler) Register(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodPost {
-		writeError(
-			w,
-			http.StatusMethodNotAllowed,
-			"method not allowed",
-		)
+func trimOptionalString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	trimmedValue := strings.TrimSpace(*value)
+	if trimmedValue == "" {
+		return nil
+	}
+
+	return &trimmedValue
+}
+
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 
-	var req RegisterRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(
-			w,
-			http.StatusBadRequest,
-			"invalid request body",
-		)
+	var request models.RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	req.Email = strings.TrimSpace(req.Email)
-	req.FirstName = strings.TrimSpace(req.FirstName)
-	req.LastName = strings.TrimSpace(req.LastName)
-	req.DateOfBirth = strings.TrimSpace(req.DateOfBirth)
+	request.Email = strings.TrimSpace(request.Email)
+	request.FirstName = strings.TrimSpace(request.FirstName)
+	request.LastName = strings.TrimSpace(request.LastName)
+	request.DateOfBirth = strings.TrimSpace(request.DateOfBirth)
+	request.Nickname = trimOptionalString(request.Nickname)
+	request.AboutMe = trimOptionalString(request.AboutMe)
 
-	if req.Nickname != nil {
-		nickname := strings.TrimSpace(*req.Nickname)
-
-		if nickname == "" {
-			req.Nickname = nil
-		} else {
-			req.Nickname = &nickname
-		}
-	}
-
-	if req.AboutMe != nil {
-		aboutMe := strings.TrimSpace(*req.AboutMe)
-
-		if aboutMe == "" {
-			req.AboutMe = nil
-		} else {
-			req.AboutMe = &aboutMe
-		}
-	}
-
-	if req.Email == "" ||
-		req.Password == "" ||
-		req.FirstName == "" ||
-		req.LastName == "" ||
-		req.DateOfBirth == "" {
-
-		writeError(
-			w,
-			http.StatusBadRequest,
-			"missing required fields",
-		)
+	if request.Email == "" || request.Password == "" || request.FirstName == "" || request.LastName == "" || request.DateOfBirth == "" {
+		helpers.WriteError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
 
-	if len(req.Password) < 6 {
-		writeError(
-			w,
-			http.StatusBadRequest,
-			"password must be at least 6 characters",
-		)
+	if len(request.Password) < 6 {
+		helpers.WriteError(w, http.StatusBadRequest, "password must be at least 6 characters")
 		return
 	}
 
-	_, err := time.Parse(
-		"2006-01-02",
-		req.DateOfBirth,
-	)
+	if _, err := time.Parse("2006-01-02", request.DateOfBirth); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "date_of_birth must use YYYY-MM-DD")
+		return
+	}
 
+	existingUser, err := getUserByEmail(h.DB, request.Email)
 	if err != nil {
-		writeError(
-			w,
-			http.StatusBadRequest,
-			"date_of_birth must use YYYY-MM-DD",
-		)
+		helpers.WriteError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-
-	existingUser, err := getUserByEmail(
-		h.DB,
-		req.Email,
-	)
-
-	if err != nil {
-		writeError(
-			w,
-			http.StatusInternalServerError,
-			"database error",
-		)
-		return
-	}
-
 	if existingUser != nil {
-		writeError(
-			w,
-			http.StatusConflict,
-			"email already registered",
-		)
+		helpers.WriteError(w, http.StatusConflict, "email already registered")
 		return
 	}
 
-	passwordHash, err :=
-		hashPassword(req.Password)
-
+	passwordHash, err := hashPassword(request.Password)
 	if err != nil {
-		writeError(
-			w,
-			http.StatusInternalServerError,
-			"could not hash password",
-		)
+		helpers.WriteError(w, http.StatusInternalServerError, "could not hash password")
 		return
 	}
 
-	user, err := createUser(
-		h.DB,
-		req,
-		passwordHash,
-	)
-
+	user, err := createUser(h.DB, request, passwordHash)
 	if err != nil {
-		writeError(
-			w,
-			http.StatusInternalServerError,
-			"could not create user",
-		)
+		helpers.WriteError(w, http.StatusInternalServerError, "could not create user")
 		return
 	}
 
-	token, err := createSession(
-		h.DB,
-		user.ID,
-	)
-
+	token, err := createSession(h.DB, user.ID)
 	if err != nil {
-		writeError(
-			w,
-			http.StatusInternalServerError,
-			"could not create session",
-		)
+		helpers.WriteError(w, http.StatusInternalServerError, "could not create session")
 		return
 	}
 
-	setSessionCookie(
-		w,
-		token,
-	)
-
-	writeJSON(
-		w,
-		http.StatusCreated,
-		AuthResponse{
-			Message: "registration successful",
-			User:    user,
-		},
-	)
+	setSessionCookie(w, token)
+	helpers.WriteJSON(w, http.StatusCreated, models.AuthResponse{Message: "registration successful", User: user})
 }
 
-func (h *Handler) Login(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodPost {
-		writeError(
-			w,
-			http.StatusMethodNotAllowed,
-			"method not allowed",
-		)
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 
-	var req LoginRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(
-			w,
-			http.StatusBadRequest,
-			"invalid request body",
-		)
+	var request models.LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	req.Email = strings.TrimSpace(req.Email)
-
-	if req.Email == "" ||
-		req.Password == "" {
-
-		writeError(
-			w,
-			http.StatusBadRequest,
-			"email and password are required",
-		)
+	request.Email = strings.TrimSpace(request.Email)
+	if request.Email == "" || request.Password == "" {
+		helpers.WriteError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
 
-	user, err := getUserByEmail(
-		h.DB,
-		req.Email,
-	)
-
+	user, err := getUserByEmail(h.DB, request.Email)
 	if err != nil {
-		writeError(
-			w,
-			http.StatusInternalServerError,
-			"database error",
-		)
+		helpers.WriteError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if user == nil || !checkPassword(user.PasswordHash, request.Password) {
+		helpers.WriteError(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}
 
-	if user == nil ||
-		!checkPassword(
-			user.PasswordHash,
-			req.Password,
-		) {
-
-		writeError(
-			w,
-			http.StatusUnauthorized,
-			"invalid email or password",
-		)
-		return
-	}
-
-	token, err := createSession(
-		h.DB,
-		user.ID,
-	)
-
+	token, err := createSession(h.DB, user.ID)
 	if err != nil {
-		writeError(
-			w,
-			http.StatusInternalServerError,
-			"could not create session",
-		)
+		helpers.WriteError(w, http.StatusInternalServerError, "could not create session")
 		return
 	}
 
-	setSessionCookie(
-		w,
-		token,
-	)
-
-	writeJSON(
-		w,
-		http.StatusOK,
-		AuthResponse{
-			Message: "login successful",
-			User:    user,
-		},
-	)
+	setSessionCookie(w, token)
+	helpers.WriteJSON(w, http.StatusOK, models.AuthResponse{Message: "login successful", User: user})
 }
 
-func (h *Handler) Logout(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodPost {
-		writeError(
-			w,
-			http.StatusMethodNotAllowed,
-			"method not allowed",
-		)
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 
-	cookie, err :=
-		r.Cookie(sessionCookieName)
-
+	cookie, err := r.Cookie(sessionCookieName)
 	if err == nil {
-		_ = revokeSession(
-			h.DB,
-			cookie.Value,
-		)
+		_ = revokeSession(h.DB, cookie.Value)
 	}
 
 	clearSessionCookie(w)
-
-	writeJSON(
-		w,
-		http.StatusOK,
-		AuthResponse{
-			Message: "logout successful",
-		},
-	)
-}
-
-func (h *Handler) Me(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodGet {
-		writeError(
-			w,
-			http.StatusMethodNotAllowed,
-			"method not allowed",
-		)
-		return
-	}
-
-	user := CurrentUser(r)
-
-	if user == nil {
-		writeError(
-			w,
-			http.StatusUnauthorized,
-			"unauthorized",
-		)
-		return
-	}
-
-	writeJSON(
-		w,
-		http.StatusOK,
-		user,
-	)
+	helpers.WriteJSON(w, http.StatusOK, models.AuthResponse{Message: "logout successful"})
 }

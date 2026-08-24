@@ -1,10 +1,6 @@
-package auth
+package models
 
-import (
-	"database/sql"
-
-	"social-network/internal/enums"
-)
+import "social-network/internal/enums"
 
 type User struct {
 	ID           string               `json:"id"`
@@ -36,8 +32,4 @@ type LoginRequest struct {
 type AuthResponse struct {
 	Message string `json:"message"`
 	User    *User  `json:"user,omitempty"`
-}
-
-type Handler struct {
-	DB *sql.DB
 }

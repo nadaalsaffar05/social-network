@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"social-network/internal/models"
+
 	"github.com/gofrs/uuid/v5"
 )
 
@@ -77,7 +79,7 @@ func createSession(db *sql.DB, userID string) (string, error) {
 func getUserFromSession(
 	db *sql.DB,
 	token string,
-) (*User, error) {
+) (*models.User, error) {
 
 	tokenHash := hashSessionToken(token)
 

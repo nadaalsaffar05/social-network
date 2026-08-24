@@ -79,10 +79,6 @@ The profile/group URLs with an ID are just testing the dynamic route. You can re
 3. Refresh the page. You should still be logged in.
 4. Click logout, then try logging in again at `/login`.
 
-If you only want to test the backend, use `http://localhost:8080/test-auth`.
-
-
-
 ## fetching using the BuildAPIUrl func
 
 ```js

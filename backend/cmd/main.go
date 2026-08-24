@@ -57,7 +57,10 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	auth.RegisterRoutes(mux, db)
+	authHandler := &auth.Handler{DB: db}
+	mux.HandleFunc("/api/register", authHandler.Register)
+	mux.HandleFunc("/api/login", authHandler.Login)
+	mux.HandleFunc("/api/logout", authHandler.Logout)
 	mux.Handle("/api/profile", auth.Middleware(db, api.GetProfile(db)))
 
 	port := os.Getenv("PORT")
