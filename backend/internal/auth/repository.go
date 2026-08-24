@@ -3,6 +3,7 @@ package auth
 import (
 	"database/sql"
 	"errors"
+	"math/rand"
 
 	"social-network/internal/models"
 
@@ -92,6 +93,38 @@ func createUser(db *sql.DB, request models.RegisterRequest, passwordHash string)
 	`, userID.String(), request.Nickname, request.AboutMe)
 	if err != nil {
 		return nil, err
+	}
+
+	// insert random pfp img upon profile creation
+	rows, err := tx.Query(`SELECT id FROM media WHERE id NOT IN (SELECT media_id FROM profile_avatars)`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var genericMediaIDs []string
+	for rows.Next() {
+		var mediaID string
+		if err := rows.Scan(&mediaID); err != nil {
+			return nil, err
+		}
+		genericMediaIDs = append(genericMediaIDs, mediaID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(genericMediaIDs) > 0 {
+		randomIndex := rand.Intn(len(genericMediaIDs))
+		selectedMediaID := genericMediaIDs[randomIndex]
+
+		_, err = tx.Exec(`
+			INSERT INTO profile_avatars (user_id, media_id)
+			VALUES (?, ?)
+		`, userID.String(), selectedMediaID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
