@@ -6,6 +6,7 @@
   padding: 32px 24px;
   background-color: var(--color-bg);
   color: var(--color-text);
+  font-family: var(--font-body);
 }
 
 .profile-layout-grid {
@@ -65,6 +66,7 @@
   color: #ffffff;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   border: 3px solid var(--color-border);
+  font-family: var(--font-body);
 }
 
 .profile-names-section {
@@ -79,7 +81,7 @@
   line-height: 1.25;
   color: var(--color-text);
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
 }
 
 .profile-username {
@@ -87,6 +89,7 @@
   color: var(--color-text-muted);
   margin-top: 4px;
   font-weight: 500;
+  font-family: var(--font-body);
 }
 
 .profile-bio {
@@ -97,6 +100,7 @@
   margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-body);
 }
 
 .profile-details-list {
@@ -106,6 +110,7 @@
   gap: 10px;
   font-size: 0.88rem;
   margin-bottom: 24px;
+  font-family: var(--font-body);
 }
 
 .profile-detail-item {
@@ -132,6 +137,7 @@
   background: rgba(76, 124, 240, 0.15);
   color: var(--color-primary);
   border: 1px solid rgba(76, 124, 240, 0.3);
+  font-family: var(--font-body);
 }
 
 .profile-badge.private {
@@ -158,6 +164,7 @@
   justify-content: center;
   gap: 8px;
   transition: background var(--transition-fast), filter var(--transition-fast);
+  font-family: var(--font-body);
 }
 
 .profile-action-btn.secondary {
@@ -175,6 +182,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  font-family: var(--font-body);
 }
 
 /* Top Stats Card */
@@ -208,7 +216,7 @@
   font-size: 1.8rem;
   font-weight: 800;
   color: var(--color-text);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   line-height: 1.1;
 }
 
@@ -219,6 +227,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-top: 4px;
+  font-family: var(--font-body);
 }
 
 .profile-stat-divider {
@@ -248,6 +257,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  font-family: var(--font-body);
 }
 
 .profile-feed-count-tag {
@@ -257,6 +267,7 @@
   background: var(--color-overlay);
   color: var(--color-text-muted);
   font-weight: 600;
+  font-family: var(--font-body);
 }
 
 /* Post Cards */
@@ -267,6 +278,7 @@
   padding: 24px;
   box-shadow: var(--shadow-card);
   transition: border-color var(--transition-fast);
+  font-family: var(--font-body);
 }
 
 .profile-post-card:hover {
@@ -299,6 +311,7 @@
   font-size: 1rem;
   font-weight: 700;
   color: #fff;
+  font-family: var(--font-body);
 }
 
 .post-meta {
@@ -310,6 +323,7 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--color-text);
+  font-family: var(--font-body);
 }
 
 .post-time-privacy {
@@ -319,6 +333,7 @@
   font-size: 0.8rem;
   color: var(--color-text-faint);
   margin-top: 2px;
+  font-family: var(--font-body);
 }
 
 .post-content {
@@ -327,6 +342,7 @@
   color: var(--color-text);
   white-space: pre-wrap;
   word-break: break-word;
+  font-family: var(--font-body);
 }
 
 .post-media-grid {
@@ -364,6 +380,7 @@
   background: none;
   border: none;
   padding: 0;
+  font-family: var(--font-body);
 }
 
 .post-action-item:hover {
@@ -381,6 +398,7 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  font-family: var(--font-body);
 }
 
 .profile-empty-icon {
@@ -392,12 +410,14 @@
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--color-text);
+  font-family: var(--font-body);
 }
 
 .profile-empty-text {
   font-size: 0.9rem;
   color: var(--color-text-muted);
   max-width: 360px;
+  font-family: var(--font-body);
 }
 
 /* Responsive breakpoint */
