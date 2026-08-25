@@ -5,3 +5,6 @@ backend/internal/db/*.db-shm
 backend/internal/db/*.db-wal
 
 backend\internal\db\social-network.db
+
+
+*.db
