@@ -8,3 +8,5 @@ backend\internal\db\social-network.db
 
 
 *.db
+
+backend/tmp/*
