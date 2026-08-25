@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getProfile } from '../../../api/users'
 import { logoutUser } from '../../../api/auth'
+import { BASE_API } from '../../../Config.js'
 
 export default function ProfilePage() {
   const { id } = useParams()
@@ -81,17 +82,67 @@ export default function ProfilePage() {
     )
   }
 
+  const avatarUrl = profile?.avatar_path
+    ? `${BASE_API}/static/${profile.avatar_path}`
+    : null
+
+  const initials = `${profile?.first_name?.[0] ?? ''}${profile?.last_name?.[0] ?? ''}`.toUpperCase()
+
   return (
     <main className="home-page">
       <section className="home-card">
         <p className="auth-eyebrow">User Profile</p>
-        <h1>
-          {profile?.first_name} {profile?.last_name}
-        </h1>
-        {profile?.nickname && (
-          <p className="auth-description">@{profile.nickname}</p>
-        )}
-        <p style={{ marginTop: '12px' }}>
+
+        {/* Avatar + name row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px' }}>
+          {avatarUrl ? (
+            <img
+              id="profile-avatar"
+              src={avatarUrl}
+              alt={`${profile?.first_name} ${profile?.last_name}`}
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '2px solid var(--color-border)',
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <div
+              id="profile-avatar-initials"
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.4rem',
+                fontWeight: '700',
+                color: '#fff',
+                flexShrink: 0,
+              }}
+            >
+              {initials}
+            </div>
+          )}
+
+          <div>
+            <h1 style={{ marginTop: 0 }}>
+              {profile?.first_name} {profile?.last_name}
+            </h1>
+            {profile?.nickname && (
+              <p className="auth-description" style={{ marginTop: '2px' }}>
+                @{profile.nickname}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <p style={{ marginTop: '20px' }}>
           <strong>Email:</strong> {profile?.email}
         </p>
         {profile?.date_of_birth && (
@@ -138,4 +189,4 @@ export default function ProfilePage() {
       </section>
     </main>
   )
-}
+}
