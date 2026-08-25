@@ -10,3 +10,4 @@ backend\internal\db\social-network.db
 *.db
 
 backend/tmp/*
+backend/uploads/avatars/*
