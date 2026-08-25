@@ -97,6 +97,9 @@ func main() {
 
 	mux := http.NewServeMux()
 
+    //Note FA: this might be temp?
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("."))))
+
 	authHandler := &auth.Handler{DB: db}
 	mux.HandleFunc("/api/register", authHandler.Register)
 	mux.HandleFunc("/api/login", authHandler.Login)

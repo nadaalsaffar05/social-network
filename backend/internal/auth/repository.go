@@ -95,32 +95,35 @@ func createUser(db *sql.DB, request models.RegisterRequest, passwordHash string)
 		return nil, err
 	}
 
-	// insert random pfp img upon profile creation
-	rows, err := tx.Query(`SELECT id FROM media WHERE id NOT IN (SELECT media_id FROM profile_avatars)`)
+    // select a generic pfp from DB to assign it
+	poolRows, err := tx.Query(`
+		SELECT media_id FROM profile_avatars
+		WHERE type = 1000 AND user_id IS NULL
+	`)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer poolRows.Close()
 
-	var genericMediaIDs []string
-	for rows.Next() {
+	var poolMediaIDs []string
+	for poolRows.Next() {
 		var mediaID string
-		if err := rows.Scan(&mediaID); err != nil {
+		if err := poolRows.Scan(&mediaID); err != nil {
 			return nil, err
 		}
-		genericMediaIDs = append(genericMediaIDs, mediaID)
+		poolMediaIDs = append(poolMediaIDs, mediaID)
 	}
-	if err := rows.Err(); err != nil {
+	if err := poolRows.Err(); err != nil {
 		return nil, err
 	}
 
-	if len(genericMediaIDs) > 0 {
-		randomIndex := rand.Intn(len(genericMediaIDs))
-		selectedMediaID := genericMediaIDs[randomIndex]
+	if len(poolMediaIDs) > 0 {
+		selectedMediaID := poolMediaIDs[rand.Intn(len(poolMediaIDs))]
 
 		_, err = tx.Exec(`
-			INSERT INTO profile_avatars (user_id, media_id)
-			VALUES (?, ?)
+			UPDATE profile_avatars
+			SET user_id = ?
+			WHERE media_id = ? AND user_id IS NULL
 		`, userID.String(), selectedMediaID)
 		if err != nil {
 			return nil, err

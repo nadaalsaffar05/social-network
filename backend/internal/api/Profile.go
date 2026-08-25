@@ -36,9 +36,12 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 				u.date_of_birth,
 				p.nickname,
 				p.about_me,
-				p.privacy
+				p.privacy,
+				m.file_path
 			FROM users u
 			JOIN profiles p ON p.user_id = u.id
+			LEFT JOIN profile_avatars pa ON pa.user_id = u.id
+			LEFT JOIN media m ON m.id = pa.media_id
 			WHERE u.id = ?
 		`, currentUser.ID).Scan(
 			&profile.ID,
@@ -49,6 +52,7 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 			&profile.Nickname,
 			&profile.AboutMe,
 			&profile.Privacy,
+			&profile.AvatarPath,
 		)
 
 		if err != nil {

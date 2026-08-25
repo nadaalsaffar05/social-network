@@ -9,4 +9,5 @@ type ProfileResponse struct {
 	Nickname    *string `json:"nickname,omitempty"`
 	AboutMe     *string `json:"about_me,omitempty"`
 	Privacy     int     `json:"privacy"`
+	AvatarPath  *string `json:"avatar_path,omitempty"`
 }

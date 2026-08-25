@@ -1,22 +1,20 @@
 -- Seed the generic profile-avatar images from backend/tmp into the media table
 -- and register each one in profile_avatars with type = 1000 (Generic pool).
 --
--- A sentinel system user is required because media.uploader_id is NOT NULL.
--- The system user id '00000000-0000-0000-0000-000000000000' is excluded from all
--- normal application queries by convention (filter WHERE id != system_id or
--- by checking the uploader role).
+-- A sentinel system user owns the media rows so the NOT NULL uploader_id FK is
+-- satisfied. The placeholder password_hash ('$system$placeholder$00000000000')
+-- is 33 chars and meets the CHECK(length >= 20) constraint; it is not a valid
+-- bcrypt hash and therefore cannot be used to authenticate.
 --
 -- profile_avatars rows for pool images have user_id = NULL, meaning they are
 -- unassigned generic avatars available to any new user registration.
-
-PRAGMA foreign_keys = OFF;
 
 -- System user (acts as the uploader of all generic avatar images)
 INSERT OR IGNORE INTO users (id, email, password_hash, first_name, last_name, date_of_birth)
 VALUES (
   '00000000-0000-0000-0000-000000000000',
-  'system@internal',
-  '',
+  'system@internal.local',
+  '$system$placeholder$00000000000',
   'System',
   'User',
   '2000-01-01'
@@ -68,5 +66,3 @@ VALUES
   (NULL, 'a1000000-0000-0000-0000-000000000002', 1000),
   (NULL, 'a1000000-0000-0000-0000-000000000003', 1000),
   (NULL, 'a1000000-0000-0000-0000-000000000004', 1000);
-
-PRAGMA foreign_keys = ON;
