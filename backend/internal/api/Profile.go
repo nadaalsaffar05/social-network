@@ -62,6 +62,45 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// fetch count
+		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE following_id = ?`, currentUser.ID).Scan(&profile.FollowersCount)
+		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE follower_id = ?`, currentUser.ID).Scan(&profile.FollowingCount)
+
+		// user posts
+		profile.Posts = []models.UserPost{}
+		rows, err := database.Query(`
+			SELECT id, author_id, content, privacy, created_at, updated_at
+			FROM posts
+			WHERE author_id = ? AND is_active = 1
+			ORDER BY created_at DESC
+		`, currentUser.ID)
+
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var post models.UserPost
+				if scanErr := rows.Scan(&post.ID, &post.AuthorID, &post.Content, &post.Privacy, &post.CreatedAt, &post.UpdatedAt); scanErr == nil {
+					mRows, mErr := database.Query(`
+						SELECT m.file_path
+						FROM post_media pm
+						JOIN media m ON m.id = pm.media_id
+						WHERE pm.post_id = ?
+					`, post.ID)
+					if mErr == nil {
+						for mRows.Next() {
+							var mPath string
+							if mScanErr := mRows.Scan(&mPath); mScanErr == nil {
+								post.Media = append(post.Media, mPath)
+							}
+						}
+						mRows.Close()
+					}
+					profile.Posts = append(profile.Posts, post)
+				}
+			}
+		}
+		profile.PostsCount = len(profile.Posts)
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{
 			"user": profile,
 		})
