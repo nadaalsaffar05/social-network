@@ -108,6 +108,8 @@ func main() {
 	mux.Handle("/api/profile/avatar", auth.Middleware(db, api.UpdateAvatar(db)))
 	mux.Handle("/api/followers", auth.Middleware(db, api.GetFollowers(db)))
 	mux.Handle("/api/following", auth.Middleware(db, api.GetFollowing(db)))
+	mux.Handle("/api/follow", auth.Middleware(db, api.FollowUser(db)))
+
 
 
 	port := os.Getenv("PORT")

@@ -86,4 +86,25 @@ export async function getFollowing(userId) {
   return data.following || []
 }
 
+export async function followUser(userId) {
+  const url = buildApiUrl(['api', 'follow'])
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ user_id: userId }),
+    credentials: 'include',
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || data.message || 'Failed to follow user')
+  }
+
+  return data
+}
+
+
 

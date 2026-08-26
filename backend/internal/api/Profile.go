@@ -2,9 +2,11 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"social-network/internal/auth"
 	"social-network/internal/helpers"
@@ -398,4 +400,83 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 		})
 	}
 }
+
+func FollowUser(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
+				"error": "method not allowed",
+			})
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
+				"error": "unauthorized",
+			})
+			return
+		}
+
+		var req struct {
+			UserID string `json:"user_id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+
+		targetID := strings.TrimSpace(req.UserID)
+		if targetID == "" {
+			targetID = strings.TrimSpace(r.URL.Query().Get("user_id"))
+		}
+
+		if targetID == "" {
+			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
+				"error": "user_id is required",
+			})
+			return
+		}
+
+		if targetID == currentUser.ID {
+			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
+				"error": "cannot follow yourself",
+			})
+			return
+		}
+
+		// Check target user existence
+		var targetPrivacy int
+		err := database.QueryRow(`
+			SELECT p.privacy
+			FROM users u
+			JOIN profiles p ON p.user_id = u.id
+			WHERE u.id = ?
+		`, targetID).Scan(&targetPrivacy)
+
+		if err != nil {
+			helpers.SendJSON(w, http.StatusNotFound, map[string]any{
+				"error": "target user not found",
+			})
+			return
+		}
+
+		// follow relationship
+		_, err = database.Exec(`
+			INSERT INTO follows (follower_id, following_id)
+			VALUES (?, ?)
+			ON CONFLICT(follower_id, following_id) DO NOTHING
+		`, currentUser.ID, targetID)
+
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to follow user",
+			})
+			return
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{
+			"message":      "successfully followed user",
+			"following_id": targetID,
+		})
+	}
+}
+
 
