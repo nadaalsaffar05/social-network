@@ -36,6 +36,7 @@
   position: relative;
   margin-bottom: 20px;
   align-self: center;
+  cursor: pointer;
 }
 
 .profile-avatar-img {
@@ -52,6 +53,38 @@
   transform: scale(1.02);
   border-color: var(--color-primary);
 }
+
+.profile-avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  gap: 4px;
+  border: 3px solid var(--color-primary);
+}
+
+.profile-avatar-wrapper:hover .profile-avatar-overlay {
+  opacity: 1;
+}
+
+.profile-avatar-overlay-icon {
+  width: 22px;
+  height: 22px;
+}
+
 
 .profile-avatar-initials {
   width: 140px;

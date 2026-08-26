@@ -1,16 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getProfile } from '../../../api/users'
+import { Camera, House, SignOut, Heart, ChatCircle, NotePencil, EnvelopeSimple, Cake, ShieldCheck } from '@phosphor-icons/react'
+import { getProfile, uploadAvatar } from '../../../api/Profile.js'
 import { logoutUser } from '../../../api/auth'
 import { BASE_API } from '../../../Config.js'
+import AvatarCropperModal from '../../../components/AvatarCropperModal/AvatarCropperModal'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const fileInputRef = useRef(null)
+
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null)
+  const [isCropperOpen, setIsCropperOpen] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -54,6 +60,39 @@ export default function ProfilePage() {
       navigate('/login', { replace: true })
     } catch (requestError) {
       setError(requestError.message)
+    }
+  }
+
+  function handleAvatarClick() {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+      fileInputRef.current.click()
+    }
+  }
+
+  function handleFileSelect(e) {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0]
+      const reader = new FileReader()
+      reader.addEventListener('load', () => {
+        setSelectedImageSrc(reader.result)
+        setIsCropperOpen(true)
+      })
+      reader.readAsDataURL(file)
+    }
+  }
+
+  async function handleCropSave(croppedFile) {
+    try {
+      const result = await uploadAvatar(croppedFile)
+      if (result.avatar_path) {
+        setProfile((prev) => (prev ? { ...prev, avatar_path: result.avatar_path } : prev))
+      }
+      setIsCropperOpen(false)
+      setSelectedImageSrc(null)
+    } catch (err) {
+      setError(err.message || 'Failed to upload avatar')
+      setIsCropperOpen(false)
     }
   }
 
@@ -122,8 +161,21 @@ export default function ProfilePage() {
       <div className="profile-layout-grid">
         {/* ==================== LEFT SIDEBAR ==================== */}
         <aside className="profile-sidebar">
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/jpeg,image/png,image/gif"
+            style={{ display: 'none' }}
+          />
+
           {/* Profile Picture (PFP) */}
-          <div className="profile-avatar-wrapper">
+          <div
+            className="profile-avatar-wrapper"
+            onClick={handleAvatarClick}
+            title="Click to change profile picture"
+          >
             {avatarUrl ? (
               <img
                 id="profile-avatar"
@@ -136,6 +188,10 @@ export default function ProfilePage() {
                 {initials}
               </div>
             )}
+            <div className="profile-avatar-overlay">
+              <Camera size={24} weight="bold" />
+              <span>Change</span>
+            </div>
           </div>
 
           {/* First Name & Username directly under PFP */}
@@ -152,14 +208,17 @@ export default function ProfilePage() {
           {/* User Details */}
           <div className="profile-details-list">
             <div className="profile-detail-item">
+              <EnvelopeSimple size={16} weight="bold" />
               <strong>Email:</strong> <span>{profile?.email}</span>
             </div>
             {profile?.date_of_birth && (
               <div className="profile-detail-item">
+                <Cake size={16} weight="bold" />
                 <strong>Born:</strong> <span>{formatDate(profile.date_of_birth)}</span>
               </div>
             )}
             <div className="profile-detail-item" style={{ marginTop: '4px' }}>
+              <ShieldCheck size={16} weight="bold" />
               <strong>Account:</strong>
               <span className={`profile-badge ${profile?.privacy === 1010 ? 'private' : ''}`}>
                 {profile?.privacy === 1010 ? 'Private' : 'Public'}
@@ -174,6 +233,7 @@ export default function ProfilePage() {
               type="button"
               onClick={() => navigate('/home')}
             >
+              <House size={18} weight="bold" />
               Home
             </button>
             <button
@@ -181,6 +241,7 @@ export default function ProfilePage() {
               type="button"
               onClick={handleLogout}
             >
+              <SignOut size={18} weight="bold" />
               Log out
             </button>
           </div>
@@ -261,15 +322,11 @@ export default function ProfilePage() {
 
                   <div className="post-actions-bar">
                     <button type="button" className="post-action-item">
-                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
+                      <Heart size={18} weight="bold" />
                       Like
                     </button>
                     <button type="button" className="post-action-item">
-                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
+                      <ChatCircle size={18} weight="bold" />
                       Comment
                     </button>
                   </div>
@@ -277,7 +334,7 @@ export default function ProfilePage() {
               ))
             ) : (
               <div className="profile-empty-feed">
-                <div className="profile-empty-icon">📝</div>
+                <NotePencil size={40} className="profile-empty-icon" weight="duotone" />
                 <h3 className="profile-empty-title">No posts yet</h3>
                 <p className="profile-empty-text">
                   Posts created by {profile?.first_name || 'this user'} will appear here.
@@ -287,6 +344,17 @@ export default function ProfilePage() {
           </div>
         </section>
       </div>
+
+      {isCropperOpen && selectedImageSrc && (
+        <AvatarCropperModal
+          imageSrc={selectedImageSrc}
+          onClose={() => {
+            setIsCropperOpen(false)
+            setSelectedImageSrc(null)
+          }}
+          onCropSave={handleCropSave}
+        />
+      )}
     </main>
   )
 }
