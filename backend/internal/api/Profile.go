@@ -18,17 +18,13 @@ import (
 func GetProfile(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
-				"error": "method not allowed",
-			})
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		currentUser := auth.CurrentUser(r)
 		if currentUser == nil {
-			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
-				"error": "unauthorized",
-			})
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -62,9 +58,7 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 		)
 
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to fetch profile",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile")
 			return
 		}
 
@@ -107,7 +101,7 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 		}
 		profile.PostsCount = len(profile.Posts)
 
-		helpers.SendJSON(w, http.StatusOK, map[string]any{
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
 			"user": profile,
 		})
 	}
@@ -116,43 +110,33 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
-				"error": "method not allowed",
-			})
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		currentUser := auth.CurrentUser(r)
 		if currentUser == nil {
-			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
-				"error": "unauthorized",
-			})
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
 		// 10 MB max file size
 		err := r.ParseMultipartForm(10 << 20)
 		if err != nil {
-			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
-				"error": "file size too large or invalid multipart form",
-			})
+			helpers.WriteError(w, http.StatusBadRequest, "file size too large or invalid multipart form")
 			return
 		}
 
 		file, header, err := r.FormFile("avatar")
 		if err != nil {
-			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
-				"error": "avatar file is required",
-			})
+			helpers.WriteError(w, http.StatusBadRequest, "avatar file is required")
 			return
 		}
 		defer file.Close()
 
 		mimeType := header.Header.Get("Content-Type")
 		if mimeType != "image/jpeg" && mimeType != "image/png" && mimeType != "image/gif" {
-			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
-				"error": "only JPEG, PNG, and GIF images are allowed",
-			})
+			helpers.WriteError(w, http.StatusBadRequest, "only JPEG, PNG, and GIF images are allowed")
 			return
 		}
 
@@ -165,44 +149,34 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 
 		mediaUUID, err := uuid.NewV4()
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to generate media id",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to generate media id")
 			return
 		}
 
 		mediaID := mediaUUID.String()
 		uploadDir := "uploads/avatars"
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to create upload directory",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to create upload directory")
 			return
 		}
 
 		relativePath := uploadDir + "/" + mediaID + ext
 		dstFile, err := os.Create(relativePath)
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to save avatar file",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to save avatar file")
 			return
 		}
 		defer dstFile.Close()
 
 		fileSize, err := io.Copy(dstFile, file)
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to write avatar file",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to write avatar file")
 			return
 		}
 
 		tx, err := database.Begin()
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to start transaction",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to start transaction")
 			return
 		}
 		defer tx.Rollback()
@@ -229,9 +203,7 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 			VALUES (?, ?, ?, ?, ?, ?)
 		`, mediaID, currentUser.ID, header.Filename, relativePath, mimeType, fileSize)
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to record media entry",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to record media entry")
 			return
 		}
 
@@ -241,20 +213,16 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 			VALUES (?, ?, 1010)
 		`, currentUser.ID, mediaID)
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to update profile avatar",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to update profile avatar")
 			return
 		}
 
 		if err := tx.Commit(); err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to commit transaction",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to commit transaction")
 			return
 		}
 
-		helpers.SendJSON(w, http.StatusOK, map[string]any{
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
 			"message":     "Avatar updated successfully",
 			"avatar_path": relativePath,
 		})
@@ -264,17 +232,13 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 func GetFollowers(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
-				"error": "method not allowed",
-			})
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		currentUser := auth.CurrentUser(r)
 		if currentUser == nil {
-			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
-				"error": "unauthorized",
-			})
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -303,9 +267,7 @@ func GetFollowers(database *sql.DB) http.HandlerFunc {
 
 		followers := []models.FollowUserItem{}
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to fetch followers",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch followers")
 			return
 		}
 		defer rows.Close()
@@ -325,7 +287,7 @@ func GetFollowers(database *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		helpers.SendJSON(w, http.StatusOK, map[string]any{
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
 			"followers": followers,
 		})
 	}
@@ -334,17 +296,13 @@ func GetFollowers(database *sql.DB) http.HandlerFunc {
 func GetFollowing(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
-				"error": "method not allowed",
-			})
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		currentUser := auth.CurrentUser(r)
 		if currentUser == nil {
-			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
-				"error": "unauthorized",
-			})
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -373,9 +331,7 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 
 		following := []models.FollowUserItem{}
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to fetch following",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch following")
 			return
 		}
 		defer rows.Close()
@@ -395,7 +351,7 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		helpers.SendJSON(w, http.StatusOK, map[string]any{
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
 			"following": following,
 		})
 	}
@@ -404,17 +360,13 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 func FollowUser(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
-				"error": "method not allowed",
-			})
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		currentUser := auth.CurrentUser(r)
 		if currentUser == nil {
-			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
-				"error": "unauthorized",
-			})
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -429,16 +381,12 @@ func FollowUser(database *sql.DB) http.HandlerFunc {
 		}
 
 		if targetID == "" {
-			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
-				"error": "user_id is required",
-			})
+			helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
 			return
 		}
 
 		if targetID == currentUser.ID {
-			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
-				"error": "cannot follow yourself",
-			})
+			helpers.WriteError(w, http.StatusBadRequest, "cannot follow yourself")
 			return
 		}
 
@@ -452,9 +400,7 @@ func FollowUser(database *sql.DB) http.HandlerFunc {
 		`, targetID).Scan(&targetPrivacy)
 
 		if err != nil {
-			helpers.SendJSON(w, http.StatusNotFound, map[string]any{
-				"error": "target user not found",
-			})
+			helpers.WriteError(w, http.StatusNotFound, "target user not found")
 			return
 		}
 
@@ -466,17 +412,13 @@ func FollowUser(database *sql.DB) http.HandlerFunc {
 		`, currentUser.ID, targetID)
 
 		if err != nil {
-			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
-				"error": "failed to follow user",
-			})
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to follow user")
 			return
 		}
 
-		helpers.SendJSON(w, http.StatusOK, map[string]any{
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
 			"message":      "successfully followed user",
 			"following_id": targetID,
 		})
 	}
 }
-
-
