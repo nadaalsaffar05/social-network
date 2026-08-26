@@ -1,3 +1,22 @@
-### GET request to example server
-POST  http://localhost:8080/api/hello
+POST http://localhost:8080/api/follow
+Content-Type: application/json
 
+{
+  "user_id": "target_user_id_here"
+}
+
+###
+
+GET http://localhost:8080/api/followers
+
+###
+
+GET http://localhost:8080/api/following
+
+###
+
+GET http://localhost:8080/api/followers?user_id=123456
+
+###
+
+GET http://localhost:8080/api/following?user_id=123456

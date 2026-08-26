@@ -1,14 +1,35 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { getProfile } from '../../../api/users'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Camera, House, SignOut, Heart, ChatCircle, NotePencil, EnvelopeSimple, Cake, ShieldCheck, Users, UserCheck, UserPlus } from '@phosphor-icons/react'
+import { getProfile, uploadAvatar, getFollowers, getFollowing } from '../../../api/Profile.js'
 import { logoutUser } from '../../../api/auth'
+import { BASE_API } from '../../../Config.js'
+import AvatarCropperModal from '../../../components/AvatarCropperModal/AvatarCropperModal'
+import './ProfilePage.css'
 
 export default function ProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const fileInputRef = useRef(null)
+
+  const activeTab = searchParams.get('tab') || 'posts'
+
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null)
+  const [isCropperOpen, setIsCropperOpen] = useState(false)
+
+  const [followersList, setFollowersList] = useState([])
+  const [followingList, setFollowingList] = useState([])
+  const [listLoading, setListLoading] = useState(false)
+  const [listError, setListError] = useState('')
+
+  function handleTabChange(newTab) {
+    setSearchParams(newTab === 'posts' ? {} : { tab: newTab })
+  }
+
 
   useEffect(() => {
     let isMounted = true
@@ -46,12 +67,81 @@ export default function ProfilePage() {
     }
   }, [navigate, id])
 
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadTabData() {
+      if (activeTab === 'followers') {
+        try {
+          setListLoading(true)
+          setListError('')
+          const data = await getFollowers(id)
+          if (isMounted) setFollowersList(data)
+        } catch (err) {
+          if (isMounted) setListError(err.message || 'Failed to load followers')
+        } finally {
+          if (isMounted) setListLoading(false)
+        }
+      } else if (activeTab === 'following') {
+        try {
+          setListLoading(true)
+          setListError('')
+          const data = await getFollowing(id)
+          if (isMounted) setFollowingList(data)
+        } catch (err) {
+          if (isMounted) setListError(err.message || 'Failed to load following list')
+        } finally {
+          if (isMounted) setListLoading(false)
+        }
+      }
+    }
+
+    loadTabData()
+    return () => {
+      isMounted = false
+    }
+  }, [activeTab, id])
+
+
   async function handleLogout() {
     try {
       await logoutUser()
       navigate('/login', { replace: true })
     } catch (requestError) {
       setError(requestError.message)
+    }
+  }
+
+  function handleAvatarClick() {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+      fileInputRef.current.click()
+    }
+  }
+
+  function handleFileSelect(e) {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0]
+      const reader = new FileReader()
+      reader.addEventListener('load', () => {
+        setSelectedImageSrc(reader.result)
+        setIsCropperOpen(true)
+      })
+      reader.readAsDataURL(file)
+    }
+  }
+
+  async function handleCropSave(croppedFile) {
+    try {
+      const result = await uploadAvatar(croppedFile)
+      if (result.avatar_path) {
+        setProfile((prev) => (prev ? { ...prev, avatar_path: result.avatar_path } : prev))
+      }
+      setIsCropperOpen(false)
+      setSelectedImageSrc(null)
+    } catch (err) {
+      setError(err.message || 'Failed to upload avatar')
+      setIsCropperOpen(false)
     }
   }
 
@@ -81,61 +171,365 @@ export default function ProfilePage() {
     )
   }
 
-  return (
-    <main className="home-page">
-      <section className="home-card">
-        <p className="auth-eyebrow">User Profile</p>
-        <h1>
-          {profile?.first_name} {profile?.last_name}
-        </h1>
-        {profile?.nickname && (
-          <p className="auth-description">@{profile.nickname}</p>
-        )}
-        <p style={{ marginTop: '12px' }}>
-          <strong>Email:</strong> {profile?.email}
-        </p>
-        {profile?.date_of_birth && (
-          <p>
-            <strong>Date of Birth:</strong> {profile.date_of_birth}
-          </p>
-        )}
-        {profile?.about_me && (
-          <p style={{ marginTop: '8px' }}>
-            <strong>About:</strong> {profile.about_me}
-          </p>
-        )}
-        <p
-          style={{
-            marginTop: '8px',
-            fontSize: '0.85rem',
-            color: 'var(--color-text-faint)',
-          }}
-        >
-          <strong>Privacy:</strong> {profile?.privacy === 1010 ? 'Private' : 'Public'}
-        </p>
+  const avatarUrl = profile?.avatar_path
+    ? `${BASE_API}/static/${profile.avatar_path}`
+    : null
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-          <button
-            className="primary-button"
-            type="button"
-            onClick={() => navigate('/home')}
-          >
-            Home
-          </button>
-          <button
-            className="primary-button"
-            type="button"
-            style={{
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-text)',
-            }}
-            onClick={handleLogout}
-          >
-            Log out
-          </button>
+  const initials = `${profile?.first_name?.[0] ?? ''}${profile?.last_name?.[0] ?? ''}`.toUpperCase()
+  const fullName = `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim()
+  const username = profile?.nickname ? `@${profile.nickname}` : (profile?.email ? `@${profile.email.split('@')[0]}` : '')
+
+  const followersCount = profile?.followers_count ?? 0
+  const followingCount = profile?.following_count ?? 0
+  const postsCount = profile?.posts_count ?? (profile?.posts?.length ?? 0)
+  const posts = profile?.posts ?? []
+
+  function getPrivacyLabel(code) {
+    if (code === 1000 || code === 'PUBLIC') return 'Public'
+    if (code === 1010 || code === 'FOLLOWERS') return 'Followers'
+    if (code === 1020 || code === 'PRIVATE') return 'Private'
+    return 'Public'
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return ''
+    try {
+      const d = new Date(dateStr)
+      return d.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    } catch {
+      return dateStr
+    }
+  }
+
+  function renderUserCard(u) {
+    const uInitials = `${u.first_name?.[0] ?? ''}${u.last_name?.[0] ?? ''}`.toUpperCase()
+    const uFullName = `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
+    const uHandle = u.nickname ? `@${u.nickname}` : (u.email ? `@${u.email.split('@')[0]}` : '')
+    const uAvatarUrl = u.avatar_path ? `${BASE_API}/static/${u.avatar_path}` : null
+
+    return (
+      <div key={u.id} className="profile-user-card">
+        <div className="user-card-avatar-wrapper">
+          {uAvatarUrl ? (
+            <img src={uAvatarUrl} alt={uFullName} className="user-card-avatar-img" />
+          ) : (
+            <div className="user-card-avatar-initials">{uInitials}</div>
+          )}
         </div>
-      </section>
+        <div className="user-card-info">
+          <h4 className="user-card-name">{uFullName}</h4>
+          {uHandle && <span className="user-card-handle">{uHandle}</span>}
+          <div className="user-card-badge-row">
+            <span className={`profile-badge ${u.privacy === 1010 ? 'private' : ''}`}>
+              {u.privacy === 1010 ? 'Private' : 'Public'}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="user-card-action-btn"
+          onClick={() => navigate(`/profile/${u.id}`)}
+        >
+          View Profile
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <main className="profile-layout-container">
+      <div className="profile-layout-grid">
+        {/* ==================== LEFT SIDEBAR ==================== */}
+        <aside className="profile-sidebar">
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/jpeg,image/png,image/gif"
+            style={{ display: 'none' }}
+          />
+
+          {/* Profile Picture (PFP) */}
+          <div
+            className="profile-avatar-wrapper"
+            onClick={handleAvatarClick}
+            title="Click to change profile picture"
+          >
+            {avatarUrl ? (
+              <img
+                id="profile-avatar"
+                src={avatarUrl}
+                alt={fullName}
+                className="profile-avatar-img"
+              />
+            ) : (
+              <div id="profile-avatar-initials" className="profile-avatar-initials">
+                {initials}
+              </div>
+            )}
+            <div className="profile-avatar-overlay">
+              <Camera size={24} weight="bold" />
+              <span>Change</span>
+            </div>
+          </div>
+
+          {/* First Name & Username directly under PFP */}
+          <div className="profile-names-section">
+            <h1 className="profile-fullname">{fullName}</h1>
+            {username && <p className="profile-username">{username}</p>}
+          </div>
+
+          {/* About Me / Bio */}
+          {profile?.about_me && (
+            <p className="profile-bio">{profile.about_me}</p>
+          )}
+
+          {/* User Details */}
+          <div className="profile-details-list">
+            <div className="profile-detail-item">
+              <EnvelopeSimple size={16} weight="bold" />
+              <strong>Email:</strong> <span>{profile?.email}</span>
+            </div>
+            {profile?.date_of_birth && (
+              <div className="profile-detail-item">
+                <Cake size={16} weight="bold" />
+                <strong>Born:</strong> <span>{formatDate(profile.date_of_birth)}</span>
+              </div>
+            )}
+            <div className="profile-detail-item" style={{ marginTop: '4px' }}>
+              <ShieldCheck size={16} weight="bold" />
+              <strong>Account:</strong>
+              <span className={`profile-badge ${profile?.privacy === 1010 ? 'private' : ''}`}>
+                {profile?.privacy === 1010 ? 'Private' : 'Public'}
+              </span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="profile-sidebar-actions">
+            <button
+              className="primary-button profile-action-btn"
+              type="button"
+              onClick={() => navigate('/home')}
+            >
+              <House size={18} weight="bold" />
+              Home
+            </button>
+            <button
+              className="profile-action-btn secondary"
+              type="button"
+              onClick={handleLogout}
+            >
+              <SignOut size={18} weight="bold" />
+              Log out
+            </button>
+          </div>
+        </aside>
+
+        {/* ==================== MAIN BODY ==================== */}
+
+        <section className="profile-main-body">
+          {/* Top Bar: Followers + Following counts */}
+          <div className="profile-stats-card">
+            <button
+              type="button"
+              className={`profile-stat-box ${activeTab === 'followers' ? 'active' : ''}`}
+              onClick={() => handleTabChange('followers')}
+            >
+              <span className="profile-stat-number">{followersCount}</span>
+              <span className="profile-stat-label">Followers</span>
+            </button>
+
+            <div className="profile-stat-divider" />
+
+            <button
+              type="button"
+              className={`profile-stat-box ${activeTab === 'following' ? 'active' : ''}`}
+              onClick={() => handleTabChange('following')}
+            >
+              <span className="profile-stat-number">{followingCount}</span>
+              <span className="profile-stat-label">Following</span>
+            </button>
+
+            <div className="profile-stat-divider" />
+
+            <button
+              type="button"
+              className={`profile-stat-box ${activeTab === 'posts' ? 'active' : ''}`}
+              onClick={() => handleTabChange('posts')}
+            >
+              <span className="profile-stat-number">{postsCount}</span>
+              <span className="profile-stat-label">Posts</span>
+            </button>
+          </div>
+
+          {/* User Posts / Followers / Following Feed */}
+          <div className="profile-feed-container">
+            {/* Navigation Tabs Header */}
+            <div className="profile-tabs-header">
+              <button
+                type="button"
+                className={`profile-tab-btn ${activeTab === 'posts' ? 'active' : ''}`}
+                onClick={() => handleTabChange('posts')}
+              >
+                <NotePencil size={18} weight="bold" />
+                Posts
+                <span className="profile-tab-badge">{postsCount}</span>
+              </button>
+              <button
+                type="button"
+                className={`profile-tab-btn ${activeTab === 'followers' ? 'active' : ''}`}
+                onClick={() => handleTabChange('followers')}
+              >
+                <Users size={18} weight="bold" />
+                Followers
+                <span className="profile-tab-badge">{followersCount}</span>
+              </button>
+              <button
+                type="button"
+                className={`profile-tab-btn ${activeTab === 'following' ? 'active' : ''}`}
+                onClick={() => handleTabChange('following')}
+              >
+                <UserCheck size={18} weight="bold" />
+                Following
+                <span className="profile-tab-badge">{followingCount}</span>
+              </button>
+            </div>
+
+            {/* TAB CONTENT: POSTS */}
+            {activeTab === 'posts' && (
+              posts.length > 0 ? (
+                posts.map((post) => (
+                  <article key={post.id} className="profile-post-card">
+                    <div className="post-header">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt={fullName}
+                          className="post-avatar-mini"
+                        />
+                      ) : (
+                        <div className="post-avatar-mini-initials">{initials}</div>
+                      )}
+                      <div className="post-meta">
+                        <span className="post-author-name">{fullName}</span>
+                        <div className="post-time-privacy">
+                          <span>{formatDate(post.created_at)}</span>
+                          <span>•</span>
+                          <span className="profile-badge" style={{ fontSize: '0.7rem', padding: '1px 8px' }}>
+                            {getPrivacyLabel(post.privacy)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="post-content">{post.content}</p>
+
+                    {post.media && post.media.length > 0 && (
+                      <div className="post-media-grid">
+                        {post.media.map((mPath, idx) => (
+                          <img
+                            key={idx}
+                            src={`${BASE_API}/static/${mPath}`}
+                            alt="Post attachment"
+                            className="post-media-item"
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="post-actions-bar">
+                      <button type="button" className="post-action-item">
+                        <Heart size={18} weight="bold" />
+                        Like
+                      </button>
+                      <button type="button" className="post-action-item">
+                        <ChatCircle size={18} weight="bold" />
+                        Comment
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="profile-empty-feed">
+                  <NotePencil size={40} className="profile-empty-icon" weight="duotone" />
+                  <h3 className="profile-empty-title">No posts yet</h3>
+                  <p className="profile-empty-text">
+                    Posts created by {profile?.first_name || 'this user'} will appear here.
+                  </p>
+                </div>
+              )
+            )}
+
+            {/* TAB CONTENT: FOLLOWERS */}
+            {activeTab === 'followers' && (
+              listLoading ? (
+                <div className="profile-empty-feed">
+                  <p className="profile-empty-text">Loading followers…</p>
+                </div>
+              ) : listError ? (
+                <div className="profile-empty-feed">
+                  <p className="form-error">{listError}</p>
+                </div>
+              ) : followersList.length > 0 ? (
+                <div className="profile-users-grid">
+                  {followersList.map(renderUserCard)}
+                </div>
+              ) : (
+                <div className="profile-empty-feed">
+                  <Users size={40} className="profile-empty-icon" weight="duotone" />
+                  <h3 className="profile-empty-title">No followers yet</h3>
+                  <p className="profile-empty-text">
+                    When people follow {profile?.first_name || 'this user'}, they will appear here.
+                  </p>
+                </div>
+              )
+            )}
+
+            {/* TAB CONTENT: FOLLOWING */}
+            {activeTab === 'following' && (
+              listLoading ? (
+                <div className="profile-empty-feed">
+                  <p className="profile-empty-text">Loading following list…</p>
+                </div>
+              ) : listError ? (
+                <div className="profile-empty-feed">
+                  <p className="form-error">{listError}</p>
+                </div>
+              ) : followingList.length > 0 ? (
+                <div className="profile-users-grid">
+                  {followingList.map(renderUserCard)}
+                </div>
+              ) : (
+                <div className="profile-empty-feed">
+                  <UserPlus size={40} className="profile-empty-icon" weight="duotone" />
+                  <h3 className="profile-empty-title">Not following anyone yet</h3>
+                  <p className="profile-empty-text">
+                    Users that {profile?.first_name || 'this user'} follows will appear here.
+                  </p>
+                </div>
+              )
+            )}
+          </div>
+        </section>
+
+      </div>
+
+      {isCropperOpen && selectedImageSrc && (
+        <AvatarCropperModal
+          imageSrc={selectedImageSrc}
+          onClose={() => {
+            setIsCropperOpen(false)
+            setSelectedImageSrc(null)
+          }}
+          onCropSave={handleCropSave}
+        />
+      )}
     </main>
   )
 }

@@ -62,3 +62,11 @@ const (
 	NotificationTypeGroupJoinRequest NotificationType = 1020
 	NotificationTypeEventCreated     NotificationType = 1030
 )
+
+
+type ProfilePfpType int
+
+const (
+	Generic ProfilePfpType    = 1000
+	Custom ProfilePfpType   = 1010
+)

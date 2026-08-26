@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logoutUser } from '../../../api/auth'
-import { getProfile } from '../../../api/users'
+import { getProfile } from '../../../api/Profile.js'
 
 export default function HomePage() {
   const navigate = useNavigate()
