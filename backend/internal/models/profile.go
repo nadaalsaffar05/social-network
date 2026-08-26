@@ -25,3 +25,14 @@ type ProfileResponse struct {
 	PostsCount     int        `json:"posts_count"`
 	Posts          []UserPost `json:"posts"`
 }
+
+type FollowUserItem struct {
+	ID         string  `json:"id"`
+	Email      string  `json:"email"`
+	FirstName  string  `json:"first_name"`
+	LastName   string  `json:"last_name"`
+	Nickname   *string `json:"nickname,omitempty"`
+	AvatarPath *string `json:"avatar_path,omitempty"`
+	Privacy    int     `json:"privacy"`
+}
+

@@ -258,3 +258,144 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 		})
 	}
 }
+
+func GetFollowers(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
+				"error": "method not allowed",
+			})
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
+				"error": "unauthorized",
+			})
+			return
+		}
+
+		targetID := r.URL.Query().Get("user_id")
+		if targetID == "" {
+			targetID = currentUser.ID
+		}
+
+		rows, err := database.Query(`
+			SELECT
+				u.id,
+				u.email,
+				u.first_name,
+				u.last_name,
+				p.nickname,
+				p.privacy,
+				m.file_path
+			FROM follows f
+			JOIN users u ON u.id = f.follower_id
+			JOIN profiles p ON p.user_id = u.id
+			LEFT JOIN profile_avatars pa ON pa.user_id = u.id
+			LEFT JOIN media m ON m.id = pa.media_id
+			WHERE f.following_id = ?
+			ORDER BY f.created_at DESC
+		`, targetID)
+
+		followers := []models.FollowUserItem{}
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to fetch followers",
+			})
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var item models.FollowUserItem
+			if scanErr := rows.Scan(
+				&item.ID,
+				&item.Email,
+				&item.FirstName,
+				&item.LastName,
+				&item.Nickname,
+				&item.Privacy,
+				&item.AvatarPath,
+			); scanErr == nil {
+				followers = append(followers, item)
+			}
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{
+			"followers": followers,
+		})
+	}
+}
+
+func GetFollowing(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
+				"error": "method not allowed",
+			})
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
+				"error": "unauthorized",
+			})
+			return
+		}
+
+		targetID := r.URL.Query().Get("user_id")
+		if targetID == "" {
+			targetID = currentUser.ID
+		}
+
+		rows, err := database.Query(`
+			SELECT
+				u.id,
+				u.email,
+				u.first_name,
+				u.last_name,
+				p.nickname,
+				p.privacy,
+				m.file_path
+			FROM follows f
+			JOIN users u ON u.id = f.following_id
+			JOIN profiles p ON p.user_id = u.id
+			LEFT JOIN profile_avatars pa ON pa.user_id = u.id
+			LEFT JOIN media m ON m.id = pa.media_id
+			WHERE f.follower_id = ?
+			ORDER BY f.created_at DESC
+		`, targetID)
+
+		following := []models.FollowUserItem{}
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to fetch following",
+			})
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var item models.FollowUserItem
+			if scanErr := rows.Scan(
+				&item.ID,
+				&item.Email,
+				&item.FirstName,
+				&item.LastName,
+				&item.Nickname,
+				&item.Privacy,
+				&item.AvatarPath,
+			); scanErr == nil {
+				following = append(following, item)
+			}
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{
+			"following": following,
+		})
+	}
+}
+

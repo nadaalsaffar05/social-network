@@ -48,3 +48,42 @@ export async function uploadAvatar(file) {
   return data
 }
 
+export async function getFollowers(userId) {
+  const url = buildApiUrl(['api', 'followers'], userId ? { user_id: userId } : {})
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || data.message || 'Failed to fetch followers')
+  }
+
+  return data.followers || []
+}
+
+export async function getFollowing(userId) {
+  const url = buildApiUrl(['api', 'following'], userId ? { user_id: userId } : {})
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || data.message || 'Failed to fetch following')
+  }
+
+  return data.following || []
+}
+
+
