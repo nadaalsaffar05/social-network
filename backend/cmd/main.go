@@ -105,6 +105,7 @@ func main() {
 	mux.HandleFunc("/api/login", authHandler.Login)
 	mux.HandleFunc("/api/logout", authHandler.Logout)
 	mux.Handle("/api/profile", auth.Middleware(db, api.GetProfile(db)))
+	mux.Handle("/api/profile/avatar", auth.Middleware(db, api.UpdateAvatar(db)))
 
 	port := os.Getenv("PORT")
 	if port == "" {

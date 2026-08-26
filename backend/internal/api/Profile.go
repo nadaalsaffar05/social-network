@@ -2,11 +2,15 @@ package api
 
 import (
 	"database/sql"
+	"io"
 	"net/http"
+	"os"
 
 	"social-network/internal/auth"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
+
+	"github.com/gofrs/uuid/v5"
 )
 
 func GetProfile(database *sql.DB) http.HandlerFunc {
@@ -103,6 +107,154 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{
 			"user": profile,
+		})
+	}
+}
+
+func UpdateAvatar(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			helpers.SendJSON(w, http.StatusMethodNotAllowed, map[string]any{
+				"error": "method not allowed",
+			})
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.SendJSON(w, http.StatusUnauthorized, map[string]any{
+				"error": "unauthorized",
+			})
+			return
+		}
+
+		// 10 MB max file size
+		err := r.ParseMultipartForm(10 << 20)
+		if err != nil {
+			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
+				"error": "file size too large or invalid multipart form",
+			})
+			return
+		}
+
+		file, header, err := r.FormFile("avatar")
+		if err != nil {
+			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
+				"error": "avatar file is required",
+			})
+			return
+		}
+		defer file.Close()
+
+		mimeType := header.Header.Get("Content-Type")
+		if mimeType != "image/jpeg" && mimeType != "image/png" && mimeType != "image/gif" {
+			helpers.SendJSON(w, http.StatusBadRequest, map[string]any{
+				"error": "only JPEG, PNG, and GIF images are allowed",
+			})
+			return
+		}
+
+		ext := ".jpg"
+		if mimeType == "image/png" {
+			ext = ".png"
+		} else if mimeType == "image/gif" {
+			ext = ".gif"
+		}
+
+		mediaUUID, err := uuid.NewV4()
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to generate media id",
+			})
+			return
+		}
+
+		mediaID := mediaUUID.String()
+		uploadDir := "uploads/avatars"
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to create upload directory",
+			})
+			return
+		}
+
+		relativePath := uploadDir + "/" + mediaID + ext
+		dstFile, err := os.Create(relativePath)
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to save avatar file",
+			})
+			return
+		}
+		defer dstFile.Close()
+
+		fileSize, err := io.Copy(dstFile, file)
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to write avatar file",
+			})
+			return
+		}
+
+		tx, err := database.Begin()
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to start transaction",
+			})
+			return
+		}
+		defer tx.Rollback()
+
+		var existingType int
+		var existingMediaID string
+		scanErr := tx.QueryRow(`
+			SELECT type, media_id FROM profile_avatars WHERE user_id = ?
+		`, currentUser.ID).Scan(&existingType, &existingMediaID)
+
+		if scanErr == nil {
+			if existingType == 1000 {
+				// Unlink generic pool avatar
+				_, _ = tx.Exec(`UPDATE profile_avatars SET user_id = NULL WHERE user_id = ?`, currentUser.ID)
+			} else if existingType == 1010 {
+				// Remove custom avatar mapping
+				_, _ = tx.Exec(`DELETE FROM profile_avatars WHERE user_id = ?`, currentUser.ID)
+			}
+		}
+
+		// Insert into media
+		_, err = tx.Exec(`
+			INSERT INTO media (id, uploader_id, file_name, file_path, mime_type, file_size)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, mediaID, currentUser.ID, header.Filename, relativePath, mimeType, fileSize)
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to record media entry",
+			})
+			return
+		}
+
+		// Insert custom profile avatar mapping
+		_, err = tx.Exec(`
+			INSERT INTO profile_avatars (user_id, media_id, type)
+			VALUES (?, ?, 1010)
+		`, currentUser.ID, mediaID)
+		if err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to update profile avatar",
+			})
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			helpers.SendJSON(w, http.StatusInternalServerError, map[string]any{
+				"error": "failed to commit transaction",
+			})
+			return
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{
+			"message":     "Avatar updated successfully",
+			"avatar_path": relativePath,
 		})
 	}
 }
