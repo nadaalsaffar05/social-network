@@ -172,6 +172,14 @@ func main() {
 	)
 
 	mux.Handle(
+		"/api/posts/{post_id}/media",
+		auth.Middleware(
+			db,
+			http.HandlerFunc(feedHandler.UploadPostMedia),
+		),
+	)
+
+	mux.Handle(
 		"/api/feed",
 		auth.Middleware(
 			db,

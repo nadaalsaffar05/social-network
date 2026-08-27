@@ -14,4 +14,5 @@ type PostResponse struct {
 	Content   string            `json:"content"`
 	Privacy   enums.PostPrivacy `json:"privacy"`
 	CreatedAt string            `json:"created_at"`
+	Media     []string          `json:"media,omitempty"`
 }
