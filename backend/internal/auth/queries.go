@@ -32,8 +32,9 @@ func getUserByID(db *sql.DB, userID string) (*models.User, error) {
 	return getUser(db, userQuery+"WHERE u.id = ?", userID)
 }
 
-func getUser(db *sql.DB, query string, value string) (*models.User, error) {
+func getUser(db *sql.DB, query, value string) (*models.User, error) {
 	user := &models.User{}
+
 	err := db.QueryRow(query, value).Scan(
 		&user.ID,
 		&user.Email,
@@ -45,9 +46,11 @@ func getUser(db *sql.DB, query string, value string) (*models.User, error) {
 		&user.AboutMe,
 		&user.Privacy,
 	)
+
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +58,11 @@ func getUser(db *sql.DB, query string, value string) (*models.User, error) {
 	return user, nil
 }
 
-func createUser(db *sql.DB, request models.RegisterRequest, passwordHash string) (*models.User, error) {
+func createUser(
+	db *sql.DB,
+	request models.RegisterRequest,
+	passwordHash string,
+) (*models.User, error) {
 	userID, err := uuid.NewV4()
 	if err != nil {
 		return nil, err
@@ -77,7 +84,14 @@ func createUser(db *sql.DB, request models.RegisterRequest, passwordHash string)
 			date_of_birth
 		)
 		VALUES (?, ?, ?, ?, ?, ?)
-	`, userID.String(), request.Email, passwordHash, request.FirstName, request.LastName, request.DateOfBirth)
+	`,
+		userID.String(),
+		request.Email,
+		passwordHash,
+		request.FirstName,
+		request.LastName,
+		request.DateOfBirth,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +103,11 @@ func createUser(db *sql.DB, request models.RegisterRequest, passwordHash string)
 			about_me
 		)
 		VALUES (?, ?, ?)
-	`, userID.String(), request.Nickname, request.AboutMe)
+	`,
+		userID.String(),
+		request.Nickname,
+		request.AboutMe,
+	)
 	if err != nil {
 		return nil, err
 	}

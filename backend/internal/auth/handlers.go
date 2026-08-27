@@ -16,12 +16,16 @@ type Handler struct {
 }
 
 func requireMethod(w http.ResponseWriter, r *http.Request, method string) bool {
-	if r.Method == method {
-		return true
+	if r.Method != method {
+		helpers.WriteError(
+			w,
+			http.StatusMethodNotAllowed,
+			"method not allowed",
+		)
+		return false
 	}
 
-	helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
-	return false
+	return true
 }
 
 func trimOptionalString(value *string) *string {
@@ -29,12 +33,13 @@ func trimOptionalString(value *string) *string {
 		return nil
 	}
 
-	trimmedValue := strings.TrimSpace(*value)
-	if trimmedValue == "" {
+	trimmed := strings.TrimSpace(*value)
+
+	if trimmed == "" {
 		return nil
 	}
 
-	return &trimmedValue
+	return &trimmed
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -43,8 +48,13 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request models.RegisterRequest
+
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
+		helpers.WriteError(
+			w,
+			http.StatusBadRequest,
+			"invalid request body",
+		)
 		return
 	}
 
@@ -55,51 +65,97 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	request.Nickname = trimOptionalString(request.Nickname)
 	request.AboutMe = trimOptionalString(request.AboutMe)
 
-	if request.Email == "" || request.Password == "" || request.FirstName == "" || request.LastName == "" || request.DateOfBirth == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "missing required fields")
+	if request.Email == "" ||
+		request.Password == "" ||
+		request.FirstName == "" ||
+		request.LastName == "" ||
+		request.DateOfBirth == "" {
+
+		helpers.WriteError(
+			w,
+			http.StatusBadRequest,
+			"missing required fields",
+		)
 		return
 	}
 
-	if len(request.Password) < 6 {
-		helpers.WriteError(w, http.StatusBadRequest, "password must be at least 6 characters")
+	if !isValidPassword(request.Password) {
+		helpers.WriteError(
+			w,
+			http.StatusBadRequest,
+			"password must be at least 6 characters and contain uppercase, lowercase, number, and special character",
+		)
 		return
 	}
 
 	if _, err := time.Parse("2006-01-02", request.DateOfBirth); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "date_of_birth must use YYYY-MM-DD")
+		helpers.WriteError(
+			w,
+			http.StatusBadRequest,
+			"date_of_birth must use YYYY-MM-DD",
+		)
 		return
 	}
 
 	existingUser, err := getUserByEmail(h.DB, request.Email)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "database error")
+		helpers.WriteError(
+			w,
+			http.StatusInternalServerError,
+			"database error",
+		)
 		return
 	}
+
 	if existingUser != nil {
-		helpers.WriteError(w, http.StatusConflict, "email already registered")
+		helpers.WriteError(
+			w,
+			http.StatusConflict,
+			"email already registered",
+		)
 		return
 	}
 
 	passwordHash, err := hashPassword(request.Password)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not hash password")
+		helpers.WriteError(
+			w,
+			http.StatusInternalServerError,
+			"could not hash password",
+		)
 		return
 	}
 
 	user, err := createUser(h.DB, request, passwordHash)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not create user")
+		helpers.WriteError(
+			w,
+			http.StatusInternalServerError,
+			"could not create user",
+		)
 		return
 	}
 
 	token, err := createSession(h.DB, user.ID)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not create session")
+		helpers.WriteError(
+			w,
+			http.StatusInternalServerError,
+			"could not create session",
+		)
 		return
 	}
 
 	setSessionCookie(w, token)
-	helpers.WriteJSON(w, http.StatusCreated, models.AuthResponse{Message: "registration successful", User: user})
+
+	helpers.WriteJSON(
+		w,
+		http.StatusCreated,
+		models.AuthResponse{
+			Message: "registration successful",
+			User:    user,
+		},
+	)
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -108,35 +164,66 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request models.LoginRequest
+
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
+		helpers.WriteError(
+			w,
+			http.StatusBadRequest,
+			"invalid request body",
+		)
 		return
 	}
 
 	request.Email = strings.TrimSpace(request.Email)
+
 	if request.Email == "" || request.Password == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "email and password are required")
+		helpers.WriteError(
+			w,
+			http.StatusBadRequest,
+			"email and password are required",
+		)
 		return
 	}
 
 	user, err := getUserByEmail(h.DB, request.Email)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "database error")
+		helpers.WriteError(
+			w,
+			http.StatusInternalServerError,
+			"database error",
+		)
 		return
 	}
+
 	if user == nil || !checkPassword(user.PasswordHash, request.Password) {
-		helpers.WriteError(w, http.StatusUnauthorized, "invalid email or password")
+		helpers.WriteError(
+			w,
+			http.StatusUnauthorized,
+			"invalid email or password",
+		)
 		return
 	}
 
 	token, err := createSession(h.DB, user.ID)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not create session")
+		helpers.WriteError(
+			w,
+			http.StatusInternalServerError,
+			"could not create session",
+		)
 		return
 	}
 
 	setSessionCookie(w, token)
-	helpers.WriteJSON(w, http.StatusOK, models.AuthResponse{Message: "login successful", User: user})
+
+	helpers.WriteJSON(
+		w,
+		http.StatusOK,
+		models.AuthResponse{
+			Message: "login successful",
+			User:    user,
+		},
+	)
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -150,5 +237,12 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clearSessionCookie(w)
-	helpers.WriteJSON(w, http.StatusOK, models.AuthResponse{Message: "logout successful"})
+
+	helpers.WriteJSON(
+		w,
+		http.StatusOK,
+		models.AuthResponse{
+			Message: "logout successful",
+		},
+	)
 }

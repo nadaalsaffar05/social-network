@@ -8,6 +8,7 @@ import (
 
 	"social-network/internal/api"
 	"social-network/internal/auth"
+	"social-network/internal/feed"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -39,8 +40,14 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With, Origin")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Content-Type, Authorization, Accept, X-Requested-With, Origin",
+		)
+		w.Header().Set(
+			"Access-Control-Allow-Methods",
+			"GET, POST, PUT, DELETE, OPTIONS",
+		)
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -58,10 +65,24 @@ func main() {
 	mux := http.NewServeMux()
 
 	authHandler := &auth.Handler{DB: db}
+	feedHandler := feed.NewHandler(db)
+
 	mux.HandleFunc("/api/register", authHandler.Register)
 	mux.HandleFunc("/api/login", authHandler.Login)
 	mux.HandleFunc("/api/logout", authHandler.Logout)
-	mux.Handle("/api/profile", auth.Middleware(db, api.GetProfile(db)))
+
+	mux.Handle(
+		"/api/profile",
+		auth.Middleware(db, api.GetProfile(db)),
+	)
+
+	mux.Handle(
+		"/api/posts",
+		auth.Middleware(
+			db,
+			http.HandlerFunc(feedHandler.CreatePost),
+		),
+	)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -69,5 +90,10 @@ func main() {
 	}
 
 	log.Printf("Server running on http://localhost:%s\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
+	log.Fatal(
+		http.ListenAndServe(
+			":"+port,
+			corsMiddleware(mux),
+		),
+	)
 }
