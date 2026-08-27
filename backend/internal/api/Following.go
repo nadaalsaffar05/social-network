@@ -7,11 +7,15 @@ import (
 	"strings"
 
 	"social-network/internal/auth"
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
+
+	"github.com/gofrs/uuid/v5"
 )
 
 // method: GET -- returns all followers of the current user
+// add user_id param in the url to check a target userID
 func GetFollowers(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -76,7 +80,8 @@ func GetFollowers(database *sql.DB) http.HandlerFunc {
 	}
 }
 
-// method: GET -- returns all followeing of the current user
+// method: GET -- returns all following of the current user
+// add user_id param in the url to check a target userID
 func GetFollowing(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -141,8 +146,8 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 	}
 }
 
-// method: POST -- if a user wants to follow another user
-// basically the current user will gain an additional following
+// method: POST -- follow a user + the follow will depend on the profile status
+// params: user_id: target user id
 func FollowUser(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -176,7 +181,7 @@ func FollowUser(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Check target user existence
+		// check target user exist
 		var targetPrivacy int
 		err := database.QueryRow(`
 			SELECT p.privacy
@@ -190,21 +195,327 @@ func FollowUser(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// follow relationship
+		// might be deleted
+		var alreadyFollowing int
+		_ = database.QueryRow(`
+			SELECT COUNT(*) FROM follows WHERE follower_id = ? AND following_id = ?
+		`, currentUser.ID, targetID).Scan(&alreadyFollowing)
+		if alreadyFollowing > 0 {
+			helpers.WriteError(w, http.StatusConflict, "already following this user")
+			return
+		}
+
+		// if public
+		if targetPrivacy == int(enums.ProfilePrivacyPublic) {
+			_, err = database.Exec(`
+				INSERT INTO follows (follower_id, following_id)
+				VALUES (?, ?)
+				ON CONFLICT(follower_id, following_id) DO NOTHING
+			`, currentUser.ID, targetID)
+
+			if err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "failed to follow user")
+				return
+			}
+
+			helpers.WriteJSON(w, http.StatusOK, map[string]any{
+				"message":      "successfully followed user",
+				"following_id": targetID,
+				"status":       "following",
+			})
+			return
+		}
+
+		//if private
+		var pendingRequestID string
+		pendingErr := database.QueryRow(`
+			SELECT id FROM follow_requests
+			WHERE sender_id = ? AND recipient_id = ? AND status = ?
+		`, currentUser.ID, targetID, int(enums.FollowRequestStatusPending)).Scan(&pendingRequestID)
+
+		if pendingErr == nil {
+			//check if pending req is alr there
+			helpers.WriteJSON(w, http.StatusOK, map[string]any{
+				"message":           "follow request already pending",
+				"follow_request_id": pendingRequestID,
+				"status":            "pending",
+			})
+			return
+		}
+
+		// new request entry
+		requestUUID, uuidErr := uuid.NewV4()
+		if uuidErr != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to generate request id")
+			return
+		}
+		requestID := requestUUID.String()
+
 		_, err = database.Exec(`
-			INSERT INTO follows (follower_id, following_id)
-			VALUES (?, ?)
-			ON CONFLICT(follower_id, following_id) DO NOTHING
-		`, currentUser.ID, targetID)
+			INSERT INTO follow_requests (id, sender_id, recipient_id, status)
+			VALUES (?, ?, ?, ?)
+		`, requestID, currentUser.ID, targetID, int(enums.FollowRequestStatusPending))
 
 		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to follow user")
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to send follow request")
 			return
 		}
 
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{
-			"message":      "successfully followed user",
-			"following_id": targetID,
+			"message":           "follow request sent",
+			"follow_request_id": requestID,
+			"status":            "pending",
+		})
+	}
+}
+
+// method: POST -- respond to a follow request (accept or decline).
+// Body:  request_id: reqID, 
+//        action : accept || decline
+func RespondToFollowRequest(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+
+		//TODO: move it to DTOs
+		var req struct {
+			RequestID string `json:"request_id"`
+			Action    string `json:"action"` // accept or decline
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+
+		req.RequestID = strings.TrimSpace(req.RequestID)
+		req.Action = strings.ToLower(strings.TrimSpace(req.Action))
+
+		if req.RequestID == "" {
+			helpers.WriteError(w, http.StatusBadRequest, "request_id is required")
+			return
+		}
+		if req.Action != "accept" && req.Action != "decline" {
+			helpers.WriteError(w, http.StatusBadRequest, "action must be 'accept' or 'decline'")
+			return
+		}
+
+		var senderID, recipientID string
+		var currentStatus int
+		err := database.QueryRow(`
+			SELECT sender_id, recipient_id, status
+			FROM follow_requests
+			WHERE id = ?
+		`, req.RequestID).Scan(&senderID, &recipientID, &currentStatus)
+
+		if err != nil {
+			helpers.WriteError(w, http.StatusNotFound, "follow request not found")
+			return
+		}
+
+		if recipientID != currentUser.ID {
+			helpers.WriteError(w, http.StatusForbidden, "you are not the recipient of this request")
+			return
+		}
+
+		if currentStatus != int(enums.FollowRequestStatusPending) {
+			helpers.WriteError(w, http.StatusConflict, "follow request has already been responded to")
+			return
+		}
+
+		newStatus := int(enums.FollowRequestStatusDeclined)
+		if req.Action == "accept" {
+			newStatus = int(enums.FollowRequestStatusAccepted)
+		}
+
+		tx, txErr := database.Begin()
+		if txErr != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to start transaction")
+			return
+		}
+		defer tx.Rollback()
+
+		_, err = tx.Exec(`
+			UPDATE follow_requests
+			SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+			WHERE id = ?
+		`, newStatus, req.RequestID)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to update follow request")
+			return
+		}
+
+		// If accepted, create the follow relationship
+		if req.Action == "accept" {
+			_, err = tx.Exec(`
+				INSERT INTO follows (follower_id, following_id)
+				VALUES (?, ?)
+				ON CONFLICT(follower_id, following_id) DO NOTHING
+			`, senderID, recipientID)
+			if err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "failed to create follow relationship")
+				return
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to commit transaction")
+			return
+		}
+
+		message := "follow request declined"
+		if req.Action == "accept" {
+			message = "follow request accepted"
+		}
+
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
+			"message": message,
+			"status":  req.Action + "ed",
+		})
+	}
+}
+
+// method: GET -- checks whether ?user_id= is a follower of the current user.
+// will return: is_follower: true || false 
+func IsFollower(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		targetID := strings.TrimSpace(r.URL.Query().Get("user_id"))
+		if targetID == "" {
+			helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
+			return
+		}
+
+		// Is targetID a follower of currentUser?
+		// i.e. does a row exist where follower_id = targetID AND following_id = currentUser.ID?
+		var count int
+		_ = database.QueryRow(`
+			SELECT COUNT(*) FROM follows
+			WHERE follower_id = ? AND following_id = ?
+		`, targetID, currentUser.ID).Scan(&count)
+
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
+			"is_follower": count > 0,
+			"user_id":     targetID,
+		})
+	}
+}
+
+// method: GET -- checks whether the current user is following ?user_id=.
+// Returns: { "is_following": true | false }
+func IsFollowing(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		targetID := strings.TrimSpace(r.URL.Query().Get("user_id"))
+		if targetID == "" {
+			helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
+			return
+		}
+
+		// Is currentUser following targetID?
+		// i.e. does a row exist where follower_id = currentUser.ID AND following_id = targetID?
+		var count int
+		_ = database.QueryRow(`
+			SELECT COUNT(*) FROM follows
+			WHERE follower_id = ? AND following_id = ?
+		`, currentUser.ID, targetID).Scan(&count)
+
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
+			"is_following": count > 0,
+			"user_id":      targetID,
+		})
+	}
+}
+
+// method: POST -- unfollow a user.
+// The current user must already be following the target user.
+// Body: { "user_id": "<target user id>" }
+func UnfollowUser(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		var req struct {
+			UserID string `json:"user_id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+
+		targetID := strings.TrimSpace(req.UserID)
+		if targetID == "" {
+			targetID = strings.TrimSpace(r.URL.Query().Get("user_id"))
+		}
+
+		if targetID == "" {
+			helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
+			return
+		}
+
+		if targetID == currentUser.ID {
+			helpers.WriteError(w, http.StatusBadRequest, "cannot unfollow yourself")
+			return
+		}
+
+		
+		var count int
+		_ = database.QueryRow(`
+			SELECT COUNT(*) FROM follows
+			WHERE follower_id = ? AND following_id = ?
+		`, currentUser.ID, targetID).Scan(&count)
+
+		if count == 0 {
+			helpers.WriteError(w, http.StatusConflict, "you are not following this user")
+			return
+		}
+
+		_, err := database.Exec(`
+			DELETE FROM follows
+			WHERE follower_id = ? AND following_id = ?
+		`, currentUser.ID, targetID)
+
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to unfollow user")
+			return
+		}
+
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
+			"message": "successfully unfollowed user",
+			"user_id": targetID,
 		})
 	}
 }

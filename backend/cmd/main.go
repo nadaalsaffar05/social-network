@@ -109,6 +109,10 @@ func main() {
 	mux.Handle("/api/followers", auth.Middleware(db, api.GetFollowers(db)))
 	mux.Handle("/api/following", auth.Middleware(db, api.GetFollowing(db)))
 	mux.Handle("/api/follow", auth.Middleware(db, api.FollowUser(db)))
+	mux.Handle("/api/unfollow", auth.Middleware(db, api.UnfollowUser(db)))
+	mux.Handle("/api/is-follower", auth.Middleware(db, api.IsFollower(db)))
+	mux.Handle("/api/is-following", auth.Middleware(db, api.IsFollowing(db)))
+	mux.Handle("/api/follow-request/respond", auth.Middleware(db, api.RespondToFollowRequest(db)))
 
 
 
