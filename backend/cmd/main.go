@@ -171,6 +171,14 @@ func main() {
 		),
 	)
 
+	mux.Handle(
+		"/api/feed",
+		auth.Middleware(
+			db,
+			http.HandlerFunc(feedHandler.GetFeed),
+		),
+	)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
