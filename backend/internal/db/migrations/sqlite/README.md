@@ -2,7 +2,7 @@
 
 This directory contains the versioned SQLite schema for the Social Network backend. The project uses [golang-migrate](https://github.com/golang-migrate/migrate) to apply these files in numeric order and to track the version applied to each local database.
 
-The local development database used in the examples below is `backend/pkg/db/social-network.db`. Do not commit this file: it is created locally from the migrations. The SQL migration files are the database changes that must be committed and shared with the team.
+The local development database used in the examples below is `backend/internal/db/social-network.db`. Do not commit this file: it is created locally from the migrations. The SQL migration files are the database changes that must be committed and shared with the team.
 
 ## Prerequisites
 
@@ -47,8 +47,8 @@ Current schema migrations:
 Set these values once per terminal session if you want shorter commands:
 
 ```sh
-MIGRATIONS=backend/pkg/db/migrations/sqlite
-DATABASE='sqlite3://backend/pkg/db/social-network.db'
+MIGRATIONS=backend/internal/db/migrations/sqlite
+DATABASE='sqlite3://backend/internal/db/social-network.db'
 ```
 
 The commands below use the full paths, so they also work without those variables.
@@ -56,7 +56,7 @@ The commands below use the full paths, so they also work without those variables
 ### Apply all pending migrations
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" up
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" up
 ```
 
 This applies every migration that has not yet been applied. Run it after cloning the project and after pulling new migration files from Git.
@@ -64,7 +64,7 @@ This applies every migration that has not yet been applied. Run it after cloning
 ### Check the current migration version
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" version
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" version
 ```
 
 The command reports the version recorded in the database. If it reports `dirty`, a previous migration stopped partway through and must be investigated before continuing.
@@ -72,13 +72,13 @@ The command reports the version recorded in the database. If it reports `dirty`,
 ### Apply one migration
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" up 1
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" up 1
 ```
 
 ### Roll back one migration
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" down 1
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" down 1
 ```
 
 This runs the `.down.sql` file for the latest applied migration.
@@ -86,7 +86,7 @@ This runs the `.down.sql` file for the latest applied migration.
 ### Roll back all migrations
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" down -all
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" down -all
 ```
 
 This removes all schema changes by running down migrations in reverse order. It is destructive and deletes the data in those tables. `down` without `-all` rolls back only one migration, so `-all` is required here.
@@ -94,7 +94,7 @@ This removes all schema changes by running down migrations in reverse order. It 
 ### Move to an exact version
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" goto 23
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" goto 23
 ```
 
 `goto` migrates up or down until the requested version is reached. Use it only with a known safe target version.
@@ -104,7 +104,7 @@ migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/
 Generate a sequential pair of files instead of copying the complete schema into a new migration:
 
 ```sh
-migrate create -ext sql -dir backend/pkg/db/migrations/sqlite -seq create_example_table
+migrate create -ext sql -dir backend/internal/db/migrations/sqlite -seq create_example_table
 ```
 
 This creates files similar to:
@@ -143,9 +143,9 @@ DROP TABLE example_table;
 For example, after creating `000024_create_example_table`, test it with:
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" up 1
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" down 1
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" up 1
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" up 1
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" down 1
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" up 1
 ```
 
 ## Recovering from a dirty migration
@@ -153,7 +153,7 @@ migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/
 Do not immediately use `force`: first inspect and fix the failing SQL or database state. Once the schema is known to match a version, mark that version explicitly:
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" force 23
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" force 23
 ```
 
 `force` only changes golang-migrate's recorded version; it does not run SQL. Use it only after confirming the real schema is at that version.
@@ -163,7 +163,7 @@ migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/
 When pulling migrations added by another teammate, update the local database with:
 
 ```sh
-migrate -path backend/pkg/db/migrations/sqlite -database "sqlite3://backend/pkg/db/social-network.db" up
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" up
 ```
 
 Never rename, edit, reorder, or delete a migration that has already been shared. Add a new migration to correct it instead. This keeps every teammate's database history consistent.

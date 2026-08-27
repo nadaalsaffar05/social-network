@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { getProfile } from "../../api/users";
+import { getProfile } from "../../api/Profile.js";
 
 const unauthenticatedErrors = new Set([
   "unauthorized",
