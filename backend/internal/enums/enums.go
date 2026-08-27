@@ -45,6 +45,7 @@ const (
 	PostPrivacyPublic    PostPrivacy = 1000
 	PostPrivacyFollowers PostPrivacy = 1010
 	PostPrivacySelected  PostPrivacy = 1020
+	PostPrivacyGroup     PostPrivacy = 1030
 )
 
 type EventResponse int
@@ -61,12 +62,42 @@ const (
 	NotificationTypeGroupInvitation  NotificationType = 1010
 	NotificationTypeGroupJoinRequest NotificationType = 1020
 	NotificationTypeEventCreated     NotificationType = 1030
+	NotificationTypeFollowAccepted   NotificationType = 1040
+	NotificationTypePostReaction     NotificationType = 1050
+	NotificationTypeCommentReaction  NotificationType = 1060
+	NotificationTypeComment          NotificationType = 1070
+	NotificationTypeNewFollower      NotificationType = 1080
 )
-
 
 type ProfilePfpType int
 
 const (
-	Generic ProfilePfpType    = 1000
-	Custom ProfilePfpType   = 1010
+	ProfilePfpTypeGeneric ProfilePfpType = 1000
+	ProfilePfpTypeCustom  ProfilePfpType = 1010
+)
+
+type GroupMemberRole string
+
+const (
+	GroupMemberRoleCreator GroupMemberRole = "CREATOR"
+	GroupMemberRoleMember  GroupMemberRole = "MEMBER"
+)
+
+type ReactionType string
+
+const (
+	ReactionTypeLike  ReactionType = "LIKE"
+	ReactionTypeLove  ReactionType = "LOVE"
+	ReactionTypeHaha  ReactionType = "HAHA"
+	ReactionTypeWow   ReactionType = "WOW"
+	ReactionTypeSad   ReactionType = "SAD"
+	ReactionTypeAngry ReactionType = "ANGRY"
+)
+
+type MediaMIMEType string
+
+const (
+	MediaMIMETypeJPEG MediaMIMEType = "image/jpeg"
+	MediaMIMETypePNG  MediaMIMEType = "image/png"
+	MediaMIMETypeGIF  MediaMIMEType = "image/gif"
 )

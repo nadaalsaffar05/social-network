@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"social-network/internal/auth"
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
 
@@ -132,16 +133,16 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 		}
 		defer file.Close()
 
-		mimeType := header.Header.Get("Content-Type")
-		if mimeType != "image/jpeg" && mimeType != "image/png" && mimeType != "image/gif" {
+		mimeType := enums.MediaMIMEType(header.Header.Get("Content-Type"))
+		if mimeType != enums.MediaMIMETypeJPEG && mimeType != enums.MediaMIMETypePNG && mimeType != enums.MediaMIMETypeGIF {
 			helpers.WriteError(w, http.StatusBadRequest, "only JPEG, PNG, and GIF images are allowed")
 			return
 		}
 
 		ext := ".jpg"
-		if mimeType == "image/png" {
+		if mimeType == enums.MediaMIMETypePNG {
 			ext = ".png"
-		} else if mimeType == "image/gif" {
+		} else if mimeType == enums.MediaMIMETypeGIF {
 			ext = ".gif"
 		}
 
@@ -186,10 +187,10 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 		`, currentUser.ID).Scan(&existingType, &existingMediaID)
 
 		if scanErr == nil {
-			if existingType == 1000 {
+			if existingType == int(enums.ProfilePfpTypeGeneric) {
 				// Unlink generic pool avatar
 				_, _ = tx.Exec(`UPDATE profile_avatars SET user_id = NULL WHERE user_id = ?`, currentUser.ID)
-			} else if existingType == 1010 {
+			} else if existingType == int(enums.ProfilePfpTypeCustom) {
 				// Remove custom avatar mapping
 				_, _ = tx.Exec(`DELETE FROM profile_avatars WHERE user_id = ?`, currentUser.ID)
 			}
@@ -199,7 +200,7 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 		_, err = tx.Exec(`
 			INSERT INTO media (id, uploader_id, file_name, file_path, mime_type, file_size)
 			VALUES (?, ?, ?, ?, ?, ?)
-		`, mediaID, currentUser.ID, header.Filename, relativePath, mimeType, fileSize)
+		`, mediaID, currentUser.ID, header.Filename, relativePath, string(mimeType), fileSize)
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to record media entry")
 			return
@@ -208,8 +209,8 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 		// Insert custom profile avatar mapping
 		_, err = tx.Exec(`
 			INSERT INTO profile_avatars (user_id, media_id, type)
-			VALUES (?, ?, 1010)
-		`, currentUser.ID, mediaID)
+			VALUES (?, ?, ?)
+		`, currentUser.ID, mediaID, int(enums.ProfilePfpTypeCustom))
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to update profile avatar")
 			return
