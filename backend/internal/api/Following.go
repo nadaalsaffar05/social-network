@@ -11,6 +11,7 @@ import (
 	"social-network/internal/models"
 )
 
+// method: GET -- returns all followers of the current user
 func GetFollowers(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -75,6 +76,7 @@ func GetFollowers(database *sql.DB) http.HandlerFunc {
 	}
 }
 
+// method: GET -- returns all followeing of the current user
 func GetFollowing(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -139,6 +141,8 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 	}
 }
 
+// method: POST -- if a user wants to follow another user
+// basically the current user will gain an additional following
 func FollowUser(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
