@@ -9,6 +9,7 @@ import (
 	"social-network/internal/auth"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
+	"social-network/internal/utils"
 
 	"github.com/gofrs/uuid/v5"
 )
@@ -26,35 +27,7 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		var profile models.ProfileResponse
-		err := database.QueryRow(`
-			SELECT
-				u.id,
-				u.email,
-				u.first_name,
-				u.last_name,
-				u.date_of_birth,
-				p.nickname,
-				p.about_me,
-				p.privacy,
-				m.file_path
-			FROM users u
-			JOIN profiles p ON p.user_id = u.id
-			LEFT JOIN profile_avatars pa ON pa.user_id = u.id
-			LEFT JOIN media m ON m.id = pa.media_id
-			WHERE u.id = ?
-		`, currentUser.ID).Scan(
-			&profile.ID,
-			&profile.Email,
-			&profile.FirstName,
-			&profile.LastName,
-			&profile.DateOfBirth,
-			&profile.Nickname,
-			&profile.AboutMe,
-			&profile.Privacy,
-			&profile.AvatarPath,
-		)
-
+		profile, err := utils.GetProfileObject(database, currentUser.ID)
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile")
 			return
@@ -102,6 +75,29 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{
 			"user": profile,
 		})
+	}
+}
+
+// method = POST -- params will have a "status": public || private
+func UpdateProfileStatus(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		// profile, err := utils.GetProfileObject(database, currentUser.ID)
+		// if err != nil {
+		// 	helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile")
+		// 	return
+		// }
+
 	}
 }
 
