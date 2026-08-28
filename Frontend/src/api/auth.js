@@ -3,14 +3,14 @@ import { request } from './client'
 export function registerUser(user) {
   return request(['api', 'register'], {
     method: 'POST',
-    body: JSON.stringify(user),
+    body: user,
   })
 }
 
 export function loginUser(credentials) {
   return request(['api', 'login'], {
     method: 'POST',
-    body: JSON.stringify(credentials),
+    body: credentials,
   })
 }
 

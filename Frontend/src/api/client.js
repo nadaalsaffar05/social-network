@@ -1,19 +1,40 @@
 import { buildApiUrl } from '../Config.js'
 
 export async function request(pathSegments, options = {}) {
-  const response = await fetch(buildApiUrl(pathSegments), {
+  const {
+    method = 'GET',
+    queryParams = {},
+    body,
+    headers,
+    ...fetchOptions
+  } = options
+
+  const isFormData = body instanceof FormData
+  const hasBody = body !== undefined && body !== null
+
+  const response = await fetch(buildApiUrl(pathSegments, queryParams), {
+    ...fetchOptions,
+    method,
     credentials: 'include',
-    ...options,
     headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
+      ...(hasBody && !isFormData
+        ? { 'Content-Type': 'application/json' }
+        : {}),
+      ...headers,
     },
+    body: hasBody && !isFormData ? JSON.stringify(body) : body,
   })
 
-  const data = await response.json()
+  const isJSON = response.headers
+    .get('content-type')
+    ?.includes('application/json')
+
+  const data = isJSON ? await response.json() : null
 
   if (!response.ok) {
-    throw new Error(data.error || 'Something went wrong. Please try again.')
+    throw new Error(
+      data?.error || response.statusText || 'Something went wrong',
+    )
   }
 
   return data

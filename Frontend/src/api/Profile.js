@@ -52,6 +52,6 @@ export async function getFollowing(userId) {
 export async function followUser(userId) {
   return await request(['api', 'follow'], {
     method: 'POST',
-    body: JSON.stringify({ user_id: userId }),
+    body: { user_id: userId },
   })
 }

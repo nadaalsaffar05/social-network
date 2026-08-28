@@ -1,13 +1,10 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import LoginPage from "../pages/Login/LoginPage";
-import RegisterPage from "../pages/Register/RegisterPage";
-import HomePage from "../pages/Home/HomePage";
+import LoginPage from "../pages/Auth/LoginPage";
+import RegisterPage from "../pages/Auth/RegisterPage";
+import FeedPage from "../pages/feed/FeedPage";
+import WelcomePage from "../pages/Auth/WelcomePage";
 import ProfilePage from "../pages/Profile/ProfilePage";
-import GroupsPage from "../pages/Groups/GroupsPage";
-import GroupPage from "../pages/Group/GroupPage";
-import NotificationsPage from "../pages/Notifications/NotificationsPage";
-import ChatPage from "../pages/Chat/ChatPage";
 import ProtectedRoute from "./ProtectedRoute";
 
 export default function AppRoutes() {
@@ -16,13 +13,10 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/home" element={<HomePage />} />
+        <Route path="/home" element={<FeedPage />} />
+        <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
-        <Route path="/groups" element={<GroupsPage />} />
-        <Route path="/groups/:id" element={<GroupPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/chat" element={<ChatPage />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/login" replace />} />
