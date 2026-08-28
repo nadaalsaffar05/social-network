@@ -83,15 +83,24 @@ const (
 	GroupMemberRoleMember  GroupMemberRole = "MEMBER"
 )
 
-type ReactionType string
+// PostCommentReactionType is the fixed reaction set for posts and comments.
+type PostCommentReactionType string
 
 const (
-	ReactionTypeLike  ReactionType = "LIKE"
-	ReactionTypeLove  ReactionType = "LOVE"
-	ReactionTypeHaha  ReactionType = "HAHA"
-	ReactionTypeWow   ReactionType = "WOW"
-	ReactionTypeSad   ReactionType = "SAD"
-	ReactionTypeAngry ReactionType = "ANGRY"
+	PostCommentReactionTypeLike    PostCommentReactionType = "LIKE"
+	PostCommentReactionTypeDislike PostCommentReactionType = "DISLIKE"
+)
+
+// MessageReactionType is reserved for private and group chat reactions.
+type MessageReactionType string
+
+const (
+	MessageReactionTypeLike  MessageReactionType = "LIKE"
+	MessageReactionTypeLove  MessageReactionType = "LOVE"
+	MessageReactionTypeHaha  MessageReactionType = "HAHA"
+	MessageReactionTypeWow   MessageReactionType = "WOW"
+	MessageReactionTypeSad   MessageReactionType = "SAD"
+	MessageReactionTypeAngry MessageReactionType = "ANGRY"
 )
 
 type MediaMIMEType string

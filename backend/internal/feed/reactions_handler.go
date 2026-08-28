@@ -1,0 +1,289 @@
+package feed
+
+import (
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"social-network/internal/auth"
+	"social-network/internal/helpers"
+	"social-network/internal/models"
+)
+
+func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	currentUser := auth.CurrentUser(r)
+	if currentUser == nil {
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	postID := r.PathValue("post_id")
+	if postID == "" {
+		helpers.WriteError(w, http.StatusBadRequest, "post_id is required")
+		return
+	}
+
+	canView, err := canViewPost(h.DB, postID, currentUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not check post")
+		return
+	}
+
+	if !canView {
+		helpers.WriteError(w, http.StatusNotFound, "post not found")
+		return
+	}
+
+	var req models.ToggleReactionRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	req.ReactionType = strings.ToUpper(strings.TrimSpace(req.ReactionType))
+
+	if req.ReactionType != "LIKE" && req.ReactionType != "DISLIKE" {
+		helpers.WriteError(w, http.StatusBadRequest, "reaction_type must be LIKE or DISLIKE")
+		return
+	}
+
+	tx, err := h.DB.Begin()
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not start transaction")
+		return
+	}
+	defer tx.Rollback()
+
+	var existingReaction string
+
+	err = tx.QueryRow(`
+		SELECT reaction_type
+		FROM post_reactions
+		WHERE post_id = ? AND user_id = ?
+	`, postID, currentUser.ID).Scan(&existingReaction)
+
+	if err != nil && err != sql.ErrNoRows {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not check reaction")
+		return
+	}
+
+	action := "added"
+	var reactionType *string
+
+	if err == nil {
+		if existingReaction == req.ReactionType {
+			_, err = tx.Exec(`
+				DELETE FROM post_reactions
+				WHERE post_id = ? AND user_id = ?
+			`, postID, currentUser.ID)
+
+			if err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "could not remove reaction")
+				return
+			}
+
+			action = "removed"
+		} else {
+			_, err = tx.Exec(`
+				UPDATE post_reactions
+				SET reaction_type = ?
+				WHERE post_id = ? AND user_id = ?
+			`, req.ReactionType, postID, currentUser.ID)
+
+			if err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "could not change reaction")
+				return
+			}
+
+			reactionType = &req.ReactionType
+		}
+	} else {
+		_, err = tx.Exec(`
+			INSERT INTO post_reactions (
+				post_id,
+				user_id,
+				reaction_type
+			)
+			VALUES (?, ?, ?)
+		`, postID, currentUser.ID, req.ReactionType)
+
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "could not add reaction")
+			return
+		}
+
+		reactionType = &req.ReactionType
+	}
+
+	likeCount, dislikeCount, err := getPostReactionCounts(tx, postID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not get reaction counts")
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not save reaction")
+		return
+	}
+
+	helpers.WriteJSON(w, http.StatusOK, map[string]any{
+		"action":        action,
+		"reaction_type": reactionType,
+		"counts": map[string]int{
+			"LIKE":    likeCount,
+			"DISLIKE": dislikeCount,
+		},
+	})
+}
+
+func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	currentUser := auth.CurrentUser(r)
+	if currentUser == nil {
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	postID := r.PathValue("post_id")
+	commentID := r.PathValue("comment_id")
+
+	if postID == "" || commentID == "" {
+		helpers.WriteError(w, http.StatusBadRequest, "post_id and comment_id are required")
+		return
+	}
+
+	canView, err := canViewPost(h.DB, postID, currentUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not check post")
+		return
+	}
+
+	if !canView {
+		helpers.WriteError(w, http.StatusNotFound, "post not found")
+		return
+	}
+
+	_, exists, err := getActiveCommentAuthor(h.DB, commentID, postID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not check comment")
+		return
+	}
+
+	if !exists {
+		helpers.WriteError(w, http.StatusNotFound, "comment not found")
+		return
+	}
+
+	var req models.ToggleReactionRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	req.ReactionType = strings.ToUpper(strings.TrimSpace(req.ReactionType))
+
+	if req.ReactionType != "LIKE" && req.ReactionType != "DISLIKE" {
+		helpers.WriteError(w, http.StatusBadRequest, "reaction_type must be LIKE or DISLIKE")
+		return
+	}
+
+	tx, err := h.DB.Begin()
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not start transaction")
+		return
+	}
+	defer tx.Rollback()
+
+	var existingReaction string
+
+	err = tx.QueryRow(`
+		SELECT reaction_type
+		FROM comment_reactions
+		WHERE comment_id = ? AND user_id = ?
+	`, commentID, currentUser.ID).Scan(&existingReaction)
+
+	if err != nil && err != sql.ErrNoRows {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not check reaction")
+		return
+	}
+
+	action := "added"
+	var reactionType *string
+
+	if err == nil {
+		if existingReaction == req.ReactionType {
+			_, err = tx.Exec(`
+				DELETE FROM comment_reactions
+				WHERE comment_id = ? AND user_id = ?
+			`, commentID, currentUser.ID)
+
+			if err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "could not remove reaction")
+				return
+			}
+
+			action = "removed"
+		} else {
+			_, err = tx.Exec(`
+				UPDATE comment_reactions
+				SET reaction_type = ?
+				WHERE comment_id = ? AND user_id = ?
+			`, req.ReactionType, commentID, currentUser.ID)
+
+			if err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "could not change reaction")
+				return
+			}
+
+			reactionType = &req.ReactionType
+		}
+	} else {
+		_, err = tx.Exec(`
+			INSERT INTO comment_reactions (
+				comment_id,
+				user_id,
+				reaction_type
+			)
+			VALUES (?, ?, ?)
+		`, commentID, currentUser.ID, req.ReactionType)
+
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "could not add reaction")
+			return
+		}
+
+		reactionType = &req.ReactionType
+	}
+
+	likeCount, dislikeCount, err := getCommentReactionCounts(tx, commentID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not get reaction counts")
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not save reaction")
+		return
+	}
+
+	helpers.WriteJSON(w, http.StatusOK, map[string]any{
+		"action":        action,
+		"reaction_type": reactionType,
+		"counts": map[string]int{
+			"LIKE":    likeCount,
+			"DISLIKE": dislikeCount,
+		},
+	})
+}

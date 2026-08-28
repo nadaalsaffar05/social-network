@@ -70,6 +70,10 @@ func GetFollowers(database *sql.DB) http.HandlerFunc {
 				&item.Privacy,
 				&item.AvatarPath,
 			); scanErr == nil {
+				if item.AvatarPath != nil {
+					publicPath := "/" + *item.AvatarPath
+					item.AvatarPath = &publicPath
+				}
 				followers = append(followers, item)
 			}
 		}
@@ -136,6 +140,10 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 				&item.Privacy,
 				&item.AvatarPath,
 			); scanErr == nil {
+				if item.AvatarPath != nil {
+					publicPath := "/" + *item.AvatarPath
+					item.AvatarPath = &publicPath
+				}
 				following = append(following, item)
 			}
 		}
@@ -270,8 +278,9 @@ func FollowUser(database *sql.DB) http.HandlerFunc {
 }
 
 // method: POST -- respond to a follow request (accept or decline).
-// Body:  request_id: reqID, 
-//        action : accept || decline
+// Body:  request_id: reqID,
+//
+//	action : accept || decline
 func RespondToFollowRequest(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -284,7 +293,6 @@ func RespondToFollowRequest(database *sql.DB) http.HandlerFunc {
 			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
-
 
 		//TODO: move it to DTOs
 		var req struct {
@@ -384,7 +392,7 @@ func RespondToFollowRequest(database *sql.DB) http.HandlerFunc {
 }
 
 // method: GET -- checks whether ?user_id= is a follower of the current user.
-// will return: is_follower: true || false 
+// will return: is_follower: true || false
 func IsFollower(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -491,7 +499,6 @@ func UnfollowUser(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		
 		var count int
 		_ = database.QueryRow(`
 			SELECT COUNT(*) FROM follows

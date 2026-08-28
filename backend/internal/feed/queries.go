@@ -2,7 +2,10 @@ package feed
 
 import (
 	"database/sql"
+	"strings"
+
 	"social-network/internal/enums"
+	"social-network/internal/models"
 )
 
 func createPost(
@@ -40,7 +43,7 @@ func addPostVisibility(
 	return err
 }
 
-func getFeedPosts(db *sql.DB, viewerID string) (*sql.Rows, error) {
+func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit int) (*sql.Rows, error) {
 	return db.Query(`
         SELECT p.id, p.author_id, p.content, p.privacy, p.created_at
         FROM posts p
@@ -66,8 +69,80 @@ func getFeedPosts(db *sql.DB, viewerID string) (*sql.Rows, error) {
               )
             )
           )
-        ORDER BY p.created_at DESC
-	    `, viewerID, viewerID, viewerID)
+		  AND (
+			? = ''
+			OR p.created_at < ?
+			OR (p.created_at = ? AND p.id < ?)
+		  )
+        ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ?
+	    `, viewerID, viewerID, viewerID, cursorID, cursorCreatedAt, cursorCreatedAt, cursorID, limit)
+}
+
+func getPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse, bool, error) {
+	allowed, err := canViewPost(db, postID, viewerID)
+	if err != nil || !allowed {
+		return models.PostResponse{}, allowed, err
+	}
+
+	var post models.PostResponse
+	err = db.QueryRow(`
+		SELECT p.id, p.author_id, p.content, p.privacy, p.created_at
+		FROM posts p
+		WHERE p.id = ?
+		  AND p.is_active = 1
+		  AND p.group_id IS NULL
+	`, postID).Scan(
+		&post.ID,
+		&post.AuthorID,
+		&post.Content,
+		&post.Privacy,
+		&post.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return models.PostResponse{}, false, nil
+	}
+	if err != nil {
+		return models.PostResponse{}, false, err
+	}
+
+	return post, true, nil
+}
+
+// canViewPost centralizes the visibility rule for personal posts
+// Group posts use group-membership rules and are handled separately
+func canViewPost(db *sql.DB, postID, viewerID string) (bool, error) {
+	var allowed int
+	err := db.QueryRow(`
+		SELECT CASE WHEN p.group_id IS NULL AND (
+			p.privacy = 1000
+			OR p.author_id = ?
+			OR (
+				p.privacy = 1010
+				AND EXISTS (
+					SELECT 1 FROM follows f
+					WHERE f.follower_id = ? AND f.following_id = p.author_id
+				)
+			)
+			OR (
+				p.privacy = 1020
+				AND EXISTS (
+					SELECT 1 FROM post_visibility pv
+					WHERE pv.post_id = p.id AND pv.user_id = ?
+				)
+			)
+		) THEN 1 ELSE 0 END
+		FROM posts p
+		WHERE p.id = ? AND p.is_active = 1
+	`, viewerID, viewerID, viewerID, postID).Scan(&allowed)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return allowed == 1, nil
 }
 
 func getPostMedia(db *sql.DB, postID string) ([]string, error) {
@@ -89,10 +164,65 @@ func getPostMedia(db *sql.DB, postID string) ([]string, error) {
 		if err := rows.Scan(&path); err != nil {
 			return nil, err
 		}
-		paths = append(paths, path)
+		paths = append(paths, "/"+path)
 	}
 
 	return paths, rows.Err()
+}
+
+func getPostMediaForPosts(db *sql.DB, postIDs []string) (map[string][]string, error) {
+	mediaByPost := make(map[string][]string, len(postIDs))
+	if len(postIDs) == 0 {
+		return mediaByPost, nil
+	}
+
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(postIDs)), ",")
+	args := make([]any, len(postIDs))
+	for i, postID := range postIDs {
+		args[i] = postID
+		mediaByPost[postID] = make([]string, 0)
+	}
+
+	rows, err := db.Query(`
+		SELECT pm.post_id, m.file_path
+		FROM post_media pm
+		JOIN media m ON m.id = pm.media_id
+		WHERE pm.post_id IN (`+placeholders+`)
+		ORDER BY pm.post_id ASC, pm.position ASC
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var postID, path string
+		if err := rows.Scan(&postID, &path); err != nil {
+			return nil, err
+		}
+		mediaByPost[postID] = append(mediaByPost[postID], "/"+path)
+	}
+
+	return mediaByPost, rows.Err()
+}
+
+func getActiveCommentAuthor(db *sql.DB, commentID, postID string) (string, bool, error) {
+	var authorID string
+	err := db.QueryRow(`
+		SELECT author_id
+		FROM comments
+		WHERE id = ?
+		  AND post_id = ?
+		  AND is_active = 1
+	`, commentID, postID).Scan(&authorID)
+	if err == sql.ErrNoRows {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+
+	return authorID, true, nil
 }
 
 func addPostMedia(
@@ -119,4 +249,93 @@ func addPostMedia(
 		VALUES (?, ?, ?)
 	`, postID, mediaID, position)
 	return err
+}
+
+func getComments(db *sql.DB, postID string) (*sql.Rows, error) {
+	return db.Query(`
+		SELECT
+			id,
+			post_id,
+			author_id,
+			parent_comment_id,
+			content,
+			created_at
+		FROM comments
+		WHERE post_id = ?
+		  AND is_active = 1
+		ORDER BY created_at ASC
+	`, postID)
+}
+func addCommentMedia(
+	tx *sql.Tx,
+	commentID string,
+	mediaID string,
+	uploaderID string,
+	fileName string,
+	filePath string,
+	mimeType enums.MediaMIMEType,
+	fileSize int64,
+	position int,
+) error {
+	_, err := tx.Exec(`
+		INSERT INTO media (
+			id,
+			uploader_id,
+			file_name,
+			file_path,
+			mime_type,
+			file_size
+		)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`,
+		mediaID,
+		uploaderID,
+		fileName,
+		filePath,
+		string(mimeType),
+		fileSize,
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO comment_media (
+			comment_id,
+			media_id,
+			position
+		)
+		VALUES (?, ?, ?)
+	`, commentID, mediaID, position)
+
+	return err
+}
+
+func getPostReactionCounts(tx *sql.Tx, postID string) (int, int, error) {
+	var likeCount int
+	var dislikeCount int
+
+	err := tx.QueryRow(`
+		SELECT
+			COALESCE(SUM(CASE WHEN reaction_type = 'LIKE' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN reaction_type = 'DISLIKE' THEN 1 ELSE 0 END), 0)
+		FROM post_reactions
+		WHERE post_id = ?
+	`, postID).Scan(&likeCount, &dislikeCount)
+
+	return likeCount, dislikeCount, err
+}
+func getCommentReactionCounts(tx *sql.Tx, commentID string) (int, int, error) {
+	var likeCount int
+	var dislikeCount int
+
+	err := tx.QueryRow(`
+		SELECT
+			COALESCE(SUM(CASE WHEN reaction_type = 'LIKE' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN reaction_type = 'DISLIKE' THEN 1 ELSE 0 END), 0)
+		FROM comment_reactions
+		WHERE comment_id = ?
+	`, commentID).Scan(&likeCount, &dislikeCount)
+
+	return likeCount, dislikeCount, err
 }

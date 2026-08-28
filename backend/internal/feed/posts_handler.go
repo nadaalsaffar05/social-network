@@ -1,29 +1,17 @@
 package feed
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
-	"os"
+	"strings"
+
 	"social-network/internal/auth"
 	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
-	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
 )
-
-type Handler struct {
-	DB *sql.DB
-}
-
-func NewHandler(db *sql.DB) *Handler {
-	return &Handler{DB: db}
-}
 
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -145,16 +133,44 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := getFeedPosts(h.DB, currentUser.ID)
+	limit, err := feedLimit(r.URL.Query().Get("limit"))
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 50")
+		return
+	}
+
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+	cursorCreatedAt := ""
+	if cursor != "" {
+		cursorPost, found, err := getPostForViewer(h.DB, cursor, currentUser.ID)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "could not read feed cursor")
+			return
+		}
+		if !found {
+			helpers.WriteError(w, http.StatusBadRequest, "invalid cursor")
+			return
+		}
+		cursorCreatedAt = cursorPost.CreatedAt
+	}
+
+	// Fetch one extra row so next_cursor is empty when this is the last page.
+	rows, err := getFeedPosts(h.DB, currentUser.ID, cursor, cursorCreatedAt, limit+1)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not fetch feed")
 		return
 	}
 	defer rows.Close()
 
-	posts := make([]models.PostResponse, 0)
+	posts := make([]models.PostResponse, 0, limit)
+	hasMore := false
 
 	for rows.Next() {
+		if len(posts) == limit {
+			hasMore = true
+			break
+		}
+
 		var post models.PostResponse
 
 		if err := rows.Scan(
@@ -168,12 +184,6 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		post.Media, err = getPostMedia(h.DB, post.ID)
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "could not read post media")
-			return
-		}
-
 		posts = append(posts, post)
 	}
 
@@ -182,13 +192,32 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	postIDs := make([]string, len(posts))
+	for i, post := range posts {
+		postIDs[i] = post.ID
+	}
+	mediaByPost, err := getPostMediaForPosts(h.DB, postIDs)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not read post media")
+		return
+	}
+	for i := range posts {
+		posts[i].Media = mediaByPost[posts[i].ID]
+	}
+
+	nextCursor := ""
+	if hasMore {
+		nextCursor = posts[len(posts)-1].ID
+	}
+
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{
-		"posts": posts,
+		"posts":       posts,
+		"next_cursor": nextCursor,
 	})
 }
 
-func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
 		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
@@ -200,131 +229,21 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	postID := r.PathValue("post_id")
-	if postID == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "post_id is required")
+	post, found, err := getPostForViewer(h.DB, postID, currentUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not fetch post")
 		return
 	}
-
-	var authorID string
-	err := h.DB.QueryRow(`
-		SELECT author_id
-		FROM posts
-		WHERE id = ? AND is_active = 1
-	`, postID).Scan(&authorID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if !found {
 		helpers.WriteError(w, http.StatusNotFound, "post not found")
 		return
 	}
+
+	post.Media, err = getPostMedia(h.DB, post.ID)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not check post")
-		return
-	}
-	if authorID != currentUser.ID {
-		helpers.WriteError(w, http.StatusForbidden, "you cannot add media to this post")
+		helpers.WriteError(w, http.StatusInternalServerError, "could not read post media")
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "invalid or oversized upload")
-		return
-	}
-
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "file is required")
-		return
-	}
-	defer file.Close()
-
-	mimeType := enums.MediaMIMEType(header.Header.Get("Content-Type"))
-	if mimeType != enums.MediaMIMETypeJPEG && mimeType != enums.MediaMIMETypePNG && mimeType != enums.MediaMIMETypeGIF {
-		helpers.WriteError(w, http.StatusBadRequest, "only JPEG, PNG, and GIF are allowed")
-		return
-	}
-
-	position, err := strconv.Atoi(r.FormValue("position"))
-	if err != nil || position < 0 {
-		helpers.WriteError(w, http.StatusBadRequest, "position must be a non-negative integer")
-		return
-	}
-
-	mediaID := uuid.New().String()
-	uploadDir := "uploads/posts"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not create upload directory")
-		return
-	}
-
-	relativePath := uploadDir + "/" + mediaID + mediaExtension(mimeType)
-	destination, err := os.Create(relativePath)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save media")
-		return
-	}
-
-	fileSize, copyErr := io.Copy(destination, file)
-	closeErr := destination.Close()
-	if copyErr != nil || closeErr != nil {
-		_ = os.Remove(relativePath)
-		helpers.WriteError(w, http.StatusInternalServerError, "could not write media")
-		return
-	}
-	if fileSize == 0 {
-		_ = os.Remove(relativePath)
-		helpers.WriteError(w, http.StatusBadRequest, "file cannot be empty")
-		return
-	}
-
-	keepFile := false
-	defer func() {
-		if !keepFile {
-			_ = os.Remove(relativePath)
-		}
-	}()
-
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not start transaction")
-		return
-	}
-	defer tx.Rollback()
-
-	if err := addPostMedia(tx, postID, mediaID, currentUser.ID, header.Filename, relativePath, mimeType, fileSize, position); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not record post media")
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save post media")
-		return
-	}
-
-	keepFile = true
-	helpers.WriteJSON(w, http.StatusCreated, map[string]string{
-		"media_id":  mediaID,
-		"file_path": relativePath,
-	})
-}
-
-func mediaExtension(mimeType enums.MediaMIMEType) string {
-	switch mimeType {
-	case enums.MediaMIMETypePNG:
-		return ".png"
-	case enums.MediaMIMETypeGIF:
-		return ".gif"
-	default:
-		return ".jpg"
-	}
-}
-
-func isValidPrivacy(privacy enums.PostPrivacy) bool {
-	switch privacy {
-	case enums.PostPrivacyPublic,
-		enums.PostPrivacyFollowers,
-		enums.PostPrivacySelected:
-		return true
-	default:
-		return false
-	}
+	helpers.WriteJSON(w, http.StatusOK, map[string]any{"post": post})
 }

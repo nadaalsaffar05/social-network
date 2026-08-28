@@ -33,6 +33,10 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile")
 			return
 		}
+		if profile.AvatarPath != nil {
+			publicPath := "/" + *profile.AvatarPath
+			profile.AvatarPath = &publicPath
+		}
 
 		// fetch count
 		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE following_id = ?`, currentUser.ID).Scan(&profile.FollowersCount)
@@ -62,7 +66,7 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 						for mRows.Next() {
 							var mPath string
 							if mScanErr := mRows.Scan(&mPath); mScanErr == nil {
-								post.Media = append(post.Media, mPath)
+								post.Media = append(post.Media, "/"+mPath)
 							}
 						}
 						mRows.Close()
@@ -219,7 +223,7 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{
 			"message":     "Avatar updated successfully",
-			"avatar_path": relativePath,
+			"avatar_path": "/" + relativePath,
 		})
 	}
 }
