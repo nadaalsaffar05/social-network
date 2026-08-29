@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../../../api/auth";
+import WebThreads from "../../../components/WebThreads/WebThreads";
 
 const initialForm = {
   email: "",
@@ -46,6 +47,33 @@ export default function RegisterPage() {
 
   return (
     <main className="auth-page">
+
+      <div className="auth-background">
+  <WebThreads
+   color1="#4F7DF3"
+    color2="#806BFF"
+    color3="#B8C8FF"
+    speed={0.08}
+    threadCount={5}
+    frequency={5}
+    spread={0.2}
+    taper={1}
+    position={0.5}
+    fanMode="center"
+    glow={0.035}
+    falloff={0.65}
+    thickness={1}
+    brightness={0.4}
+    opacity={0.55}
+    mirror
+    shimmer={false}
+    grain
+    grainIntensity={0.03}
+    mouseInteraction
+    mouseStrength={0.15}
+  />
+</div>
+
       <section className="auth-card" aria-labelledby="register-title">
         <p className="auth-eyebrow">Join the conversation</p>
         <h1 id="register-title">Create your account</h1>
@@ -90,15 +118,16 @@ export default function RegisterPage() {
           <label>
             Password
             <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+             type="password"
+              name="password"
+              value={form.password}
+              onChange={updateField}
               minLength={6}
               pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{6,}"
               title="Password must be at least 6 characters and contain uppercase, lowercase, number, and special character."
               autoComplete="new-password"
               required
-            />
+              />
           </label>
           <label>
             Date of birth

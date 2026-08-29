@@ -6,6 +6,26 @@
   padding: 24px;
 }
 
+.auth-page {
+  position: relative;
+  overflow: hidden;
+  background: #080b12;
+}
+
+.auth-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.auth-card {
+  position: relative;
+  z-index: 1;
+}
+
+
 .auth-card,
 .home-card {
   width: min(100%, 480px);
