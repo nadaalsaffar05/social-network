@@ -7,7 +7,9 @@ import { logoutUser } from '../../../api/auth'
 import { BASE_API } from '../../../Config.js'
 import AvatarCropperModal from '../../../components/AvatarCropperModal/AvatarCropperModal'
 import PostCard from '../feed/components/PostCard.jsx'
-import './ProfilePage.css'
+import GradientWaves from '../feed/components/GradientWaves.jsx'
+import { GRADIENT_WAVE_PROPS } from '../feed/constants.js'
+import '../../../styles/ProfilePage.css'
 
 export default function ProfilePage() {
   const { id } = useParams()
@@ -49,9 +51,9 @@ export default function ProfilePage() {
         }
       } catch (requestError) {
         if (
-          requestError.message === 'unauthorized' ||
-          requestError.message === 'authentication required' ||
-          requestError.message === 'session expired or invalid'
+            requestError.message === 'unauthorized' ||
+            requestError.message === 'authentication required' ||
+            requestError.message === 'session expired or invalid'
         ) {
           navigate('/login', { replace: true })
           return
@@ -152,27 +154,27 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="auth-page">
-        <p className="auth-description">Loading profile…</p>
-      </main>
+        <main className="auth-page">
+          <p className="auth-description">Loading profile…</p>
+        </main>
     )
   }
 
   if (error) {
     return (
-      <main className="auth-page">
-        <section className="auth-card">
-          <p className="form-error">{error}</p>
-          <button
-            className="primary-button"
-            style={{ marginTop: '16px' }}
-            type="button"
-            onClick={() => navigate('/home')}
-          >
-            Back to Home
-          </button>
-        </section>
-      </main>
+        <main className="auth-page">
+          <section className="auth-card">
+            <p className="form-error">{error}</p>
+            <button
+                className="primary-button"
+                style={{ marginTop: '16px' }}
+                type="button"
+                onClick={() => navigate('/home')}
+            >
+              Back to Home
+            </button>
+          </section>
+        </main>
     )
   }
 
@@ -225,291 +227,293 @@ export default function ProfilePage() {
     const uAvatarUrl = u.avatar_path && !failedAvatarIDs.has(u.id) ? mediaUrl(u.avatar_path) : null
 
     return (
-      <div key={u.id} className="profile-user-card">
-        <div className="user-card-avatar-wrapper">
-          {uAvatarUrl ? (
-            <img
-              src={uAvatarUrl}
-              alt=""
-              className="user-card-avatar-img"
-              onError={() => setFailedAvatarIDs((previous) => new Set(previous).add(u.id))}
-            />
-          ) : (
-            <div className="user-card-avatar-initials">{uInitials}</div>
-          )}
-        </div>
-        <div className="user-card-info">
-          <h4 className="user-card-name">{uFullName}</h4>
-          {uHandle && <span className="user-card-handle">{uHandle}</span>}
-          <div className="user-card-badge-row">
+        <div key={u.id} className="profile-user-card">
+          <div className="user-card-avatar-wrapper">
+            {uAvatarUrl ? (
+                <img
+                    src={uAvatarUrl}
+                    alt=""
+                    className="user-card-avatar-img"
+                    onError={() => setFailedAvatarIDs((previous) => new Set(previous).add(u.id))}
+                />
+            ) : (
+                <div className="user-card-avatar-initials">{uInitials}</div>
+            )}
+          </div>
+          <div className="user-card-info">
+            <h4 className="user-card-name">{uFullName}</h4>
+            {uHandle && <span className="user-card-handle">{uHandle}</span>}
+            <div className="user-card-badge-row">
             <span className={`profile-badge ${u.privacy === 1010 ? 'private' : ''}`}>
               {u.privacy === 1010 ? 'Private' : 'Public'}
             </span>
+            </div>
           </div>
+          <button
+              type="button"
+              className="user-card-action-btn"
+              onClick={() => navigate(`/profile/${u.id}`)}
+          >
+            View Profile
+          </button>
         </div>
-        <button
-          type="button"
-          className="user-card-action-btn"
-          onClick={() => navigate(`/profile/${u.id}`)}
-        >
-          View Profile
-        </button>
-      </div>
     )
   }
 
   return (
-    <main className="profile-layout-container">
-      <div className="profile-layout-grid">
-        {/* ==================== LEFT SIDEBAR ==================== */}
-        <aside className="profile-sidebar">
-          {/* Hidden File Input */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            accept="image/jpeg,image/png,image/gif"
-            style={{ display: 'none' }}
-          />
+      <main className="profile-layout-container">
+        <div className="profile-waves"><GradientWaves {...GRADIENT_WAVE_PROPS} /></div>
 
-          {/* Profile Picture (PFP) */}
-          <div
-            className="profile-avatar-wrapper"
-            onClick={handleAvatarClick}
-            title="Click to change profile picture"
-          >
-            {avatarUrl ? (
-              <img
-                id="profile-avatar"
-                src={avatarUrl}
-                alt={fullName}
-                className="profile-avatar-img"
-              />
-            ) : (
-              <div id="profile-avatar-initials" className="profile-avatar-initials">
-                {initials}
+        <div className="profile-layout-grid">
+          {/* ==================== LEFT SIDEBAR ==================== */}
+          <aside className="profile-sidebar">
+            {/* Hidden File Input */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/jpeg,image/png,image/gif"
+                style={{ display: 'none' }}
+            />
+
+            {/* Profile Picture (PFP) */}
+            <div
+                className="profile-avatar-wrapper"
+                onClick={handleAvatarClick}
+                title="Click to change profile picture"
+            >
+              {avatarUrl ? (
+                  <img
+                      id="profile-avatar"
+                      src={avatarUrl}
+                      alt={fullName}
+                      className="profile-avatar-img"
+                  />
+              ) : (
+                  <div id="profile-avatar-initials" className="profile-avatar-initials">
+                    {initials}
+                  </div>
+              )}
+              <div className="profile-avatar-overlay">
+                <Camera size={24} weight="bold" />
+                <span>Change</span>
               </div>
+            </div>
+
+            {/* First Name & Username directly under PFP */}
+            <div className="profile-names-section">
+              <h1 className="profile-fullname">{fullName}</h1>
+              {username && <p className="profile-username">{username}</p>}
+            </div>
+
+            {/* About Me / Bio */}
+            {profile?.about_me && (
+                <p className="profile-bio">{profile.about_me}</p>
             )}
-            <div className="profile-avatar-overlay">
-              <Camera size={24} weight="bold" />
-              <span>Change</span>
-            </div>
-          </div>
 
-          {/* First Name & Username directly under PFP */}
-          <div className="profile-names-section">
-            <h1 className="profile-fullname">{fullName}</h1>
-            {username && <p className="profile-username">{username}</p>}
-          </div>
-
-          {/* About Me / Bio */}
-          {profile?.about_me && (
-            <p className="profile-bio">{profile.about_me}</p>
-          )}
-
-          {/* User Details */}
-          <div className="profile-details-list">
-            <div className="profile-detail-item">
-              <EnvelopeSimple size={16} weight="bold" />
-              <strong>Email:</strong> <span>{profile?.email}</span>
-            </div>
-            {profile?.date_of_birth && (
+            {/* User Details */}
+            <div className="profile-details-list">
               <div className="profile-detail-item">
-                <Cake size={16} weight="bold" />
-                <strong>Born:</strong> <span>{formatDate(profile.date_of_birth)}</span>
+                <EnvelopeSimple size={16} weight="bold" />
+                <strong>Email:</strong> <span>{profile?.email}</span>
               </div>
-            )}
-            <div className="profile-detail-item" style={{ marginTop: '4px' }}>
-              <ShieldCheck size={16} weight="bold" />
-              <strong>Account:</strong>
-              <span className={`profile-badge ${profile?.privacy === 1010 ? 'private' : ''}`}>
+              {profile?.date_of_birth && (
+                  <div className="profile-detail-item">
+                    <Cake size={16} weight="bold" />
+                    <strong>Born:</strong> <span>{formatDate(profile.date_of_birth)}</span>
+                  </div>
+              )}
+              <div className="profile-detail-item" style={{ marginTop: '4px' }}>
+                <ShieldCheck size={16} weight="bold" />
+                <strong>Account:</strong>
+                <span className={`profile-badge ${profile?.privacy === 1010 ? 'private' : ''}`}>
                 {profile?.privacy === 1010 ? 'Private' : 'Public'}
               </span>
+              </div>
             </div>
-          </div>
 
-          {/* Actions */}
-          <div className="profile-sidebar-actions">
-            <button
-              className="primary-button profile-action-btn"
-              type="button"
-              onClick={() => navigate('/home')}
-            >
-              <House size={18} weight="bold" />
-              Home
-            </button>
-            <button
-              className="profile-action-btn secondary"
-              type="button"
-              onClick={handleLogout}
-            >
-              <SignOut size={18} weight="bold" />
-              Log out
-            </button>
-          </div>
-        </aside>
-
-        {/* ==================== MAIN BODY ==================== */}
-
-        <section className="profile-main-body">
-          {/* Top Bar: Followers + Following counts */}
-          <div className="profile-stats-card">
-            <button
-              type="button"
-              className={`profile-stat-box ${activeTab === 'followers' ? 'active' : ''}`}
-              onClick={() => handleTabChange('followers')}
-            >
-              <span className="profile-stat-number">{followersCount}</span>
-              <span className="profile-stat-label">Followers</span>
-            </button>
-
-            <div className="profile-stat-divider" />
-
-            <button
-              type="button"
-              className={`profile-stat-box ${activeTab === 'following' ? 'active' : ''}`}
-              onClick={() => handleTabChange('following')}
-            >
-              <span className="profile-stat-number">{followingCount}</span>
-              <span className="profile-stat-label">Following</span>
-            </button>
-
-            <div className="profile-stat-divider" />
-
-            <button
-              type="button"
-              className={`profile-stat-box ${activeTab === 'posts' ? 'active' : ''}`}
-              onClick={() => handleTabChange('posts')}
-            >
-              <span className="profile-stat-number">{postsCount}</span>
-              <span className="profile-stat-label">Posts</span>
-            </button>
-          </div>
-
-          {/* User Posts / Followers / Following Feed */}
-          <div className="profile-feed-container">
-            {/* Navigation Tabs Header */}
-            <div className="profile-tabs-header">
+            {/* Actions */}
+            <div className="profile-sidebar-actions">
               <button
-                type="button"
-                className={`profile-tab-btn ${activeTab === 'posts' ? 'active' : ''}`}
-                onClick={() => handleTabChange('posts')}
+                  className="primary-button profile-action-btn"
+                  type="button"
+                  onClick={() => navigate('/home')}
               >
-                <NotePencil size={18} weight="bold" />
-                Posts
-                <span className="profile-tab-badge">{postsCount}</span>
+                <House size={18} weight="bold" />
+                Home
               </button>
               <button
-                type="button"
-                className={`profile-tab-btn ${activeTab === 'followers' ? 'active' : ''}`}
-                onClick={() => handleTabChange('followers')}
+                  className="profile-action-btn secondary"
+                  type="button"
+                  onClick={handleLogout}
               >
-                <Users size={18} weight="bold" />
-                Followers
-                <span className="profile-tab-badge">{followersCount}</span>
+                <SignOut size={18} weight="bold" />
+                Log out
               </button>
+            </div>
+          </aside>
+
+          {/* ==================== MAIN BODY ==================== */}
+
+          <section className="profile-main-body">
+            {/* Top Bar: Followers + Following counts */}
+            <div className="profile-stats-card">
               <button
-                type="button"
-                className={`profile-tab-btn ${activeTab === 'following' ? 'active' : ''}`}
-                onClick={() => handleTabChange('following')}
+                  type="button"
+                  className={`profile-stat-box ${activeTab === 'followers' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('followers')}
               >
-                <UserCheck size={18} weight="bold" />
-                Following
-                <span className="profile-tab-badge">{followingCount}</span>
+                <span className="profile-stat-number">{followersCount}</span>
+                <span className="profile-stat-label">Followers</span>
+              </button>
+
+              <div className="profile-stat-divider" />
+
+              <button
+                  type="button"
+                  className={`profile-stat-box ${activeTab === 'following' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('following')}
+              >
+                <span className="profile-stat-number">{followingCount}</span>
+                <span className="profile-stat-label">Following</span>
+              </button>
+
+              <div className="profile-stat-divider" />
+
+              <button
+                  type="button"
+                  className={`profile-stat-box ${activeTab === 'posts' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('posts')}
+              >
+                <span className="profile-stat-number">{postsCount}</span>
+                <span className="profile-stat-label">Posts</span>
               </button>
             </div>
 
-            {/* TAB CONTENT: POSTS */}
-            {activeTab === 'posts' && (
-              posts.length > 0 ? (
-                posts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={{ ...post, author_nickname: profile.nickname, author_first_name: profile.first_name, author_last_name: profile.last_name, author_avatar_path: profile.avatar_path }}
-                    currentUserID={profile.id}
-                    isReacting={reactingPostID === post.id}
-                    isDeleting={deletingPostID === post.id}
-                    onLike={() => handlePostReaction(post.id)}
-                    onComment={() => navigate(`/posts/${post.id}`)}
-                    onDelete={() => handleDeletePost(post.id)}
-                    onOpen={() => navigate(`/posts/${post.id}`)}
-                  />
-                ))
-              ) : (
-                <div className="profile-empty-feed">
-                  <NotePencil size={40} className="profile-empty-icon" weight="duotone" />
-                  <h3 className="profile-empty-title">No posts yet</h3>
-                  <p className="profile-empty-text">
-                    Posts created by {profile?.first_name || 'this user'} will appear here.
-                  </p>
-                </div>
-              )
-            )}
+            {/* User Posts / Followers / Following Feed */}
+            <div className="profile-feed-container">
+              {/* Navigation Tabs Header */}
+              <div className="profile-tabs-header">
+                <button
+                    type="button"
+                    className={`profile-tab-btn ${activeTab === 'posts' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('posts')}
+                >
+                  <NotePencil size={18} weight="bold" />
+                  Posts
+                  <span className="profile-tab-badge">{postsCount}</span>
+                </button>
+                <button
+                    type="button"
+                    className={`profile-tab-btn ${activeTab === 'followers' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('followers')}
+                >
+                  <Users size={18} weight="bold" />
+                  Followers
+                  <span className="profile-tab-badge">{followersCount}</span>
+                </button>
+                <button
+                    type="button"
+                    className={`profile-tab-btn ${activeTab === 'following' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('following')}
+                >
+                  <UserCheck size={18} weight="bold" />
+                  Following
+                  <span className="profile-tab-badge">{followingCount}</span>
+                </button>
+              </div>
 
-            {/* TAB CONTENT: FOLLOWERS */}
-            {activeTab === 'followers' && (
-              listLoading ? (
-                <div className="profile-empty-feed">
-                  <p className="profile-empty-text">Loading followers…</p>
-                </div>
-              ) : listError ? (
-                <div className="profile-empty-feed">
-                  <p className="form-error">{listError}</p>
-                </div>
-              ) : followersList.length > 0 ? (
-                <div className="profile-users-grid">
-                  {followersList.map(renderUserCard)}
-                </div>
-              ) : (
-                <div className="profile-empty-feed">
-                  <Users size={40} className="profile-empty-icon" weight="duotone" />
-                  <h3 className="profile-empty-title">No followers yet</h3>
-                  <p className="profile-empty-text">
-                    When people follow {profile?.first_name || 'this user'}, they will appear here.
-                  </p>
-                </div>
-              )
-            )}
+              {/* TAB CONTENT: POSTS */}
+              {activeTab === 'posts' && (
+                  posts.length > 0 ? (
+                      posts.map((post) => (
+                          <PostCard
+                              key={post.id}
+                              post={{ ...post, author_nickname: profile.nickname, author_first_name: profile.first_name, author_last_name: profile.last_name, author_avatar_path: profile.avatar_path }}
+                              currentUserID={profile.id}
+                              isReacting={reactingPostID === post.id}
+                              isDeleting={deletingPostID === post.id}
+                              onLike={() => handlePostReaction(post.id)}
+                              onComment={() => navigate(`/posts/${post.id}`)}
+                              onDelete={() => handleDeletePost(post.id)}
+                              onOpen={() => navigate(`/posts/${post.id}`)}
+                          />
+                      ))
+                  ) : (
+                      <div className="profile-empty-feed">
+                        <NotePencil size={40} className="profile-empty-icon" weight="duotone" />
+                        <h3 className="profile-empty-title">No posts yet</h3>
+                        <p className="profile-empty-text">
+                          Posts created by {profile?.first_name || 'this user'} will appear here.
+                        </p>
+                      </div>
+                  )
+              )}
 
-            {/* TAB CONTENT: FOLLOWING */}
-            {activeTab === 'following' && (
-              listLoading ? (
-                <div className="profile-empty-feed">
-                  <p className="profile-empty-text">Loading following list…</p>
-                </div>
-              ) : listError ? (
-                <div className="profile-empty-feed">
-                  <p className="form-error">{listError}</p>
-                </div>
-              ) : followingList.length > 0 ? (
-                <div className="profile-users-grid">
-                  {followingList.map(renderUserCard)}
-                </div>
-              ) : (
-                <div className="profile-empty-feed">
-                  <UserPlus size={40} className="profile-empty-icon" weight="duotone" />
-                  <h3 className="profile-empty-title">Not following anyone yet</h3>
-                  <p className="profile-empty-text">
-                    Users that {profile?.first_name || 'this user'} follows will appear here.
-                  </p>
-                </div>
-              )
-            )}
-          </div>
-        </section>
+              {/* TAB CONTENT: FOLLOWERS */}
+              {activeTab === 'followers' && (
+                  listLoading ? (
+                      <div className="profile-empty-feed">
+                        <p className="profile-empty-text">Loading followers…</p>
+                      </div>
+                  ) : listError ? (
+                      <div className="profile-empty-feed">
+                        <p className="form-error">{listError}</p>
+                      </div>
+                  ) : followersList.length > 0 ? (
+                      <div className="profile-users-grid">
+                        {followersList.map(renderUserCard)}
+                      </div>
+                  ) : (
+                      <div className="profile-empty-feed">
+                        <Users size={40} className="profile-empty-icon" weight="duotone" />
+                        <h3 className="profile-empty-title">No followers yet</h3>
+                        <p className="profile-empty-text">
+                          When people follow {profile?.first_name || 'this user'}, they will appear here.
+                        </p>
+                      </div>
+                  )
+              )}
 
-      </div>
+              {/* TAB CONTENT: FOLLOWING */}
+              {activeTab === 'following' && (
+                  listLoading ? (
+                      <div className="profile-empty-feed">
+                        <p className="profile-empty-text">Loading following list…</p>
+                      </div>
+                  ) : listError ? (
+                      <div className="profile-empty-feed">
+                        <p className="form-error">{listError}</p>
+                      </div>
+                  ) : followingList.length > 0 ? (
+                      <div className="profile-users-grid">
+                        {followingList.map(renderUserCard)}
+                      </div>
+                  ) : (
+                      <div className="profile-empty-feed">
+                        <UserPlus size={40} className="profile-empty-icon" weight="duotone" />
+                        <h3 className="profile-empty-title">Not following anyone yet</h3>
+                        <p className="profile-empty-text">
+                          Users that {profile?.first_name || 'this user'} follows will appear here.
+                        </p>
+                      </div>
+                  )
+              )}
+            </div>
+          </section>
 
-      {isCropperOpen && selectedImageSrc && (
-        <AvatarCropperModal
-          imageSrc={selectedImageSrc}
-          onClose={() => {
-            setIsCropperOpen(false)
-            setSelectedImageSrc(null)
-          }}
-          onCropSave={handleCropSave}
-        />
-      )}
-    </main>
+        </div>
+
+        {isCropperOpen && selectedImageSrc && (
+            <AvatarCropperModal
+                imageSrc={selectedImageSrc}
+                onClose={() => {
+                  setIsCropperOpen(false)
+                  setSelectedImageSrc(null)
+                }}
+                onCropSave={handleCropSave}
+            />
+        )}
+      </main>
   )
 }
