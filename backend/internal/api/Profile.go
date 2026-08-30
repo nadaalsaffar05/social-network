@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"social-network/internal/auth"
 	"social-network/internal/enums"
@@ -34,7 +35,7 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 			return
 		}
 		if profile.AvatarPath != nil {
-			publicPath := "/" + *profile.AvatarPath
+			publicPath := "/" + strings.TrimLeft(*profile.AvatarPath, "/")
 			profile.AvatarPath = &publicPath
 		}
 
@@ -42,20 +43,33 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE following_id = ?`, currentUser.ID).Scan(&profile.FollowersCount)
 		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE follower_id = ?`, currentUser.ID).Scan(&profile.FollowingCount)
 
-		// user posts
+		// Feed and post pages only need the current user's basic profile. Avoid
+		// loading every post and its media unless the profile page requests it.
+		includePosts := !strings.EqualFold(r.URL.Query().Get("include_posts"), "false")
 		profile.Posts = []models.UserPost{}
+		if !includePosts {
+			helpers.WriteJSON(w, http.StatusOK, map[string]any{
+				"user": profile,
+			})
+			return
+		}
+
+		// Full profile view: load the user's posts and their media.
 		rows, err := database.Query(`
-			SELECT id, author_id, content, privacy, created_at, updated_at
-			FROM posts
-			WHERE author_id = ? AND is_active = 1
+			SELECT p.id, p.author_id, p.content, p.privacy, p.created_at, p.updated_at,
+				COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
+				COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
+				(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
+			FROM posts p
+			WHERE p.author_id = ? AND p.is_active = 1
 			ORDER BY created_at DESC
-		`, currentUser.ID)
+		`, currentUser.ID, currentUser.ID)
 
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
 				var post models.UserPost
-				if scanErr := rows.Scan(&post.ID, &post.AuthorID, &post.Content, &post.Privacy, &post.CreatedAt, &post.UpdatedAt); scanErr == nil {
+				if scanErr := rows.Scan(&post.ID, &post.AuthorID, &post.Content, &post.Privacy, &post.CreatedAt, &post.UpdatedAt, &post.LikeCount, &post.DislikeCount, &post.ViewerReaction); scanErr == nil {
 					mRows, mErr := database.Query(`
 						SELECT m.file_path
 						FROM post_media pm

@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "../pages/Auth/LoginPage";
 import RegisterPage from "../pages/Auth/RegisterPage";
 import FeedPage from "../pages/feed/FeedPage";
-import WelcomePage from "../pages/Auth/WelcomePage";
+import PostPage from "../pages/feed/PostPage";
 import ProfilePage from "../pages/Profile/ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -14,7 +14,7 @@ export default function AppRoutes() {
       <Route path="/register" element={<RegisterPage />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/home" element={<FeedPage />} />
-        <Route path="/welcome" element={<WelcomePage />} />
+        <Route path="/posts/:postId" element={<PostPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
       </Route>

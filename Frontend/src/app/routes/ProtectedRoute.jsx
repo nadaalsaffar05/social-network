@@ -18,7 +18,7 @@ export default function ProtectedRoute() {
 
     async function checkSession() {
       try {
-        await getProfile();
+        await getProfile({ includePosts: false });
         if (active) setStatus("authenticated");
       } catch (requestError) {
         if (!active) return;

@@ -13,6 +13,8 @@
   "proxy": "http://localhost:8080",
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
+    "motion": "^13.1.1",
+    "ogl": "^1.0.11",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-easy-crop": "^6.2.3",

@@ -22,6 +22,32 @@ func (h *Handler) Comments(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
+
+func (h *Handler) Comment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	currentUser := auth.CurrentUser(r)
+	if currentUser == nil {
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	deleted, err := deactivateComment(h.DB, r.PathValue("comment_id"), r.PathValue("post_id"), currentUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not delete comment")
+		return
+	}
+	if !deleted {
+		helpers.WriteError(w, http.StatusNotFound, "comment not found")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -160,7 +186,7 @@ func (h *Handler) GetComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := getComments(h.DB, postID)
+	rows, err := getComments(h.DB, postID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not fetch comments")
 		return
@@ -176,9 +202,16 @@ func (h *Handler) GetComments(w http.ResponseWriter, r *http.Request) {
 			&comment.ID,
 			&comment.PostID,
 			&comment.AuthorID,
+			&comment.AuthorNickname,
+			&comment.AuthorFirstName,
+			&comment.AuthorLastName,
+			&comment.AuthorAvatarPath,
 			&comment.ParentCommentID,
 			&comment.Content,
 			&comment.CreatedAt,
+			&comment.LikeCount,
+			&comment.DislikeCount,
+			&comment.ViewerReaction,
 		); err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "could not read comments")
 			return
@@ -190,6 +223,23 @@ func (h *Handler) GetComments(w http.ResponseWriter, r *http.Request) {
 	if err := rows.Err(); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not read comments")
 		return
+	}
+
+	commentIDs := make([]string, len(comments))
+	for i, comment := range comments {
+		commentIDs[i] = comment.ID
+	}
+	mediaByComment, err := getCommentMediaForComments(h.DB, commentIDs)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not read comment media")
+		return
+	}
+	for i := range comments {
+		comments[i].Media = mediaByComment[comments[i].ID]
+		if comments[i].AuthorAvatarPath != nil {
+			path := "/" + *comments[i].AuthorAvatarPath
+			comments[i].AuthorAvatarPath = &path
+		}
 	}
 
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{

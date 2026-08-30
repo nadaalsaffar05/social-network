@@ -315,7 +315,9 @@ const WebThreads = ({
       ctxMap.delete(container);
       try {
         container.removeChild(canvas);
-      } catch {}
+      } catch {
+        // The canvas may already have been removed during teardown.
+      }
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, []);

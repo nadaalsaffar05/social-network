@@ -71,7 +71,7 @@ func GetFollowers(database *sql.DB) http.HandlerFunc {
 				&item.AvatarPath,
 			); scanErr == nil {
 				if item.AvatarPath != nil {
-					publicPath := "/" + *item.AvatarPath
+					publicPath := "/" + strings.TrimLeft(*item.AvatarPath, "/")
 					item.AvatarPath = &publicPath
 				}
 				followers = append(followers, item)
@@ -141,7 +141,7 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 				&item.AvatarPath,
 			); scanErr == nil {
 				if item.AvatarPath != nil {
-					publicPath := "/" + *item.AvatarPath
+					publicPath := "/" + strings.TrimLeft(*item.AvatarPath, "/")
 					item.AvatarPath = &publicPath
 				}
 				following = append(following, item)

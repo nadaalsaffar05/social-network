@@ -35,9 +35,10 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 
 	// Feed routes remain grouped and use the same authentication wrapper.
 	mux.Handle("/api/posts", protected(feedHandler.CreatePost))
-	mux.Handle("/api/posts/{post_id}", protected(feedHandler.GetPost))
+	mux.Handle("/api/posts/{post_id}", protected(feedHandler.Post))
 	mux.Handle("/api/posts/{post_id}/media", protected(feedHandler.UploadPostMedia))
 	mux.Handle("/api/posts/{post_id}/comments", protected(feedHandler.Comments))
+	mux.Handle("/api/posts/{post_id}/comments/{comment_id}", protected(feedHandler.Comment))
 	mux.Handle("/api/posts/{post_id}/comments/{comment_id}/media", protected(feedHandler.UploadCommentMedia))
 	mux.Handle("/api/posts/{post_id}/reaction", protected(feedHandler.TogglePostReaction))
 	mux.Handle("/api/posts/{post_id}/comments/{comment_id}/reaction", protected(feedHandler.ToggleCommentReaction))

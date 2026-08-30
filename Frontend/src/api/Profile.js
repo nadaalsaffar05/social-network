@@ -1,8 +1,10 @@
 import { request } from './client'
 import { buildApiUrl } from '../Config.js'
 
-export async function getProfile() {
-  const data = await request(['api', 'profile'])
+export async function getProfile({ includePosts = true } = {}) {
+  const data = await request(['api', 'profile'], {
+    queryParams: includePosts ? {} : { include_posts: 'false' },
+  })
   return data.user || data
 }
 
@@ -37,14 +39,14 @@ export async function uploadAvatar(file) {
 
 export async function getFollowers(userId) {
   const data = await request(['api', 'followers'], {
-    headers: userId ? { user_id: String(userId) } : {},
+    queryParams: userId ? { user_id: userId } : {},
   })
   return data.followers || []
 }
 
 export async function getFollowing(userId) {
   const data = await request(['api', 'following'], {
-    headers: userId ? { user_id: String(userId) } : {},
+    queryParams: userId ? { user_id: userId } : {},
   })
   return data.following || []
 }

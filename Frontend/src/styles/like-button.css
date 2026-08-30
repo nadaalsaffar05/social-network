@@ -1,0 +1,39 @@
+.like-button {
+  --like-color: rgb(255 91 137);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.45rem;
+  color: var(--like-color);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 0.65rem;
+}
+
+.like-button:hover { background: rgb(255 91 137 / 8%); }
+.like-button:disabled { cursor: wait; opacity: 0.6; }
+.post-card__actions .like-button:hover,
+.post-detail-comment footer .like-button:hover { color: var(--like-color); background: rgb(255 91 137 / 8%); }
+
+.like-button__heart { position: relative; display: grid; width: 1.4rem; height: 1.4rem; place-items: center; }
+.like-button svg { position: absolute; width: 100%; height: 100%; fill: var(--like-color); }
+.like-button__filled, .like-button__celebrate { display: none; }
+.like-button--liked .like-button__filled, .like-button--liked .like-button__celebrate { display: block; }
+.like-button--liked .like-button__filled { animation: like-button-fill 420ms ease-out; }
+.like-button--liked .like-button__celebrate { width: 4.4rem; height: 4.4rem; animation: like-button-celebrate 520ms ease-out forwards; fill: var(--like-color); stroke: var(--like-color); stroke-width: 2px; }
+.like-button__count { font-size: 0.88rem; font-weight: 600; }
+
+@keyframes like-button-fill {
+  0% { transform: scale(0); }
+  55% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes like-button-celebrate {
+  0% { transform: scale(0); opacity: 0; }
+  45% { opacity: 1; }
+  100% { transform: scale(1.28); opacity: 0; }
+}

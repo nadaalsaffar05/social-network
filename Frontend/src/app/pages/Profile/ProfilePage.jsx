@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Camera, House, SignOut, Heart, ChatCircle, NotePencil, EnvelopeSimple, Cake, ShieldCheck, Users, UserCheck, UserPlus } from '@phosphor-icons/react'
+import { Camera, House, SignOut, NotePencil, EnvelopeSimple, Cake, ShieldCheck, Users, UserCheck, UserPlus } from '@phosphor-icons/react'
 import { getProfile, uploadAvatar, getFollowers, getFollowing } from '../../../api/Profile.js'
+import { deletePost, togglePostReaction } from '../../../api/feed.js'
 import { logoutUser } from '../../../api/auth'
 import { BASE_API } from '../../../Config.js'
 import AvatarCropperModal from '../../../components/AvatarCropperModal/AvatarCropperModal'
+import PostCard from '../feed/components/PostCard.jsx'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
@@ -18,11 +20,14 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [reactingPostID, setReactingPostID] = useState('')
+  const [deletingPostID, setDeletingPostID] = useState('')
   const [selectedImageSrc, setSelectedImageSrc] = useState(null)
   const [isCropperOpen, setIsCropperOpen] = useState(false)
 
   const [followersList, setFollowersList] = useState([])
   const [followingList, setFollowingList] = useState([])
+  const [failedAvatarIDs, setFailedAvatarIDs] = useState(new Set())
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState('')
 
@@ -171,9 +176,8 @@ export default function ProfilePage() {
     )
   }
 
-  const avatarUrl = profile?.avatar_path
-    ? `${BASE_API}/static/${profile.avatar_path}`
-    : null
+  const mediaUrl = (path) => new URL(`/${String(path).replace(/^\/+/, '')}`, BASE_API).toString()
+  const avatarUrl = profile?.avatar_path ? mediaUrl(profile.avatar_path) : null
 
   const initials = `${profile?.first_name?.[0] ?? ''}${profile?.last_name?.[0] ?? ''}`.toUpperCase()
   const fullName = `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim()
@@ -183,13 +187,6 @@ export default function ProfilePage() {
   const followingCount = profile?.following_count ?? 0
   const postsCount = profile?.posts_count ?? (profile?.posts?.length ?? 0)
   const posts = profile?.posts ?? []
-
-  function getPrivacyLabel(code) {
-    if (code === 1000 || code === 'PUBLIC') return 'Public'
-    if (code === 1010 || code === 'FOLLOWERS') return 'Followers'
-    if (code === 1020 || code === 'PRIVATE') return 'Private'
-    return 'Public'
-  }
 
   function formatDate(dateStr) {
     if (!dateStr) return ''
@@ -205,17 +202,38 @@ export default function ProfilePage() {
     }
   }
 
+  async function refreshProfile() {
+    const nextProfile = await getProfile()
+    setProfile(nextProfile)
+  }
+
+  async function handlePostReaction(postId) {
+    setReactingPostID(postId)
+    try { await togglePostReaction(postId, 'LIKE'); await refreshProfile() } catch (requestError) { setError(requestError.message || 'Could not update reaction.') } finally { setReactingPostID('') }
+  }
+
+  async function handleDeletePost(postId) {
+    if (!window.confirm('Delete this post?')) return
+    setDeletingPostID(postId)
+    try { await deletePost(postId); await refreshProfile() } catch (requestError) { setError(requestError.message || 'Could not delete post.') } finally { setDeletingPostID('') }
+  }
+
   function renderUserCard(u) {
     const uInitials = `${u.first_name?.[0] ?? ''}${u.last_name?.[0] ?? ''}`.toUpperCase()
     const uFullName = `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
     const uHandle = u.nickname ? `@${u.nickname}` : (u.email ? `@${u.email.split('@')[0]}` : '')
-    const uAvatarUrl = u.avatar_path ? `${BASE_API}/static/${u.avatar_path}` : null
+    const uAvatarUrl = u.avatar_path && !failedAvatarIDs.has(u.id) ? mediaUrl(u.avatar_path) : null
 
     return (
       <div key={u.id} className="profile-user-card">
         <div className="user-card-avatar-wrapper">
           {uAvatarUrl ? (
-            <img src={uAvatarUrl} alt={uFullName} className="user-card-avatar-img" />
+            <img
+              src={uAvatarUrl}
+              alt=""
+              className="user-card-avatar-img"
+              onError={() => setFailedAvatarIDs((previous) => new Set(previous).add(u.id))}
+            />
           ) : (
             <div className="user-card-avatar-initials">{uInitials}</div>
           )}
@@ -405,55 +423,17 @@ export default function ProfilePage() {
             {activeTab === 'posts' && (
               posts.length > 0 ? (
                 posts.map((post) => (
-                  <article key={post.id} className="profile-post-card">
-                    <div className="post-header">
-                      {avatarUrl ? (
-                        <img
-                          src={avatarUrl}
-                          alt={fullName}
-                          className="post-avatar-mini"
-                        />
-                      ) : (
-                        <div className="post-avatar-mini-initials">{initials}</div>
-                      )}
-                      <div className="post-meta">
-                        <span className="post-author-name">{fullName}</span>
-                        <div className="post-time-privacy">
-                          <span>{formatDate(post.created_at)}</span>
-                          <span>•</span>
-                          <span className="profile-badge" style={{ fontSize: '0.7rem', padding: '1px 8px' }}>
-                            {getPrivacyLabel(post.privacy)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="post-content">{post.content}</p>
-
-                    {post.media && post.media.length > 0 && (
-                      <div className="post-media-grid">
-                        {post.media.map((mPath, idx) => (
-                          <img
-                            key={idx}
-                            src={`${BASE_API}/static/${mPath}`}
-                            alt="Post attachment"
-                            className="post-media-item"
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="post-actions-bar">
-                      <button type="button" className="post-action-item">
-                        <Heart size={18} weight="bold" />
-                        Like
-                      </button>
-                      <button type="button" className="post-action-item">
-                        <ChatCircle size={18} weight="bold" />
-                        Comment
-                      </button>
-                    </div>
-                  </article>
+                  <PostCard
+                    key={post.id}
+                    post={{ ...post, author_nickname: profile.nickname, author_first_name: profile.first_name, author_last_name: profile.last_name, author_avatar_path: profile.avatar_path }}
+                    currentUserID={profile.id}
+                    isReacting={reactingPostID === post.id}
+                    isDeleting={deletingPostID === post.id}
+                    onLike={() => handlePostReaction(post.id)}
+                    onComment={() => navigate(`/posts/${post.id}`)}
+                    onDelete={() => handleDeletePost(post.id)}
+                    onOpen={() => navigate(`/posts/${post.id}`)}
+                  />
                 ))
               ) : (
                 <div className="profile-empty-feed">

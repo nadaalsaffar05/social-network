@@ -43,10 +43,50 @@ func addPostVisibility(
 	return err
 }
 
+func deactivatePost(db *sql.DB, postID, authorID string) (bool, error) {
+	result, err := db.Exec(`
+		UPDATE posts
+		SET is_active = 0
+		WHERE id = ?
+		  AND author_id = ?
+		  AND is_active = 1
+	`, postID, authorID)
+	if err != nil {
+		return false, err
+	}
+
+	updated, err := result.RowsAffected()
+	return updated > 0, err
+}
+
+func deactivateComment(db *sql.DB, commentID, postID, authorID string) (bool, error) {
+	result, err := db.Exec(`
+		UPDATE comments
+		SET is_active = 0
+		WHERE id = ?
+		  AND post_id = ?
+		  AND author_id = ?
+		  AND is_active = 1
+	`, commentID, postID, authorID)
+	if err != nil {
+		return false, err
+	}
+
+	updated, err := result.RowsAffected()
+	return updated > 0, err
+}
+
 func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit int) (*sql.Rows, error) {
 	return db.Query(`
-        SELECT p.id, p.author_id, p.content, p.privacy, p.created_at
+        SELECT p.id, p.author_id, COALESCE(pr.nickname, ''), u.first_name, u.last_name, am.file_path, p.content, p.privacy, p.created_at,
+          COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
+          COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
+          (SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
         FROM posts p
+        JOIN users u ON u.id = p.author_id
+        LEFT JOIN profiles pr ON pr.user_id = p.author_id
+		LEFT JOIN profile_avatars pa ON pa.user_id = p.author_id
+		LEFT JOIN media am ON am.id = pa.media_id
         WHERE p.is_active = 1
           AND p.group_id IS NULL
           AND (
@@ -76,7 +116,7 @@ func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit 
 		  )
         ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ?
-	    `, viewerID, viewerID, viewerID, cursorID, cursorCreatedAt, cursorCreatedAt, cursorID, limit)
+	    `, viewerID, viewerID, viewerID, viewerID, cursorID, cursorCreatedAt, cursorCreatedAt, cursorID, limit)
 }
 
 func getPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse, bool, error) {
@@ -87,17 +127,31 @@ func getPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 
 	var post models.PostResponse
 	err = db.QueryRow(`
-		SELECT p.id, p.author_id, p.content, p.privacy, p.created_at
+		SELECT p.id, p.author_id, COALESCE(pr.nickname, ''), u.first_name, u.last_name, am.file_path, p.content, p.privacy, p.created_at,
+			COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
+			COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
+			(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
 		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN profiles pr ON pr.user_id = p.author_id
+		LEFT JOIN profile_avatars pa ON pa.user_id = p.author_id
+		LEFT JOIN media am ON am.id = pa.media_id
 		WHERE p.id = ?
 		  AND p.is_active = 1
 		  AND p.group_id IS NULL
-	`, postID).Scan(
+	`, viewerID, postID).Scan(
 		&post.ID,
 		&post.AuthorID,
+		&post.AuthorNickname,
+		&post.AuthorFirstName,
+		&post.AuthorLastName,
+		&post.AuthorAvatarPath,
 		&post.Content,
 		&post.Privacy,
 		&post.CreatedAt,
+		&post.LikeCount,
+		&post.DislikeCount,
+		&post.ViewerReaction,
 	)
 	if err == sql.ErrNoRows {
 		return models.PostResponse{}, false, nil
@@ -251,20 +305,67 @@ func addPostMedia(
 	return err
 }
 
-func getComments(db *sql.DB, postID string) (*sql.Rows, error) {
+func getComments(db *sql.DB, postID, viewerID string) (*sql.Rows, error) {
 	return db.Query(`
 		SELECT
-			id,
-			post_id,
-			author_id,
-			parent_comment_id,
-			content,
-			created_at
-		FROM comments
-		WHERE post_id = ?
-		  AND is_active = 1
-		ORDER BY created_at ASC
-	`, postID)
+			c.id,
+			c.post_id,
+			c.author_id,
+			COALESCE(pr.nickname, ''),
+			u.first_name,
+			u.last_name,
+			am.file_path,
+			c.parent_comment_id,
+			c.content,
+			c.created_at,
+			COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM comment_reactions WHERE comment_id = c.id), 0),
+			COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM comment_reactions WHERE comment_id = c.id), 0),
+			(SELECT reaction_type FROM comment_reactions WHERE comment_id = c.id AND user_id = ?)
+		FROM comments c
+		JOIN users u ON u.id = c.author_id
+		LEFT JOIN profiles pr ON pr.user_id = c.author_id
+		LEFT JOIN profile_avatars pa ON pa.user_id = c.author_id
+		LEFT JOIN media am ON am.id = pa.media_id
+		WHERE c.post_id = ?
+		  AND c.is_active = 1
+		ORDER BY c.created_at ASC
+	`, viewerID, postID)
+}
+
+func getCommentMediaForComments(db *sql.DB, commentIDs []string) (map[string][]string, error) {
+	mediaByComment := make(map[string][]string, len(commentIDs))
+	if len(commentIDs) == 0 {
+		return mediaByComment, nil
+	}
+
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(commentIDs)), ",")
+	args := make([]any, len(commentIDs))
+	for i, commentID := range commentIDs {
+		args[i] = commentID
+		mediaByComment[commentID] = make([]string, 0)
+	}
+
+	rows, err := db.Query(`
+		SELECT cm.comment_id, m.file_path
+		FROM comment_media cm
+		JOIN media m ON m.id = cm.media_id
+		WHERE cm.comment_id IN (`+placeholders+`)
+		ORDER BY cm.comment_id ASC, cm.position ASC
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var commentID, path string
+		if err := rows.Scan(&commentID, &path); err != nil {
+			return nil, err
+		}
+		mediaByComment[commentID] = append(mediaByComment[commentID], "/"+path)
+	}
+
+	return mediaByComment, rows.Err()
 }
 func addCommentMedia(
 	tx *sql.Tx,

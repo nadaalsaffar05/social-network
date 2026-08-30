@@ -121,6 +121,37 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) Post(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.GetPost(w, r)
+	case http.MethodDelete:
+		h.DeletePost(w, r)
+	default:
+		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
+func (h *Handler) DeletePost(w http.ResponseWriter, r *http.Request) {
+	currentUser := auth.CurrentUser(r)
+	if currentUser == nil {
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	deleted, err := deactivatePost(h.DB, r.PathValue("post_id"), currentUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not delete post")
+		return
+	}
+	if !deleted {
+		helpers.WriteError(w, http.StatusNotFound, "post not found")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -176,9 +207,16 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(
 			&post.ID,
 			&post.AuthorID,
+			&post.AuthorNickname,
+			&post.AuthorFirstName,
+			&post.AuthorLastName,
+			&post.AuthorAvatarPath,
 			&post.Content,
 			&post.Privacy,
 			&post.CreatedAt,
+			&post.LikeCount,
+			&post.DislikeCount,
+			&post.ViewerReaction,
 		); err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "could not read feed post")
 			return
@@ -203,6 +241,10 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	for i := range posts {
 		posts[i].Media = mediaByPost[posts[i].ID]
+		if posts[i].AuthorAvatarPath != nil {
+			path := "/" + *posts[i].AuthorAvatarPath
+			posts[i].AuthorAvatarPath = &path
+		}
 	}
 
 	nextCursor := ""
@@ -243,6 +285,10 @@ func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not read post media")
 		return
+	}
+	if post.AuthorAvatarPath != nil {
+		path := "/" + *post.AuthorAvatarPath
+		post.AuthorAvatarPath = &path
 	}
 
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{"post": post})
