@@ -7,6 +7,8 @@ import { logoutUser } from '../../api/auth'
 import { BASE_API } from '../../config/api.js'
 import AvatarCropperModal from '../../shared/components/avatar-cropper/AvatarCropperModal'
 import PostCard from '../feed/components/PostCard.jsx'
+import GradientWaves from '../feed/components/GradientWaves.jsx'
+import { GRADIENT_WAVE_PROPS } from '../feed/constants.js'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
@@ -282,6 +284,9 @@ export default function ProfilePage() {
 
   return (
     <main className="profile-layout-container">
+      <div className="profile-waves">
+        <GradientWaves {...GRADIENT_WAVE_PROPS} />
+      </div>
       <div className="profile-page-content">
         <header className="profile-page-topbar">
           <button type="button" aria-label="Go back" onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/home')}>

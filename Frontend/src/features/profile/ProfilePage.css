@@ -1,9 +1,12 @@
 .profile-layout-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
   width: 100%;
   min-height: 100vh;
   padding: 32px 24px;
-  background-color: var(--color-bg);
   color: var(--color-text);
+  background: var(--color-bg);
   font-family: var(--font-body);
 }
 
@@ -37,7 +40,16 @@
   font-size: 1.25rem;
 }
 
+.profile-waves {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+}
+
 .profile-layout-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 28px;
@@ -46,16 +58,26 @@
   align-items: start;
 }
 
+/* ==================== SHARED GLASS SURFACE ==================== */
+.profile-sidebar,
+.profile-stats-card,
+.profile-tabs-header,
+.profile-post-card,
+.profile-user-card,
+.profile-empty-feed {
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 9%), 0 18px 45px rgb(0 0 0 / 12%);
+  backdrop-filter: blur(14px);
+}
+
 /* ==================== LEFT SIDEBAR ==================== */
 .profile-sidebar {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
   padding: 28px 24px;
-  box-shadow: var(--shadow-card);
   position: sticky;
   top: 24px;
 }
@@ -72,8 +94,8 @@
   height: 140px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--color-border);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgb(255 255 255 / 18%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
   transition: transform var(--transition-fast), border-color var(--transition-fast);
 }
 
@@ -86,22 +108,22 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(2px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  color: #ffffff;
+  gap: 4px;
+  width: 140px;
+  height: 140px;
+  color: #fff;
   font-size: 0.78rem;
   font-weight: 600;
-  gap: 4px;
-  border: 3px solid var(--color-primary);
+  background: rgb(15 23 42 / 65%);
+  border: 1px solid var(--color-primary);
+  border-radius: 50%;
+  opacity: 0;
+  backdrop-filter: blur(2px);
+  transition: opacity 0.2s ease;
 }
 
 .profile-avatar-wrapper:hover .profile-avatar-overlay {
@@ -113,65 +135,65 @@
   height: 22px;
 }
 
-
 .profile-avatar-initials {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 140px;
+  height: 140px;
+  color: #fff;
+  font-family: var(--font-body);
   font-size: 2.6rem;
   font-weight: 800;
-  color: #ffffff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  border: 3px solid var(--color-border);
-  font-family: var(--font-body);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
 }
 
 .profile-names-section {
   width: 100%;
-  text-align: left;
   margin-bottom: 16px;
+  text-align: left;
 }
 
 .profile-fullname {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-body);
   font-size: 1.65rem;
   font-weight: 700;
   line-height: 1.25;
-  color: var(--color-text);
-  margin: 0;
-  font-family: var(--font-body);
 }
 
 .profile-username {
-  font-size: 0.95rem;
-  color: var(--color-text-muted);
   margin-top: 4px;
-  font-weight: 500;
+  color: var(--color-text-muted);
   font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 .profile-bio {
   width: 100%;
-  font-size: 0.92rem;
-  color: var(--color-text-muted);
-  line-height: 1.5;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  border-bottom: 1px solid rgb(255 255 255 / 13%);
 }
 
 .profile-details-list {
-  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 0.88rem;
+  width: 100%;
   margin-bottom: 24px;
+  color: var(--color-text-muted);
   font-family: var(--font-body);
+  font-size: 0.88rem;
 }
 
 .profile-detail-item {
@@ -190,52 +212,54 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 10px;
-  border-radius: 999px;
+  color: var(--color-primary);
+  font-family: var(--font-body);
   font-size: 0.78rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: rgba(76, 124, 240, 0.15);
-  color: var(--color-primary);
-  border: 1px solid rgba(76, 124, 240, 0.3);
-  font-family: var(--font-body);
+  text-transform: uppercase;
+  background: rgb(76 124 240 / 15%);
+  border: 1px solid rgb(76 124 240 / 30%);
+  border-radius: 999px;
 }
 
 .profile-badge.private {
-  background: rgba(232, 98, 63, 0.15);
   color: var(--color-secondary);
-  border-color: rgba(232, 98, 63, 0.3);
+  background: rgb(232 98 63 / 15%);
+  border-color: rgb(232 98 63 / 30%);
 }
 
 .profile-sidebar-actions {
-  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 }
 
 .profile-action-btn {
-  width: 100%;
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  font-size: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background var(--transition-fast), filter var(--transition-fast);
+  width: 100%;
+  padding: 10px 16px;
+  color: var(--color-text);
   font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), filter var(--transition-fast);
 }
 
 .profile-action-btn.secondary {
-  background: var(--color-bg-soft);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  background: rgb(255 255 255 / 9%);
+  border: 1px solid rgb(255 255 255 / 16%);
 }
 
 .profile-action-btn.secondary:hover {
-  background: var(--color-overlay);
+  background: rgb(255 255 255 / 14%);
 }
 
 /* ==================== MAIN BODY ==================== */
@@ -251,11 +275,7 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
   padding: 20px 24px;
-  box-shadow: var(--shadow-card);
 }
 
 .profile-stat-box {
@@ -264,21 +284,20 @@
   align-items: center;
   justify-content: center;
   padding: 8px 20px;
-  text-decoration: none;
+  cursor: pointer;
   background: none;
   border: none;
   border-radius: var(--radius-md);
-  cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .profile-stat-box:hover {
+  background: rgb(255 255 255 / 7%);
   transform: translateY(-2px);
-  background: var(--color-overlay);
 }
 
 .profile-stat-box.active {
-  background: rgba(76, 124, 240, 0.12);
+  background: rgb(76 124 240 / 12%);
 }
 
 .profile-stat-box.active .profile-stat-number,
@@ -287,31 +306,30 @@
 }
 
 .profile-stat-number {
-  font-size: 1.8rem;
-  font-weight: 800;
   color: var(--color-text);
   font-family: var(--font-body);
+  font-size: 1.8rem;
+  font-weight: 800;
   line-height: 1.1;
   transition: color var(--transition-fast);
 }
 
 .profile-stat-label {
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-top: 4px;
-  font-family: var(--font-body);
+  text-transform: uppercase;
   transition: color var(--transition-fast);
 }
 
 .profile-stat-divider {
   width: 1px;
   height: 40px;
-  background: var(--color-border);
+  background: rgb(255 255 255 / 13%);
 }
-
 
 /* Posts Feed Section */
 .profile-feed-container {
@@ -328,38 +346,34 @@
 }
 
 .profile-feed-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--color-text);
   display: flex;
   align-items: center;
   gap: 10px;
+  color: var(--color-text);
   font-family: var(--font-body);
+  font-size: 1.25rem;
+  font-weight: 700;
 }
 
 .profile-feed-count-tag {
-  font-size: 0.8rem;
   padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--color-overlay);
   color: var(--color-text-muted);
-  font-weight: 600;
   font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgb(255 255 255 / 9%);
+  border-radius: 999px;
 }
 
 /* Post Cards */
 .profile-post-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
   padding: 24px;
-  box-shadow: var(--shadow-card);
-  transition: border-color var(--transition-fast);
   font-family: var(--font-body);
+  transition: border-color var(--transition-fast);
 }
 
 .profile-post-card:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgb(255 255 255 / 22%);
 }
 
 .post-header {
@@ -372,23 +386,23 @@
 .post-avatar-mini {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
   object-fit: cover;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
 }
 
 .post-avatar-mini-initials {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  font-weight: 700;
+  width: 44px;
+  height: 44px;
   color: #fff;
   font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  border-radius: 50%;
 }
 
 .post-meta {
@@ -397,44 +411,44 @@
 }
 
 .post-author-name {
-  font-size: 0.95rem;
-  font-weight: 700;
   color: var(--color-text);
   font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .post-time-privacy {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.8rem;
-  color: var(--color-text-faint);
   margin-top: 2px;
+  color: var(--color-text-faint);
   font-family: var(--font-body);
+  font-size: 0.8rem;
 }
 
 .post-content {
+  color: var(--color-text);
+  font-family: var(--font-body);
   font-size: 0.98rem;
   line-height: 1.6;
-  color: var(--color-text);
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: var(--font-body);
 }
 
 .post-media-grid {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
   margin-top: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 .post-media-item {
   width: 100%;
   max-height: 380px;
   object-fit: cover;
+  border: 1px solid rgb(255 255 255 / 13%);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
 }
 
 .post-actions-bar {
@@ -443,21 +457,21 @@
   gap: 20px;
   margin-top: 18px;
   padding-top: 14px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid rgb(255 255 255 / 13%);
 }
 
 .post-action-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.85rem;
+  padding: 0;
   color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
   cursor: pointer;
-  transition: color var(--transition-fast);
   background: none;
   border: none;
-  padding: 0;
-  font-family: var(--font-body);
+  transition: color var(--transition-fast);
 }
 
 .post-action-item:hover {
@@ -466,16 +480,14 @@
 
 /* Empty State */
 .profile-empty-feed {
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 48px 24px;
-  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  padding: 48px 24px;
   font-family: var(--font-body);
+  text-align: center;
+  border-style: dashed;
 }
 
 .profile-empty-icon {
@@ -484,17 +496,17 @@
 }
 
 .profile-empty-title {
-  font-size: 1.1rem;
-  font-weight: 700;
   color: var(--color-text);
   font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .profile-empty-text {
-  font-size: 0.9rem;
-  color: var(--color-text-muted);
   max-width: 360px;
+  color: var(--color-text-muted);
   font-family: var(--font-body);
+  font-size: 0.9rem;
 }
 
 /* Navigation Tabs Bar */
@@ -502,55 +514,51 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 6px;
-  box-shadow: var(--shadow-card);
   margin-bottom: 8px;
+  padding: 6px;
 }
 
 .profile-tab-btn {
-  flex: 1;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 10px 16px;
-  border-radius: var(--radius-md);
-  border: none;
-  background: transparent;
   color: var(--color-text-muted);
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all var(--transition-fast);
   font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
 }
 
 .profile-tab-btn:hover {
   color: var(--color-text);
-  background: var(--color-bg-soft);
+  background: rgb(255 255 255 / 7%);
 }
 
 .profile-tab-btn.active {
+  color: #fff;
   background: var(--color-primary);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(76, 124, 240, 0.35);
+  box-shadow: 0 4px 14px rgb(76 124 240 / 35%);
 }
 
 .profile-tab-badge {
-  font-size: 0.75rem;
   padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  font-weight: 700;
   font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgb(255 255 255 / 20%);
+  border-radius: 999px;
 }
 
 .profile-tab-btn:not(.active) .profile-tab-badge {
-  background: var(--color-overlay);
   color: var(--color-text-muted);
+  background: rgb(255 255 255 / 9%);
 }
 
 /* Followers & Following User Cards Grid */
@@ -561,18 +569,14 @@
 }
 
 .profile-user-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
   gap: 12px;
-  transition: border-color var(--transition-fast), transform var(--transition-fast);
+  padding: 20px;
   font-family: var(--font-body);
+  text-align: center;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .profile-user-card:hover {
@@ -587,26 +591,26 @@
 .user-card-avatar-img {
   width: 72px;
   height: 72px;
-  border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--color-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
 }
 
 .user-card-avatar-initials {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 72px;
+  height: 72px;
+  color: #fff;
+  font-family: var(--font-body);
   font-size: 1.5rem;
   font-weight: 700;
-  color: #ffffff;
-  border: 2px solid var(--color-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  font-family: var(--font-body);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
 }
 
 .user-card-info {
@@ -618,18 +622,18 @@
 }
 
 .user-card-name {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
-  font-family: var(--font-body);
 }
 
 .user-card-handle {
-  font-size: 0.82rem;
   color: var(--color-text-muted);
-  font-weight: 500;
   font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
 }
 
 .user-card-badge-row {
@@ -639,40 +643,36 @@
 .user-card-action-btn {
   width: 100%;
   padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-soft);
   color: var(--color-text);
+  font-family: var(--font-body);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  background: rgb(255 255 255 / 9%);
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
-  font-family: var(--font-body);
 }
 
 .user-card-action-btn:hover {
+  color: #fff;
   background: var(--color-primary);
-  color: #ffffff;
   border-color: var(--color-primary);
 }
 
 /* Responsive breakpoint */
-
 @media (max-width: 860px) {
   .profile-layout-grid {
     grid-template-columns: 1fr;
   }
 
   .profile-sidebar {
-    position: static;
     align-items: center;
     text-align: center;
+    position: static;
   }
 
-  .profile-names-section {
-    text-align: center;
-  }
-
+  .profile-names-section,
   .profile-bio {
     text-align: center;
   }

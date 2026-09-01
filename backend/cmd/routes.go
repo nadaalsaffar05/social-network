@@ -32,12 +32,12 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/users/{user_id}/profile", protected(api.GetPublicProfile(db)))
 	mux.Handle("/api/followers", protected(api.GetFollowers(db)))
 	mux.Handle("/api/following", protected(api.GetFollowing(db)))
+	mux.Handle("/api/follow-requests", protected(api.GetFollowRequests(db)))
 	mux.Handle("/api/follow", protected(api.FollowUser(db)))
 	mux.Handle("/api/unfollow", protected(api.UnfollowUser(db)))
 	mux.Handle("/api/is-follower", protected(api.IsFollower(db)))
 	mux.Handle("/api/is-following", protected(api.IsFollowing(db)))
 	mux.Handle("/api/follow-request/respond", protected(api.RespondToFollowRequest(db)))
-	mux.Handle("/api/follow-requests", protected(api.GetFollowRequests(db)))
 
 	// Feed routes remain grouped and use the same authentication wrapper.
 	mux.Handle("/api/posts", protected(feedHandler.CreatePost))

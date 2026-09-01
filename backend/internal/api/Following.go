@@ -154,6 +154,74 @@ func GetFollowing(database *sql.DB) http.HandlerFunc {
 	}
 }
 
+// method: GET -- return all pending requests fir the currrent user
+func GetFollowRequests(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		rows, err := database.Query(`
+			SELECT
+				fr.id,
+				u.id,
+				u.email,
+				u.first_name,
+				u.last_name,
+				p.nickname,
+				p.privacy,
+				m.file_path,
+				fr.created_at
+			FROM follow_requests fr
+			JOIN users u ON u.id = fr.sender_id
+			JOIN profiles p ON p.user_id = u.id
+			LEFT JOIN profile_avatars pa ON pa.user_id = u.id
+			LEFT JOIN media m ON m.id = pa.media_id
+			WHERE fr.recipient_id = ? AND fr.status = ?
+			ORDER BY fr.created_at DESC
+		`, currentUser.ID, int(enums.FollowRequestStatusPending))
+
+		requests := []models.FollowRequestItem{}
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch follow requests")
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var item models.FollowRequestItem
+			if scanErr := rows.Scan(
+				&item.ID,
+				&item.SenderID,
+				&item.Email,
+				&item.FirstName,
+				&item.LastName,
+				&item.Nickname,
+				&item.Privacy,
+				&item.AvatarPath,
+				&item.CreatedAt,
+			); scanErr == nil {
+				if item.AvatarPath != nil {
+					publicPath := "/" + strings.TrimLeft(*item.AvatarPath, "/")
+					item.AvatarPath = &publicPath
+				}
+				requests = append(requests, item)
+			}
+		}
+
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
+			"requests": requests,
+		})
+	}
+}
+
 // method: POST -- follow a user + the follow will depend on the profile status
 // params: user_id: target user id
 func FollowUser(database *sql.DB) http.HandlerFunc {
@@ -388,58 +456,6 @@ func RespondToFollowRequest(database *sql.DB) http.HandlerFunc {
 			"message": message,
 			"status":  req.Action + "ed",
 		})
-	}
-}
-
-// GetFollowRequests returns pending follow requests for the authenticated user.
-func GetFollowRequests(database *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-
-		currentUser := auth.CurrentUser(r)
-		if currentUser == nil {
-			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
-			return
-		}
-
-		rows, err := database.Query(`
-			SELECT request.id, sender.id, sender.first_name, sender.last_name, profile.nickname, media.file_path, request.created_at
-			FROM follow_requests request
-			JOIN users sender ON sender.id = request.sender_id
-			JOIN profiles profile ON profile.user_id = sender.id
-			LEFT JOIN profile_avatars avatar ON avatar.user_id = sender.id
-			LEFT JOIN media ON media.id = avatar.media_id
-			WHERE request.recipient_id = ? AND request.status = ?
-			ORDER BY request.created_at DESC
-		`, currentUser.ID, int(enums.FollowRequestStatusPending))
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch follow requests")
-			return
-		}
-		defer rows.Close()
-
-		requests := make([]models.FollowRequestItem, 0)
-		for rows.Next() {
-			var item models.FollowRequestItem
-			if err := rows.Scan(&item.ID, &item.SenderID, &item.FirstName, &item.LastName, &item.Nickname, &item.AvatarPath, &item.CreatedAt); err != nil {
-				helpers.WriteError(w, http.StatusInternalServerError, "failed to read follow requests")
-				return
-			}
-			if item.AvatarPath != nil {
-				path := "/" + strings.TrimLeft(*item.AvatarPath, "/")
-				item.AvatarPath = &path
-			}
-			requests = append(requests, item)
-		}
-		if err := rows.Err(); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to read follow requests")
-			return
-		}
-
-		helpers.WriteJSON(w, http.StatusOK, map[string]any{"requests": requests})
 	}
 }
 

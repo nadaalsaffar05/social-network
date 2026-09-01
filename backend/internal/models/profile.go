@@ -42,13 +42,15 @@ type FollowUserItem struct {
 }
 
 type FollowRequestItem struct {
-	ID         string  `json:"id"`
-	SenderID   string  `json:"sender_id"`
-	FirstName  string  `json:"first_name"`
-	LastName   string  `json:"last_name"`
-	Nickname   *string `json:"nickname,omitempty"`
-	AvatarPath *string `json:"avatar_path,omitempty"`
-	CreatedAt  string  `json:"created_at"`
+	ID         string               `json:"id"`
+	SenderID   string               `json:"sender_id"`
+	Email      string               `json:"email"`
+	FirstName  string               `json:"first_name"`
+	LastName   string               `json:"last_name"`
+	Nickname   *string              `json:"nickname,omitempty"`
+	AvatarPath *string              `json:"avatar_path,omitempty"`
+	Privacy    enums.ProfilePrivacy `json:"privacy"`
+	CreatedAt  string               `json:"created_at"`
 }
 
 type PublicProfileResponse struct {
