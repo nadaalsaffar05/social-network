@@ -1,5 +1,11 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import LoginPage from "../pages/Auth/LoginPage";
+import RegisterPage from "../pages/Auth/RegisterPage";
+import FeedPage from "../pages/feed/FeedPage";
+import PostPage from "../pages/feed/PostPage";
+import ProfilePage from "../pages/Profile/ProfilePage";
+import FollowRequestsPage from "../pages/Profile/FollowRequestsPage";
 import LoginPage from "../../features/auth/LoginPage";
 import RegisterPage from "../../features/auth/RegisterPage";
 import FeedPage from "../../features/feed/FeedPage";
@@ -20,6 +26,7 @@ export default function AppRoutes() {
         <Route path="/posts/:postId" element={<PostPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
+        <Route path="/follow-requests" element={<FollowRequestsPage />} />
         <Route path="/messages" element={<ChatPage />} />
         <Route path="/messages/:userId" element={<ChatPage />} />
         <Route path="/message-requests" element={<MessageRequestsPage />} />

@@ -58,6 +58,22 @@ export async function followUser(userId) {
   })
 }
 
+export async function getFollowRequests() {
+  const data = await request(['api', 'follow-requests'])
+  return data.requests || data.follow_requests || []
+}
+
+export async function respondToFollowRequest(requestId, action) {
+  return await request(['api', 'follow-request', 'respond'], {
+    method: 'POST',
+    body: {
+      request_id: requestId,
+      action: action,
+    },
+  })
+}
+
+
 export async function unfollowUser(userId) {
   return await request(['api', 'unfollow'], {
     method: 'POST',
