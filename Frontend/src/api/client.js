@@ -1,4 +1,4 @@
-import { buildApiUrl } from '../Config.js'
+import { buildApiUrl } from '../config/api.js'
 
 export async function request(pathSegments, options = {}) {
   const {

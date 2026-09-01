@@ -391,6 +391,58 @@ func RespondToFollowRequest(database *sql.DB) http.HandlerFunc {
 	}
 }
 
+// GetFollowRequests returns pending follow requests for the authenticated user.
+func GetFollowRequests(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		rows, err := database.Query(`
+			SELECT request.id, sender.id, sender.first_name, sender.last_name, profile.nickname, media.file_path, request.created_at
+			FROM follow_requests request
+			JOIN users sender ON sender.id = request.sender_id
+			JOIN profiles profile ON profile.user_id = sender.id
+			LEFT JOIN profile_avatars avatar ON avatar.user_id = sender.id
+			LEFT JOIN media ON media.id = avatar.media_id
+			WHERE request.recipient_id = ? AND request.status = ?
+			ORDER BY request.created_at DESC
+		`, currentUser.ID, int(enums.FollowRequestStatusPending))
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch follow requests")
+			return
+		}
+		defer rows.Close()
+
+		requests := make([]models.FollowRequestItem, 0)
+		for rows.Next() {
+			var item models.FollowRequestItem
+			if err := rows.Scan(&item.ID, &item.SenderID, &item.FirstName, &item.LastName, &item.Nickname, &item.AvatarPath, &item.CreatedAt); err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "failed to read follow requests")
+				return
+			}
+			if item.AvatarPath != nil {
+				path := "/" + strings.TrimLeft(*item.AvatarPath, "/")
+				item.AvatarPath = &path
+			}
+			requests = append(requests, item)
+		}
+		if err := rows.Err(); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to read follow requests")
+			return
+		}
+
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{"requests": requests})
+	}
+}
+
 // method: GET -- checks whether ?user_id= is a follower of the current user.
 // will return: is_follower: true || false
 func IsFollower(database *sql.DB) http.HandlerFunc {

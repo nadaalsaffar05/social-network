@@ -23,8 +23,45 @@ type PrivateMessagesResponse struct {
 	LastSeenAt *string          `json:"last_seen_at,omitempty"`
 }
 
+type MessageRequestResponse struct {
+	ConversationID string          `json:"conversation_id"`
+	RequesterID    string          `json:"requester_id"`
+	RecipientID    string          `json:"recipient_id"`
+	Status         string          `json:"status"`
+	CreatedAt      string          `json:"created_at"`
+	Message        *PrivateMessage `json:"message,omitempty"`
+	Requester      *ChatUser       `json:"requester,omitempty"`
+}
+
+// ChatUser is the public identity shown in the messages inbox.
+type ChatUser struct {
+	ID         string  `json:"id"`
+	FirstName  string  `json:"first_name"`
+	LastName   string  `json:"last_name"`
+	Nickname   *string `json:"nickname,omitempty"`
+	AvatarPath *string `json:"avatar_path,omitempty"`
+}
+
+type ConversationSummary struct {
+	ConversationID    string   `json:"conversation_id"`
+	User              ChatUser `json:"user"`
+	LastMessage       string   `json:"last_message"`
+	LastMessageAt     string   `json:"last_message_at"`
+	RequestStatus     string   `json:"request_status"`
+	IsIncomingRequest bool     `json:"is_incoming_request"`
+}
+
 type OnlineUsersResponse struct {
-	UserIDs []string `json:"user_ids"`
+	UserIDs []string     `json:"user_ids"`
+	Users   []OnlineUser `json:"users"`
+}
+
+type OnlineUser struct {
+	ID         string  `json:"id"`
+	FirstName  string  `json:"first_name"`
+	LastName   string  `json:"last_name"`
+	Nickname   *string `json:"nickname,omitempty"`
+	AvatarPath *string `json:"avatar_path,omitempty"`
 }
 
 type UserPresence struct {
@@ -40,6 +77,7 @@ type SocketEvent struct {
 }
 
 type TypingEvent struct {
+	SenderID    string `json:"sender_id,omitempty"`
 	RecipientID string `json:"recipient_id"`
 	IsTyping    bool   `json:"is_typing"`
 }

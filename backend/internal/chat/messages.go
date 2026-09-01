@@ -10,11 +10,17 @@ import (
 	"github.com/google/uuid"
 )
 
-var errUserNotFound = errors.New("user not found")
+var (
+	errUserNotFound           = errors.New("user not found")
+	errCannotMessageSelf      = errors.New("cannot message yourself")
+	errInvalidCursor          = errors.New("invalid cursor")
+	errMessageRequestOpen     = errors.New("message request is pending")
+	errMessageRequestDeclined = errors.New("message request was declined")
+)
 
 func createPrivateMessage(db *sql.DB, senderID, recipientID, content string) (models.PrivateMessage, error) {
 	if senderID == recipientID {
-		return models.PrivateMessage{}, errors.New("cannot message yourself")
+		return models.PrivateMessage{}, errCannotMessageSelf
 	}
 
 	tx, err := db.Begin()
@@ -29,6 +35,14 @@ func createPrivateMessage(db *sql.DB, senderID, recipientID, content string) (mo
 
 	conversationID, err := findOrCreateConversation(tx, senderID, recipientID)
 	if err != nil {
+		return models.PrivateMessage{}, err
+	}
+
+	isFriends, err := areFriends(tx, senderID, recipientID)
+	if err != nil {
+		return models.PrivateMessage{}, err
+	}
+	if err := prepareMessageRequest(tx, conversationID, senderID, recipientID, isFriends); err != nil {
 		return models.PrivateMessage{}, err
 	}
 
@@ -73,10 +87,10 @@ func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit in
 		err := db.QueryRow(`
 			SELECT created_at, id
 			FROM private_messages
-			WHERE public_id = ? AND conversation_id = ? AND is_active = TRUE
+			WHERE public_id = ? AND conversation_id = ?
 		`, cursor, conversationID).Scan(&cursorCreatedAt, &cursorID)
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, "", errors.New("invalid cursor")
+			return nil, "", errInvalidCursor
 		}
 		if err != nil {
 			return nil, "", err
@@ -90,12 +104,12 @@ func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit in
 			pm.sender_id,
 			pm.content,
 			pm.created_at,
+			pm.is_active,
 			r.delivered_at,
 			r.read_at
 		FROM private_messages pm
 		LEFT JOIN private_message_receipts r ON r.message_id = pm.id
 		WHERE pm.conversation_id = ?
-		  AND pm.is_active = TRUE
 		  AND (
 			? = ''
 			OR pm.created_at < ?
@@ -117,13 +131,14 @@ func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit in
 			break
 		}
 
-		message := models.PrivateMessage{RecipientID: otherUserID, IsActive: true}
+		message := models.PrivateMessage{RecipientID: otherUserID}
 		if err := rows.Scan(
 			&message.PublicID,
 			&message.ConversationID,
 			&message.SenderID,
 			&message.Content,
 			&message.CreatedAt,
+			&message.IsActive,
 			&message.DeliveredAt,
 			&message.ReadAt,
 		); err != nil {
@@ -146,6 +161,73 @@ func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit in
 	return messages, nextCursor, nil
 }
 
+func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, error) {
+	rows, err := db.Query(`
+		SELECT
+			conversation.id,
+			other_user.id,
+			other_user.first_name,
+			other_user.last_name,
+			other_profile.nickname,
+			avatar_media.file_path,
+			CASE WHEN last_message.is_active THEN last_message.content ELSE 'This message was deleted' END,
+			last_message.created_at,
+			COALESCE(request.status, 'ACCEPTED'),
+			CASE WHEN request.status = 'PENDING' AND request.recipient_id = ? THEN 1 ELSE 0 END
+		FROM private_conversations conversation
+		JOIN conversation_participants current_participant
+			ON current_participant.conversation_id = conversation.id
+			AND current_participant.user_id = ?
+		JOIN conversation_participants other_participant
+			ON other_participant.conversation_id = conversation.id
+			AND other_participant.user_id != ?
+		JOIN users other_user ON other_user.id = other_participant.user_id
+		JOIN profiles other_profile ON other_profile.user_id = other_user.id
+		LEFT JOIN profile_avatars avatar ON avatar.user_id = other_user.id
+		LEFT JOIN media avatar_media ON avatar_media.id = avatar.media_id
+		JOIN private_messages last_message ON last_message.id = (
+			SELECT message.id
+			FROM private_messages message
+			WHERE message.conversation_id = conversation.id
+			ORDER BY message.created_at DESC, message.id DESC
+			LIMIT 1
+		)
+		LEFT JOIN private_message_requests request ON request.conversation_id = conversation.id
+		ORDER BY last_message.created_at DESC, last_message.id DESC
+	`, userID, userID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	conversations := make([]models.ConversationSummary, 0)
+	for rows.Next() {
+		var conversation models.ConversationSummary
+		var incomingRequest int
+		if err := rows.Scan(
+			&conversation.ConversationID,
+			&conversation.User.ID,
+			&conversation.User.FirstName,
+			&conversation.User.LastName,
+			&conversation.User.Nickname,
+			&conversation.User.AvatarPath,
+			&conversation.LastMessage,
+			&conversation.LastMessageAt,
+			&conversation.RequestStatus,
+			&incomingRequest,
+		); err != nil {
+			return nil, err
+		}
+		if conversation.User.AvatarPath != nil {
+			path := "/" + strings.TrimLeft(*conversation.User.AvatarPath, "/")
+			conversation.User.AvatarPath = &path
+		}
+		conversation.IsIncomingRequest = incomingRequest == 1
+		conversations = append(conversations, conversation)
+	}
+	return conversations, rows.Err()
+}
+
 func getUserLastSeen(db *sql.DB, userID string) (*string, error) {
 	var lastSeenAt *string
 	err := db.QueryRow(`SELECT last_seen_at FROM user_presence WHERE user_id = ?`, userID).Scan(&lastSeenAt)
@@ -155,7 +237,25 @@ func getUserLastSeen(db *sql.DB, userID string) (*string, error) {
 	return lastSeenAt, err
 }
 
-func softDeletePrivateMessage(db *sql.DB, senderID, recipientID, publicMessageID string) (bool, error) {
+func softDeletePrivateMessage(db *sql.DB, senderID, recipientID, publicMessageID string) (string, bool, error) {
+	var actualRecipientID string
+	err := db.QueryRow(`
+		SELECT participant.user_id
+		FROM private_messages message
+		JOIN conversation_participants participant ON participant.conversation_id = message.conversation_id
+		WHERE message.public_id = ?
+		  AND message.sender_id = ?
+		  AND message.is_active = TRUE
+		  AND participant.user_id = ?
+		  AND participant.user_id != ?
+	`, publicMessageID, senderID, recipientID, senderID).Scan(&actualRecipientID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+
 	result, err := db.Exec(`
 		UPDATE private_messages
 		SET is_active = FALSE
@@ -170,11 +270,102 @@ func softDeletePrivateMessage(db *sql.DB, senderID, recipientID, publicMessageID
 		  )
 	`, publicMessageID, senderID, recipientID)
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 
 	updated, err := result.RowsAffected()
-	return updated > 0, err
+	return actualRecipientID, updated > 0, err
+}
+
+func markMessageDelivered(db *sql.DB, recipientID, publicMessageID string) (string, bool, error) {
+	messageID, senderID, found, err := getMessageForRecipient(db, recipientID, publicMessageID)
+	if err != nil || !found {
+		return "", false, err
+	}
+
+	result, err := db.Exec(`
+		INSERT INTO private_message_receipts (message_id, delivered_at)
+		VALUES (?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+		ON CONFLICT(message_id) DO NOTHING
+	`, messageID)
+	if err != nil {
+		return "", false, err
+	}
+	updated, err := result.RowsAffected()
+	return senderID, updated > 0, err
+}
+
+func markMessageRead(db *sql.DB, recipientID, publicMessageID string) (string, bool, error) {
+	messageID, senderID, found, err := getMessageForRecipient(db, recipientID, publicMessageID)
+	if err != nil || !found {
+		return "", false, err
+	}
+
+	result, err := db.Exec(`
+		INSERT INTO private_message_receipts (message_id, delivered_at, read_at)
+		VALUES (?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+		ON CONFLICT(message_id) DO UPDATE SET
+			delivered_at = COALESCE(private_message_receipts.delivered_at, excluded.delivered_at),
+			read_at = COALESCE(private_message_receipts.read_at, excluded.read_at)
+		WHERE private_message_receipts.read_at IS NULL
+	`, messageID)
+	if err != nil {
+		return "", false, err
+	}
+	updated, err := result.RowsAffected()
+	return senderID, updated > 0, err
+}
+
+func softDeletePrivateMessageByPublicID(db *sql.DB, senderID, publicMessageID string) (string, bool, error) {
+	var recipientID string
+	err := db.QueryRow(`
+		SELECT participant.user_id
+		FROM private_messages message
+		JOIN conversation_participants participant ON participant.conversation_id = message.conversation_id
+		WHERE message.public_id = ?
+		  AND message.sender_id = ?
+		  AND message.is_active = TRUE
+		  AND participant.user_id != ?
+		LIMIT 1
+	`, publicMessageID, senderID, senderID).Scan(&recipientID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+
+	result, err := db.Exec(`
+		UPDATE private_messages
+		SET is_active = FALSE
+		WHERE public_id = ? AND sender_id = ? AND is_active = TRUE
+	`, publicMessageID, senderID)
+	if err != nil {
+		return "", false, err
+	}
+	updated, err := result.RowsAffected()
+	return recipientID, updated > 0, err
+}
+
+func getMessageForRecipient(db *sql.DB, recipientID, publicMessageID string) (int64, string, bool, error) {
+	var messageID int64
+	var senderID string
+	err := db.QueryRow(`
+		SELECT message.id, message.sender_id
+		FROM private_messages message
+		JOIN conversation_participants participant ON participant.conversation_id = message.conversation_id
+		WHERE message.public_id = ?
+		  AND message.sender_id != ?
+		  AND message.is_active = TRUE
+		  AND participant.user_id = ?
+	`, publicMessageID, recipientID, recipientID).Scan(&messageID, &senderID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, "", false, nil
+	}
+	if err != nil {
+		return 0, "", false, err
+	}
+	return messageID, senderID, true, nil
 }
 
 func requireUser(queryer interface{ QueryRow(string, ...any) *sql.Row }, userID string) error {
@@ -223,6 +414,182 @@ func findConversation(queryer interface{ QueryRow(string, ...any) *sql.Row }, us
 		return "", false, err
 	}
 	return conversationID, true, nil
+}
+
+func areFriends(queryer interface{ QueryRow(string, ...any) *sql.Row }, userID, otherUserID string) (bool, error) {
+	var followsBothWays int
+	err := queryer.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM follows first_follow
+			JOIN follows second_follow
+				ON second_follow.follower_id = first_follow.following_id
+				AND second_follow.following_id = first_follow.follower_id
+			WHERE first_follow.follower_id = ? AND first_follow.following_id = ?
+		)
+	`, userID, otherUserID).Scan(&followsBothWays)
+	return followsBothWays == 1, err
+}
+
+func prepareMessageRequest(tx *sql.Tx, conversationID, senderID, recipientID string, isFriends bool) error {
+	var status string
+	err := tx.QueryRow(`SELECT status FROM private_message_requests WHERE conversation_id = ?`, conversationID).Scan(&status)
+	if errors.Is(err, sql.ErrNoRows) {
+		if isFriends {
+			return nil
+		}
+		_, err = tx.Exec(`
+			INSERT INTO private_message_requests (conversation_id, requester_id, recipient_id)
+			VALUES (?, ?, ?)
+		`, conversationID, senderID, recipientID)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if status == "ACCEPTED" {
+		return nil
+	}
+	if isFriends {
+		_, err = tx.Exec(`
+			UPDATE private_message_requests
+			SET status = 'ACCEPTED', responded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+			WHERE conversation_id = ? AND status = 'PENDING'
+		`, conversationID)
+		return err
+	}
+	if status == "DECLINED" {
+		return errMessageRequestDeclined
+	}
+	return errMessageRequestOpen
+}
+
+func respondToMessageRequest(db *sql.DB, recipientID, requesterID, status string) (models.MessageRequestResponse, bool, error) {
+	var request models.MessageRequestResponse
+	err := db.QueryRow(`
+		SELECT conversation_id, requester_id, recipient_id, status, created_at
+		FROM private_message_requests
+		WHERE requester_id = ? AND recipient_id = ? AND status = 'PENDING'
+	`, requesterID, recipientID).Scan(
+		&request.ConversationID,
+		&request.RequesterID,
+		&request.RecipientID,
+		&request.Status,
+		&request.CreatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return models.MessageRequestResponse{}, false, nil
+	}
+	if err != nil {
+		return models.MessageRequestResponse{}, false, err
+	}
+
+	result, err := db.Exec(`
+		UPDATE private_message_requests
+		SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+		WHERE conversation_id = ? AND status = 'PENDING'
+	`, status, request.ConversationID)
+	if err != nil {
+		return models.MessageRequestResponse{}, false, err
+	}
+	updated, err := result.RowsAffected()
+	if err != nil {
+		return models.MessageRequestResponse{}, false, err
+	}
+	if updated == 0 {
+		return models.MessageRequestResponse{}, false, nil
+	}
+	request.Status = status
+	return request, true, nil
+}
+
+func getMessageRequests(db *sql.DB, recipientID string) ([]models.MessageRequestResponse, error) {
+	rows, err := db.Query(`
+		SELECT
+			request.conversation_id,
+			request.requester_id,
+			request.recipient_id,
+			request.status,
+			request.created_at,
+			requester.id,
+			requester.first_name,
+			requester.last_name,
+			requester_profile.nickname,
+			requester_avatar_media.file_path,
+			message.public_id,
+			message.sender_id,
+			message.content,
+			message.created_at,
+			receipt.delivered_at,
+			receipt.read_at
+		FROM private_message_requests request
+		JOIN users requester ON requester.id = request.requester_id
+		JOIN profiles requester_profile ON requester_profile.user_id = requester.id
+		LEFT JOIN profile_avatars requester_avatar ON requester_avatar.user_id = requester.id
+		LEFT JOIN media requester_avatar_media ON requester_avatar_media.id = requester_avatar.media_id
+		JOIN private_messages message ON message.id = (
+			SELECT first_message.id
+			FROM private_messages first_message
+			WHERE first_message.conversation_id = request.conversation_id
+			  AND first_message.is_active = TRUE
+			ORDER BY first_message.created_at ASC, first_message.id ASC
+			LIMIT 1
+		)
+		LEFT JOIN private_message_receipts receipt ON receipt.message_id = message.id
+		WHERE request.recipient_id = ? AND request.status = 'PENDING'
+		ORDER BY request.created_at DESC
+	`, recipientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	requests := make([]models.MessageRequestResponse, 0)
+	for rows.Next() {
+		var request models.MessageRequestResponse
+		requester := models.ChatUser{}
+		message := models.PrivateMessage{RecipientID: recipientID, IsActive: true}
+		if err := rows.Scan(
+			&request.ConversationID,
+			&request.RequesterID,
+			&request.RecipientID,
+			&request.Status,
+			&request.CreatedAt,
+			&requester.ID,
+			&requester.FirstName,
+			&requester.LastName,
+			&requester.Nickname,
+			&requester.AvatarPath,
+			&message.PublicID,
+			&message.SenderID,
+			&message.Content,
+			&message.CreatedAt,
+			&message.DeliveredAt,
+			&message.ReadAt,
+		); err != nil {
+			return nil, err
+		}
+		if requester.AvatarPath != nil {
+			path := "/" + strings.TrimLeft(*requester.AvatarPath, "/")
+			requester.AvatarPath = &path
+		}
+		message.ConversationID = request.ConversationID
+		request.Message = &message
+		request.Requester = &requester
+		requests = append(requests, request)
+	}
+	return requests, rows.Err()
+}
+
+func isPendingMessageRequest(db *sql.DB, conversationID string) (bool, error) {
+	var pending int
+	err := db.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1
+			FROM private_message_requests
+			WHERE conversation_id = ? AND status = 'PENDING'
+		)
+	`, conversationID).Scan(&pending)
+	return pending == 1, err
 }
 
 func validateMessageContent(content string) (string, error) {

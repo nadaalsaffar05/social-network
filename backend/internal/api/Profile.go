@@ -97,6 +97,94 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 	}
 }
 
+func GetPublicProfile(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		if auth.CurrentUser(r) == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		profile, err := utils.GetProfileObject(database, r.PathValue("user_id"))
+		if err == sql.ErrNoRows {
+			helpers.WriteError(w, http.StatusNotFound, "user not found")
+			return
+		}
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile")
+			return
+		}
+
+		result := models.PublicProfileResponse{
+			ID: profile.ID, FirstName: profile.FirstName, LastName: profile.LastName,
+			Nickname: profile.Nickname, AboutMe: profile.AboutMe, Privacy: profile.Privacy, AvatarPath: profile.AvatarPath,
+		}
+		if result.AvatarPath != nil {
+			path := "/" + strings.TrimLeft(*result.AvatarPath, "/")
+			result.AvatarPath = &path
+		}
+		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE following_id = ?`, result.ID).Scan(&result.FollowersCount)
+		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE follower_id = ?`, result.ID).Scan(&result.FollowingCount)
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{"user": result})
+	}
+}
+
+func SearchUsers(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		if auth.CurrentUser(r) == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		if len([]rune(query)) < 2 {
+			helpers.WriteJSON(w, http.StatusOK, map[string]any{"users": []models.FollowUserItem{}})
+			return
+		}
+
+		pattern := "%" + strings.ToLower(query) + "%"
+		rows, err := database.Query(`
+			SELECT user.id, user.email, user.first_name, user.last_name, profile.nickname, media.file_path, profile.privacy
+			FROM users user
+			JOIN profiles profile ON profile.user_id = user.id
+			LEFT JOIN profile_avatars avatar ON avatar.user_id = user.id
+			LEFT JOIN media ON media.id = avatar.media_id
+			WHERE LOWER(user.first_name) LIKE ?
+			   OR LOWER(user.last_name) LIKE ?
+			   OR LOWER(COALESCE(profile.nickname, '')) LIKE ?
+			ORDER BY user.first_name, user.last_name
+			LIMIT 20
+		`, pattern, pattern, pattern)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to search users")
+			return
+		}
+		defer rows.Close()
+
+		users := make([]models.FollowUserItem, 0)
+		for rows.Next() {
+			var user models.FollowUserItem
+			if err := rows.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.Nickname, &user.AvatarPath, &user.Privacy); err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "failed to read search results")
+				return
+			}
+			if user.AvatarPath != nil {
+				path := "/" + strings.TrimLeft(*user.AvatarPath, "/")
+				user.AvatarPath = &path
+			}
+			users = append(users, user)
+		}
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{"users": users})
+	}
+}
+
 // method = POST -- params will have a "status": public || private
 func UpdateProfileStatus(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

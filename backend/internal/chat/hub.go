@@ -3,29 +3,46 @@ package chat
 import (
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
-	"social-network/internal/auth"
-	"social-network/internal/helpers"
 	"social-network/internal/models"
 
 	"github.com/gorilla/websocket"
 )
 
 const (
-	maxPendingSocketEvents = 64
-	writeWait              = 10 * time.Second
-	pongWait               = 60 * time.Second
-	pingInterval           = 54 * time.Second
+	socketWriteTimeout = 10 * time.Second
+	socketReadLimit    = 8 * 1024
+	socketPongWait     = 45 * time.Second
+	socketPingInterval = 35 * time.Second
+	maxPendingEvents   = 64
 )
 
 var websocketUpgrader = websocket.Upgrader{
 	CheckOrigin: isAllowedWebSocketOrigin,
 }
 
-// Hub keeps the active WebSocket connections grouped by authenticated user ID.
+func isAllowedWebSocketOrigin(request *http.Request) bool {
+	origin := request.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+
+	originURL, err := url.Parse(origin)
+	if err != nil || (originURL.Scheme != "http" && originURL.Scheme != "https") {
+		return false
+	}
+
+	requestURL, err := url.Parse("http://" + request.Host)
+	if err != nil {
+		return false
+	}
+
+	return originURL.Hostname() == requestURL.Hostname()
+}
+
+// Hub remembers which users currently have an open WebSocket connection.
 type Hub struct {
 	mu      sync.RWMutex
 	clients map[string]map[*socketClient]struct{}
@@ -40,103 +57,78 @@ func NewHub() *Hub {
 	return &Hub{clients: make(map[string]map[*socketClient]struct{})}
 }
 
-func (h *Hub) add(userID string, client *socketClient) {
+// add returns true when this is the user's first open tab.
+func (h *Hub) add(userID string, client *socketClient) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	wasOffline := len(h.clients[userID]) == 0
 	if h.clients[userID] == nil {
 		h.clients[userID] = make(map[*socketClient]struct{})
 	}
 	h.clients[userID][client] = struct{}{}
+	return wasOffline
 }
 
-func (h *Hub) remove(userID string, client *socketClient) {
+// remove returns true when the user's final open tab was removed.
+func (h *Hub) remove(userID string, client *socketClient) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	clients, exists := h.clients[userID]
-	if !exists {
-		return
+	clients, found := h.clients[userID]
+	if !found {
+		return false
 	}
-	if _, exists := clients[client]; !exists {
-		return
+	if _, found := clients[client]; !found {
+		return false
 	}
 
 	delete(clients, client)
 	close(client.send)
 	if len(clients) == 0 {
 		delete(h.clients, userID)
+		return true
 	}
+	return false
 }
 
-// SendTo delivers an event to every open tab for a user.
+// SendTo sends one event to every open tab for a user.
 func (h *Hub) SendTo(userID string, event models.SocketEvent) {
 	h.mu.RLock()
-	defer h.mu.RUnlock()
-
 	for client := range h.clients[userID] {
 		select {
 		case client.send <- event:
 		default:
-			// A slow connection must not hold up the rest of the application.
+			// A slow tab should not delay events for everyone else.
+			_ = client.conn.Close()
 		}
 	}
+	h.mu.RUnlock()
 }
 
-func (h *Hub) WebSocket(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
+func (h *Hub) OnlineUserIDs() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	userIDs := make([]string, 0, len(h.clients))
+	for userID := range h.clients {
+		userIDs = append(userIDs, userID)
 	}
-
-	currentUser := auth.CurrentUser(r)
-	if currentUser == nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-
-	conn, err := websocketUpgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
-
-	client := &socketClient{
-		conn: conn,
-		send: make(chan models.SocketEvent, maxPendingSocketEvents),
-	}
-	h.add(currentUser.ID, client)
-
-	defer func() {
-		h.remove(currentUser.ID, client)
-		_ = conn.Close()
-	}()
-
-	go client.writePump()
-	client.readPump()
+	return userIDs
 }
 
-func (c *socketClient) readPump() {
-	c.conn.SetReadLimit(8 * 1024)
-	_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error {
-		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	})
-
-	for {
-		if _, _, err := c.conn.ReadMessage(); err != nil {
-			return
-		}
-	}
-}
-
+// writePump is the sole writer for one WebSocket connection.
 func (c *socketClient) writePump() {
-	ticker := time.NewTicker(pingInterval)
-	defer ticker.Stop()
+	ticker := time.NewTicker(socketPingInterval)
+	defer func() {
+		ticker.Stop()
+		_ = c.conn.Close()
+	}()
 
 	for {
 		select {
 		case event, ok := <-c.send:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(socketWriteTimeout))
 			if !ok {
 				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
@@ -145,24 +137,10 @@ func (c *socketClient) writePump() {
 				return
 			}
 		case <-ticker.C:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(socketWriteTimeout))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
 		}
 	}
-}
-
-func isAllowedWebSocketOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return true
-	}
-
-	originURL, err := url.Parse(origin)
-	if err != nil {
-		return false
-	}
-
-	return originURL.Host == r.Host || strings.EqualFold(originURL.Hostname(), "localhost") || originURL.Hostname() == "127.0.0.1"
 }

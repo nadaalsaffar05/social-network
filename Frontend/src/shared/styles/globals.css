@@ -1,0 +1,127 @@
+@import './variables.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  color: var(--color-text);
+}
+
+::selection {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-overlay);
+  border-radius: 999px;
+}
+
+.toast-region {
+  position: fixed;
+  z-index: 100;
+  right: 1.25rem;
+  top: 1.25rem;
+  display: grid;
+  width: min(22rem, calc(100vw - 2rem));
+  gap: 0.65rem;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  background: rgb(21 25 36 / 96%);
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 0.9rem;
+  box-shadow: 0 14px 38px rgb(0 0 0 / 30%);
+  backdrop-filter: blur(16px);
+}
+
+.toast strong { display: block; font-size: 0.88rem; }
+.toast p { margin-top: 0.15rem; color: var(--color-text-muted); font-size: 0.78rem; }
+.toast--clickable { cursor: pointer; transition: background-color var(--transition-fast), transform var(--transition-fast); }.toast--clickable:hover { background: rgb(31 37 53 / 98%); transform: translateY(-2px); }.toast--clickable:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.toast button { flex: 0 0 auto; padding: 0.42rem 0.65rem; color: var(--color-text); font: inherit; font-size: 0.76rem; font-weight: 650; cursor: pointer; background: rgb(76 124 240 / 20%); border: 1px solid rgb(76 124 240 / 42%); border-radius: 0.5rem; }
+
+.app-back-button { position: fixed; z-index: 20; top: 1.25rem; left: 1.5rem; display: inline-flex; align-items: center; gap: 1rem; padding: 0; color: var(--color-text); font: inherit; font-size: 1.25rem; font-weight: 700; cursor: pointer; background: transparent; border: 0; }.app-back-button:hover { opacity: 0.72; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

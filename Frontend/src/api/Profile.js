@@ -1,5 +1,5 @@
 import { request } from './client'
-import { buildApiUrl } from '../Config.js'
+import { buildApiUrl } from '../config/api.js'
 
 export async function getProfile({ includePosts = true } = {}) {
   const data = await request(['api', 'profile'], {
@@ -57,3 +57,29 @@ export async function followUser(userId) {
     body: { user_id: userId },
   })
 }
+
+export async function unfollowUser(userId) {
+  return await request(['api', 'unfollow'], {
+    method: 'POST',
+    body: { user_id: userId },
+  })
+}
+
+export const getFollowRequests = () => request(['api', 'follow-requests'])
+
+export const respondToFollowRequest = (requestID, action) =>
+  request(['api', 'follow-request', 'respond'], {
+    method: 'POST',
+    body: { request_id: requestID, action },
+  })
+
+export const searchUsers = (query) =>
+  request(['api', 'users', 'search'], { queryParams: { q: query } })
+
+export async function getPublicProfile(userID) {
+  const data = await request(['api', 'users', userID, 'profile'])
+  return data.user || data
+}
+
+export const isFollowing = (userID) =>
+  request(['api', 'is-following'], { queryParams: { user_id: userID } })

@@ -28,6 +28,8 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("/api/logout", authHandler.Logout)
 	mux.Handle("/api/profile", protected(api.GetProfile(db)))
 	mux.Handle("/api/profile/avatar", protected(api.UpdateAvatar(db)))
+	mux.Handle("/api/users/search", protected(api.SearchUsers(db)))
+	mux.Handle("/api/users/{user_id}/profile", protected(api.GetPublicProfile(db)))
 	mux.Handle("/api/followers", protected(api.GetFollowers(db)))
 	mux.Handle("/api/following", protected(api.GetFollowing(db)))
 	mux.Handle("/api/follow", protected(api.FollowUser(db)))
@@ -35,6 +37,7 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/is-follower", protected(api.IsFollower(db)))
 	mux.Handle("/api/is-following", protected(api.IsFollowing(db)))
 	mux.Handle("/api/follow-request/respond", protected(api.RespondToFollowRequest(db)))
+	mux.Handle("/api/follow-requests", protected(api.GetFollowRequests(db)))
 
 	// Feed routes remain grouped and use the same authentication wrapper.
 	mux.Handle("/api/posts", protected(feedHandler.CreatePost))
@@ -50,5 +53,9 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	// Private-message REST API. Real-time WebSocket support is registered later.
 	mux.Handle("/api/users/{user_id}/messages", protected(chatHandler.Messages))
 	mux.Handle("/api/users/{user_id}/messages/{public_id}", protected(chatHandler.Message))
-	mux.Handle("/ws", protected(chatHub.WebSocket))
+	mux.Handle("/api/users/{user_id}/message-request", protected(chatHandler.MessageRequest))
+	mux.Handle("/api/message-requests", protected(chatHandler.MessageRequests))
+	mux.Handle("/api/conversations", protected(chatHandler.Conversations))
+	mux.Handle("/api/users/online", protected(chatHandler.OnlineUsers))
+	mux.Handle("/ws", protected(chatHandler.WebSocket))
 }
