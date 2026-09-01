@@ -2,25 +2,25 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { loginUser } from '../../api/auth.js'
+import { useToast } from '../../shared/components/toast/useToast.js'
 import AuthBackground from './components/AuthBackground.jsx'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { error: showError } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setError('')
     setIsSubmitting(true)
 
     try {
       await loginUser({ email, password })
       navigate('/home', { replace: true })
     } catch (requestError) {
-      setError(requestError.message || 'Could not log in.')
+      showError('Could not log in', requestError.message || 'Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -58,8 +58,6 @@ export default function LoginPage() {
               required
             />
           </label>
-
-          {error && <p className="form-error" role="alert">{error}</p>}
 
           <button className="primary-button" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Logging in…' : 'Log in'}
