@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"social-network/internal/api"
 	"social-network/internal/auth"
+	"social-network/internal/chat"
 	"social-network/internal/feed"
 )
 
@@ -18,6 +19,8 @@ func newRouter(db *sql.DB) *http.ServeMux {
 func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	authHandler := &auth.Handler{DB: db}
 	feedHandler := feed.NewHandler(db)
+	chatHub := chat.NewHub()
+	chatHandler := chat.NewHandler(db, chatHub)
 	protected := func(handler http.HandlerFunc) http.Handler { return auth.Middleware(db, handler) }
 
 	mux.HandleFunc("/api/register", authHandler.Register)
@@ -43,4 +46,9 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/posts/{post_id}/reaction", protected(feedHandler.TogglePostReaction))
 	mux.Handle("/api/posts/{post_id}/comments/{comment_id}/reaction", protected(feedHandler.ToggleCommentReaction))
 	mux.Handle("/api/feed", protected(feedHandler.GetFeed))
+
+	// Private-message REST API. Real-time WebSocket support is registered later.
+	mux.Handle("/api/users/{user_id}/messages", protected(chatHandler.Messages))
+	mux.Handle("/api/users/{user_id}/messages/{public_id}", protected(chatHandler.Message))
+	mux.Handle("/ws", protected(chatHub.WebSocket))
 }
