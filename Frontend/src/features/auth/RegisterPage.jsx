@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { registerUser } from '../../api/auth.js'
+import { useToast } from '../../shared/components/toast/useToast.js'
 import AuthBackground from './components/AuthBackground.jsx'
 
 const initialForm = {
@@ -16,9 +17,16 @@ const initialForm = {
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const { error: showError } = useToast()
   const [form, setForm] = useState(initialForm)
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const passwordChecks = [
+    ['At least 6 characters', form.password.length >= 6],
+    ['An uppercase letter', /[A-Z]/.test(form.password)],
+    ['A lowercase letter', /[a-z]/.test(form.password)],
+    ['A number', /\d/.test(form.password)],
+    ['A special character', /[^a-zA-Z\d]/.test(form.password)],
+  ]
 
   function updateField(event) {
     const { name, value } = event.target
@@ -27,7 +35,6 @@ export default function RegisterPage() {
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setError('')
     setIsSubmitting(true)
 
     const user = {
@@ -40,7 +47,7 @@ export default function RegisterPage() {
       await registerUser(user)
       navigate('/home', { replace: true })
     } catch (requestError) {
-      setError(requestError.message || 'Could not create your account.')
+      showError('Could not create your account', requestError.message || 'Please check your details and try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -93,7 +100,6 @@ export default function RegisterPage() {
               required
             />
           </label>
-
           <label>
             Password
             <input
@@ -108,6 +114,9 @@ export default function RegisterPage() {
               required
             />
           </label>
+          <ul className="password-requirements" aria-label="Password requirements">
+            {passwordChecks.map(([label, met]) => <li key={label} className={met ? 'is-met' : ''}><span aria-hidden="true">{met ? '✓' : '•'}</span>{label}</li>)}
+          </ul>
 
           <label>
             Date of birth
@@ -134,8 +143,6 @@ export default function RegisterPage() {
             About me <span>(optional)</span>
             <textarea name="about_me" value={form.about_me} onChange={updateField} rows="3" />
           </label>
-
-          {error && <p className="form-error" role="alert">{error}</p>}
 
           <button className="primary-button" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Creating account…' : 'Create account'}

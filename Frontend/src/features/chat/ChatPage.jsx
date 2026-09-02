@@ -12,6 +12,7 @@ import {
   sendPrivateMessage,
 } from "../../api/chat.js";
 import { useChatRealtime } from "./realtime/useChatRealtime.js";
+import { useToast } from "../../shared/components/toast/useToast.js";
 import { BASE_API } from "../../config/api.js";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
@@ -55,6 +56,7 @@ function Avatar({ user, className = "" }) {
 export default function ChatPage() {
   const { userId } = useParams();
   const navigate = useNavigate();
+  const { error: showError, success: showSuccess } = useToast();
   const { events, onlineUserIDs, sendEvent, typingUserIDs } = useChatRealtime();
   const typingTimerRef = useRef(null);
   const [conversations, setConversations] = useState([]);
@@ -176,7 +178,7 @@ export default function ChatPage() {
       sendEvent("typing", { recipient_id: userId, is_typing: false });
       await loadInbox();
     } catch (requestError) {
-      setError(requestError.message || "Could not send message");
+      showError("Could not send message", requestError.message || "Please try again.");
     } finally {
       setIsSending(false);
     }
@@ -205,8 +207,9 @@ export default function ChatPage() {
         ? { ...message, is_active: false }
         : message));
       await loadInbox();
+      showSuccess("Message deleted");
     } catch (requestError) {
-      setError(requestError.message || "Could not delete message");
+      showError("Could not delete message", requestError.message || "Please try again.");
     }
   }
 
@@ -222,8 +225,9 @@ export default function ChatPage() {
       setRequests((current) => current.filter((item) => item.conversation_id !== request.conversation_id));
       if (action === "accept") navigate(`/messages/${request.requester_id}`);
       await loadInbox();
+      showSuccess(action === "accept" ? "Message request accepted" : "Message request declined");
     } catch (requestError) {
-      setError(requestError.message || "Could not update message request");
+      showError("Could not update message request", requestError.message || "Please try again.");
     }
   }
 

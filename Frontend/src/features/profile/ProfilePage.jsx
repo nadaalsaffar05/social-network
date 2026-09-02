@@ -9,11 +9,13 @@ import AvatarCropperModal from '../../shared/components/avatar-cropper/AvatarCro
 import PostCard from '../feed/components/PostCard.jsx'
 import GradientWaves from '../feed/components/GradientWaves.jsx'
 import { GRADIENT_WAVE_PROPS } from '../feed/constants.js'
+import { useToast } from '../../shared/components/toast/useToast.js'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { error: showError } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const fileInputRef = useRef(null)
 
@@ -21,7 +23,6 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [reactingPostID, setReactingPostID] = useState('')
   const [deletingPostID, setDeletingPostID] = useState('')
   const [selectedImageSrc, setSelectedImageSrc] = useState(null)
@@ -51,7 +52,6 @@ export default function ProfilePage() {
         if (isMounted) {
           setProfile(userProfile)
           setIsFollowingProfile(relationship?.is_following ?? false)
-          setError('')
         }
       } catch (requestError) {
         if (
@@ -63,7 +63,8 @@ export default function ProfilePage() {
           return
         }
         if (isMounted) {
-          setError(requestError.message || 'Could not load profile')
+          showError('Could not load profile', requestError.message || 'Please try again.')
+          navigate('/home', { replace: true })
         }
       } finally {
         if (isMounted) {
@@ -76,7 +77,7 @@ export default function ProfilePage() {
     return () => {
       isMounted = false
     }
-  }, [navigate, id])
+  }, [navigate, id, showError])
 
   useEffect(() => {
     let isMounted = true
@@ -119,7 +120,7 @@ export default function ProfilePage() {
       await logoutUser()
       navigate('/login', { replace: true })
     } catch (requestError) {
-      setError(requestError.message)
+      showError('Could not log out', requestError.message)
     }
   }
 
@@ -151,7 +152,7 @@ export default function ProfilePage() {
       setIsCropperOpen(false)
       setSelectedImageSrc(null)
     } catch (err) {
-      setError(err.message || 'Failed to upload avatar')
+      showError('Could not update avatar', err.message || 'Please try again.')
       setIsCropperOpen(false)
     }
   }
@@ -160,24 +161,6 @@ export default function ProfilePage() {
     return (
       <main className="auth-page">
         <p className="auth-description">Loading profile…</p>
-      </main>
-    )
-  }
-
-  if (error) {
-    return (
-      <main className="auth-page">
-        <section className="auth-card">
-          <p className="form-error">{error}</p>
-          <button
-            className="primary-button"
-            style={{ marginTop: '16px' }}
-            type="button"
-            onClick={() => navigate('/home')}
-          >
-            Back to Home
-          </button>
-        </section>
       </main>
     )
   }
@@ -218,7 +201,7 @@ export default function ProfilePage() {
       const response = await followUser(id)
       setIsFollowingProfile(response.status === 'following')
     } catch (requestError) {
-      setError(requestError.message || 'Could not follow user.')
+      showError('Could not follow user', requestError.message || 'Please try again.')
     }
   }
 
@@ -227,19 +210,19 @@ export default function ProfilePage() {
       await unfollowUser(id)
       setIsFollowingProfile(false)
     } catch (requestError) {
-      setError(requestError.message || 'Could not unfollow user.')
+      showError('Could not unfollow user', requestError.message || 'Please try again.')
     }
   }
 
   async function handlePostReaction(postId) {
     setReactingPostID(postId)
-    try { await togglePostReaction(postId, 'LIKE'); await refreshProfile() } catch (requestError) { setError(requestError.message || 'Could not update reaction.') } finally { setReactingPostID('') }
+    try { await togglePostReaction(postId, 'LIKE'); await refreshProfile() } catch (requestError) { showError('Could not update reaction', requestError.message || 'Please try again.') } finally { setReactingPostID('') }
   }
 
   async function handleDeletePost(postId) {
     if (!window.confirm('Delete this post?')) return
     setDeletingPostID(postId)
-    try { await deletePost(postId); await refreshProfile() } catch (requestError) { setError(requestError.message || 'Could not delete post.') } finally { setDeletingPostID('') }
+    try { await deletePost(postId); await refreshProfile() } catch (requestError) { showError('Could not delete post', requestError.message || 'Please try again.') } finally { setDeletingPostID('') }
   }
 
   function renderUserCard(u) {

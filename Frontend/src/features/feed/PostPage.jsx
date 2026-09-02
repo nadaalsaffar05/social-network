@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ChatCircle, DotsThree, Trash } from '@phosphor-icons/react'
 
 import { getProfile } from '../../api/profile.js'
+import { useToast } from '../../shared/components/toast/useToast.js'
 import {
   deleteComment,
   deletePost,
@@ -91,6 +92,7 @@ function CommentItem({ comment, currentUserID, isReacting, isDeleting, onDelete,
 export default function PostPage() {
   const { postId } = useParams()
   const navigate = useNavigate()
+  const { error: showError, success: showSuccess } = useToast()
   const [post, setPost] = useState(null)
   const [comments, setComments] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
@@ -162,7 +164,7 @@ export default function PostPage() {
         dislike_count: response.counts.DISLIKE,
       })
     } catch (requestError) {
-      setError(requestError.message || 'Could not update reaction.')
+      showError('Could not update reaction', requestError.message || 'Please try again.')
     } finally {
       setReactingID('')
     }
@@ -184,7 +186,7 @@ export default function PostPage() {
           : comment
       )))
     } catch (requestError) {
-      setError(requestError.message || 'Could not update reaction.')
+      showError('Could not update reaction', requestError.message || 'Please try again.')
     } finally {
       setReactingID('')
     }
@@ -212,8 +214,9 @@ export default function PostPage() {
     try {
       await deletePost(postId)
       navigate('/home', { replace: true })
+      showSuccess('Post deleted')
     } catch (requestError) {
-      setError(requestError.message || 'Could not delete post.')
+      showError('Could not delete post', requestError.message || 'Please try again.')
     }
   }
 
@@ -225,8 +228,9 @@ export default function PostPage() {
     try {
       await deleteComment(postId, commentId)
       await loadComments()
+      showSuccess('Comment deleted')
     } catch (requestError) {
-      setError(requestError.message || 'Could not delete comment.')
+      showError('Could not delete comment', requestError.message || 'Please try again.')
     } finally {
       setDeletingCommentID('')
     }

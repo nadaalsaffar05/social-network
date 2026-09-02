@@ -105,6 +105,37 @@
   font-size: 0.9rem;
 }
 
+.password-requirements {
+  display: grid;
+  gap: 4px;
+  margin: -8px 0 0;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  list-style: none;
+}
+
+.password-requirements li {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.password-requirements li span {
+  width: 0.9rem;
+  color: var(--color-text-faint);
+  font-weight: 700;
+  text-align: center;
+}
+
+.password-requirements .is-met {
+  color: #67d391;
+}
+
+.password-requirements .is-met span {
+  color: #67d391;
+}
+
 .auth-switch {
   text-align: center;
 }

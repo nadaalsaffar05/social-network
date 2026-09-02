@@ -2,24 +2,26 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { acceptMessageRequest, declineMessageRequest, getMessageRequests } from "../../api/chat.js";
+import { useToast } from "../../shared/components/toast/useToast.js";
 
 export default function MessageRequestsPage() {
   const [requests, setRequests] = useState([]);
-  const [error, setError] = useState("");
+  const { error: showError, success: showSuccess } = useToast();
 
   useEffect(() => {
     getMessageRequests()
       .then((response) => setRequests(response.requests ?? []))
-      .catch((requestError) => setError(requestError.message || "Could not load message requests"));
-  }, []);
+      .catch((requestError) => showError("Could not load message requests", requestError.message || "Please try again."));
+  }, [showError]);
 
   async function respond(request, action) {
     try {
       if (action === "accept") await acceptMessageRequest(request.requester_id);
       else await declineMessageRequest(request.requester_id);
       setRequests((current) => current.filter((item) => item.conversation_id !== request.conversation_id));
+      showSuccess(action === "accept" ? "Message request accepted" : "Message request declined");
     } catch (requestError) {
-      setError(requestError.message || "Could not update message request");
+      showError("Could not update message request", requestError.message || "Please try again.");
     }
   }
 
@@ -27,7 +29,6 @@ export default function MessageRequestsPage() {
     <main>
       <h1>Message requests</h1>
       <Link to="/messages">Back to messages</Link>
-      {error && <p role="alert">{error}</p>}
       {requests.map((request) => (
         <article key={request.conversation_id}>
           <p>{request.requester?.nickname || request.requester?.first_name || request.requester_id}</p>
