@@ -81,13 +81,11 @@ export async function unfollowUser(userId) {
   })
 }
 
-export const getFollowRequests = () => request(['api', 'follow-requests'])
-
-export const respondToFollowRequest = (requestID, action) =>
-  request(['api', 'follow-request', 'respond'], {
-    method: 'POST',
-    body: { request_id: requestID, action },
-  })
+// export const respondToFollowRequest = (requestID, action) =>
+//   request(['api', 'follow-request', 'respond'], {
+//     method: 'POST',
+//     body: { request_id: requestID, action },
+//   })
 
 export const searchUsers = (query) =>
   request(['api', 'users', 'search'], { queryParams: { q: query } })

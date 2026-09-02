@@ -7,7 +7,7 @@ import PostPage from "../../features/feed/PostPage";
 import ProfilePage from "../../features/profile/ProfilePage";
 import ChatPage from "../../features/chat/ChatPage";
 import MessageRequestsPage from "../../features/chat/MessageRequestsPage";
-import FollowRequestsPage from "../../features/profile/FollowRequestsPage";
+import FollowRequestsPage from "../../app/pages/Profile/FollowRequestsPage";
 import ProtectedRoute from "./ProtectedRoute";
 
 export default function AppRoutes() {
@@ -24,7 +24,6 @@ export default function AppRoutes() {
         <Route path="/messages" element={<ChatPage />} />
         <Route path="/messages/:userId" element={<ChatPage />} />
         <Route path="/message-requests" element={<MessageRequestsPage />} />
-        <Route path="/follow-requests" element={<FollowRequestsPage />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/login" replace />} />

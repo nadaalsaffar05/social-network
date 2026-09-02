@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, X, UserPlus, Users, Sparkle } from '@phosphor-icons/react'
-import { getFollowRequests, respondToFollowRequest } from '../../../api/Profile.js'
-import { BASE_API } from '../../../Config.js'
-import GradientWaves from '../feed/components/GradientWaves.jsx'
-import { GRADIENT_WAVE_PROPS } from '../feed/constants.js'
-import '../../../styles/FollowRequestsPage.css'
+import { ArrowLeft, Check, X, UserPlus } from '@phosphor-icons/react'
+import { getFollowRequests, respondToFollowRequest } from '../../../api/profile.js'
+import { BASE_API } from '../../../config/api.js'
+import GradientWaves from '../../../features/feed/components/GradientWaves.jsx'
+import { GRADIENT_WAVE_PROPS } from '../../../features/feed/constants.js'
+import './FollowRequestsPage.css'
 
 function mediaUrl(path) {
   if (!path) return null
