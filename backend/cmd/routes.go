@@ -27,6 +27,7 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("/api/login", authHandler.Login)
 	mux.HandleFunc("/api/logout", authHandler.Logout)
 	mux.Handle("/api/profile", protected(api.GetProfile(db)))
+	mux.Handle("/api/profile/update", protected(api.UpdateProfile(db)))
 	mux.Handle("/api/profile/avatar", protected(api.UpdateAvatar(db)))
 	mux.Handle("/api/users/search", protected(api.SearchUsers(db)))
 	mux.Handle("/api/users/{user_id}/profile", protected(api.GetPublicProfile(db)))

@@ -64,3 +64,13 @@ type PublicProfileResponse struct {
 	FollowersCount int                  `json:"followers_count"`
 	FollowingCount int                  `json:"following_count"`
 }
+
+type UpdateProfileRequest struct {
+	FirstName   string               `json:"first_name"`
+	LastName    string               `json:"last_name"`
+	Nickname    *string              `json:"nickname"`
+	AboutMe     *string              `json:"about_me"`
+	DateOfBirth string               `json:"date_of_birth"`
+	Privacy     enums.ProfilePrivacy `json:"privacy"`
+}
+

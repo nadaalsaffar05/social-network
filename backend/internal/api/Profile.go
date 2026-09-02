@@ -2,10 +2,12 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"social-network/internal/auth"
 	"social-network/internal/enums"
@@ -185,10 +187,10 @@ func SearchUsers(database *sql.DB) http.HandlerFunc {
 	}
 }
 
-// method = POST -- params will have a "status": public || private
-func UpdateProfileStatus(database *sql.DB) http.HandlerFunc {
+// UpdateProfile updates the current user's profile information (first_name, last_name, date_of_birth, nickname, about_me, privacy).
+func UpdateProfile(database *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
+		if r.Method != http.MethodPut && r.Method != http.MethodPost {
 			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
@@ -199,12 +201,111 @@ func UpdateProfileStatus(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// profile, err := utils.GetProfileObject(database, currentUser.ID)
-		// if err != nil {
-		// 	helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile")
-		// 	return
-		// }
+		var req models.UpdateProfileRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			helpers.WriteError(w, http.StatusBadRequest, "invalid request payload")
+			return
+		}
 
+		req.FirstName = strings.TrimSpace(req.FirstName)
+		req.LastName = strings.TrimSpace(req.LastName)
+		if len(req.FirstName) < 1 || len(req.FirstName) > 100 {
+			helpers.WriteError(w, http.StatusBadRequest, "first name must be between 1 and 100 characters")
+			return
+		}
+		if len(req.LastName) < 1 || len(req.LastName) > 100 {
+			helpers.WriteError(w, http.StatusBadRequest, "last name must be between 1 and 100 characters")
+			return
+		}
+
+		if _, err := time.Parse("2006-01-02", strings.TrimSpace(req.DateOfBirth)); err != nil {
+			helpers.WriteError(w, http.StatusBadRequest, "invalid date of birth format (YYYY-MM-DD expected)")
+			return
+		}
+
+		var nickname *string
+		if req.Nickname != nil {
+			trimmed := strings.TrimSpace(*req.Nickname)
+			if trimmed != "" {
+				if len([]rune(trimmed)) < 3 || len([]rune(trimmed)) > 40 {
+					helpers.WriteError(w, http.StatusBadRequest, "nickname must be between 3 and 40 characters")
+					return
+				}
+				var count int
+				err := database.QueryRow(`
+					SELECT COUNT(*) FROM profiles WHERE LOWER(nickname) = LOWER(?) AND user_id != ?
+				`, trimmed, currentUser.ID).Scan(&count)
+				if err == nil && count > 0 {
+					helpers.WriteError(w, http.StatusBadRequest, "nickname is already taken")
+					return
+				}
+				nickname = &trimmed
+			}
+		}
+
+		var aboutMe *string
+		if req.AboutMe != nil {
+			trimmed := strings.TrimSpace(*req.AboutMe)
+			if trimmed != "" {
+				if len([]rune(trimmed)) > 2000 {
+					helpers.WriteError(w, http.StatusBadRequest, "about me must not exceed 2000 characters")
+					return
+				}
+				aboutMe = &trimmed
+			}
+		}
+
+		if req.Privacy != enums.ProfilePrivacyPublic && req.Privacy != enums.ProfilePrivacyPrivate {
+			helpers.WriteError(w, http.StatusBadRequest, "invalid privacy setting")
+			return
+		}
+
+		tx, err := database.Begin()
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to start transaction")
+			return
+		}
+		defer tx.Rollback()
+
+		_, err = tx.Exec(`
+			UPDATE users
+			SET first_name = ?, last_name = ?, date_of_birth = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+			WHERE id = ?
+		`, req.FirstName, req.LastName, strings.TrimSpace(req.DateOfBirth), currentUser.ID)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to update user details")
+			return
+		}
+
+		_, err = tx.Exec(`
+			UPDATE profiles
+			SET nickname = ?, about_me = ?, privacy = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+			WHERE user_id = ?
+		`, nickname, aboutMe, req.Privacy, currentUser.ID)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to update profile details")
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to commit profile update")
+			return
+		}
+
+		updatedProfile, err := utils.GetProfileObject(database, currentUser.ID)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch updated profile")
+			return
+		}
+		if updatedProfile.AvatarPath != nil {
+			publicPath := "/" + strings.TrimLeft(*updatedProfile.AvatarPath, "/")
+			updatedProfile.AvatarPath = &publicPath
+		}
+
+		helpers.WriteJSON(w, http.StatusOK, map[string]any{
+			"message": "Profile updated successfully",
+			"user":    updatedProfile,
+		})
 	}
 }
 
