@@ -284,10 +284,10 @@ export default function ProfilePage() {
       </div>
       <div className="profile-page-content">
         <header className="profile-page-topbar">
-          <button type="button" aria-label="Go back" onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/home')}>
+          <button type="button" aria-label="Go back" onClick={() => navigate('/home')}>
             <ArrowLeft size={22} />
           </button>
-          <h1>Profile</h1>
+          <h1>Home</h1>
         </header>
       <div className="profile-layout-grid">
         {/* ==================== LEFT SIDEBAR ==================== */}
@@ -357,14 +357,6 @@ export default function ProfilePage() {
           <div className="profile-sidebar-actions">
             {isOwnProfile ? <>
             <button
-              className="primary-button profile-action-btn"
-              type="button"
-              onClick={() => navigate('/home')}
-            >
-              <House size={18} weight="bold" />
-              Home
-            </button>
-            <button
               className="profile-action-btn secondary"
               type="button"
               onClick={() => navigate('/follow-requests')}
@@ -429,40 +421,9 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* User Posts / Followers / Following Feed */}
-          <div className="profile-feed-container">
-            {/* Navigation Tabs Header */}
-            <div className="profile-tabs-header">
-              <button
-                type="button"
-                className={`profile-tab-btn ${activeTab === 'posts' ? 'active' : ''}`}
-                onClick={() => handleTabChange('posts')}
-              >
-                <NotePencil size={18} weight="bold" />
-                Posts
-                <span className="profile-tab-badge">{postsCount}</span>
-              </button>
-              <button
-                type="button"
-                className={`profile-tab-btn ${activeTab === 'followers' ? 'active' : ''}`}
-                onClick={() => handleTabChange('followers')}
-              >
-                <Users size={18} weight="bold" />
-                Followers
-                <span className="profile-tab-badge">{followersCount}</span>
-              </button>
-              <button
-                type="button"
-                className={`profile-tab-btn ${activeTab === 'following' ? 'active' : ''}`}
-                onClick={() => handleTabChange('following')}
-              >
-                <UserCheck size={18} weight="bold" />
-                Following
-                <span className="profile-tab-badge">{followingCount}</span>
-              </button>
-            </div>
 
-            {/* TAB CONTENT: POSTS */}
+          <div className="profile-feed-container">
+
             {activeTab === 'posts' && (
               posts.length > 0 ? (
                 posts.map((post) => (
