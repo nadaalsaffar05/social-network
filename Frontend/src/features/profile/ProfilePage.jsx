@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const activeTab = searchParams.get('tab') || 'posts'
 
   const [profile, setProfile] = useState(null)
+  const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reactingPostID, setReactingPostID] = useState('')
   const [deletingPostID, setDeletingPostID] = useState('')
@@ -34,7 +35,7 @@ export default function ProfilePage() {
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState('')
   const [unfollowingID, setUnfollowingID] = useState(null)
-  const isOwnProfile = !id
+  const isOwnProfile = !id || (currentUser?.id && profile?.id && String(currentUser.id) === String(profile.id))
 
   function handleTabChange(newTab) {
     setSearchParams(newTab === 'posts' ? {} : { tab: newTab })
@@ -47,9 +48,12 @@ export default function ProfilePage() {
     async function loadProfile() {
       try {
         setLoading(true)
-        const userProfile = id ? await getPublicProfile(id) : await getProfile()
-        const relationship = id ? await isFollowing(id) : null
+        const myProfile = await getProfile({ includePosts: false })
+        const userProfile = id ? await getPublicProfile(id) : myProfile
+        const isSelf = !id || (myProfile?.id && userProfile?.id && String(myProfile.id) === String(userProfile.id))
+        const relationship = (id && !isSelf) ? await isFollowing(id) : null
         if (isMounted) {
+          setCurrentUser(myProfile)
           setProfile(userProfile)
           setIsFollowingProfile(relationship?.is_following ?? false)
         }
