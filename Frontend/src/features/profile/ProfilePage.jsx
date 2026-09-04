@@ -32,6 +32,7 @@ export default function ProfilePage() {
   const [failedAvatarIDs, setFailedAvatarIDs] = useState(new Set())
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState('')
+  const [unfollowingID, setUnfollowingID] = useState(null)
   const isOwnProfile = !id
 
   function handleTabChange(newTab) {
@@ -195,42 +196,83 @@ export default function ProfilePage() {
     try { await deletePost(postId); await refreshProfile() } catch (requestError) { showError('Could not delete post', requestError.message || 'Please try again.') } finally { setDeletingPostID('') }
   }
 
-  function renderUserCard(u) {
+  async function handleUnfollowItem(targetUser) {
+    setUnfollowingID(targetUser.id)
+    try {
+      await unfollowUser(targetUser.id)
+      if (showSuccess) showSuccess('Unfollowed', `You unfollowed ${targetUser.first_name || 'user'}.`)
+      setFollowingList((prev) => prev.filter((item) => item.id !== targetUser.id))
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              following_count: Math.max(0, (prev.following_count || 1) - 1),
+            }
+          : prev
+      )
+    } catch (requestError) {
+      showError('Could not unfollow', requestError.message || 'Please try again.')
+    } finally {
+      setUnfollowingID(null)
+    }
+  }
+
+  function renderUserItem(u, isFollowingTab) {
     const uInitials = `${u.first_name?.[0] ?? ''}${u.last_name?.[0] ?? ''}`.toUpperCase()
     const uFullName = `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
     const uHandle = u.nickname ? `@${u.nickname}` : (u.email ? `@${u.email.split('@')[0]}` : '')
     const uAvatarUrl = u.avatar_path && !failedAvatarIDs.has(u.id) ? mediaUrl(u.avatar_path) : null
 
     return (
-      <div key={u.id} className="profile-user-card">
-        <div className="user-card-avatar-wrapper">
-          {uAvatarUrl ? (
-            <img
-              src={uAvatarUrl}
-              alt=""
-              className="user-card-avatar-img"
-              onError={() => setFailedAvatarIDs((previous) => new Set(previous).add(u.id))}
-            />
-          ) : (
-            <div className="user-card-avatar-initials">{uInitials}</div>
-          )}
-        </div>
-        <div className="user-card-info">
-          <h4 className="user-card-name">{uFullName}</h4>
-          {uHandle && <span className="user-card-handle">{uHandle}</span>}
-          <div className="user-card-badge-row">
-            <span className={`profile-badge ${u.privacy === 1010 ? 'private' : ''}`}>
-              {u.privacy === 1010 ? 'Private' : 'Public'}
-            </span>
+      <div key={u.id} className="profile-user-item">
+        <div className="user-item-left">
+          <div
+            className="user-item-avatar-wrapper"
+            onClick={() => navigate(`/profile/${u.id}`)}
+          >
+            {uAvatarUrl ? (
+              <img
+                src={uAvatarUrl}
+                alt=""
+                className="user-item-avatar-img"
+                onError={() => setFailedAvatarIDs((previous) => new Set(previous).add(u.id))}
+              />
+            ) : (
+              <div className="user-item-avatar-initials">{uInitials}</div>
+            )}
+          </div>
+          <div className="user-item-info">
+            <div className="user-item-name-row">
+              <h4 className="user-item-name" onClick={() => navigate(`/profile/${u.id}`)}>
+                {uFullName}
+              </h4>
+              <span className={`profile-badge ${u.privacy === 1010 ? 'private' : ''}`}>
+                {u.privacy === 1010 ? 'Private' : 'Public'}
+              </span>
+            </div>
+            {uHandle && <span className="user-item-handle">{uHandle}</span>}
           </div>
         </div>
-        <button
-          type="button"
-          className="user-card-action-btn"
-          onClick={() => navigate(`/profile/${u.id}`)}
-        >
-          View Profile
-        </button>
+
+        <div className="user-item-actions">
+          {isFollowingTab && isOwnProfile && (
+            <button
+              type="button"
+              className="user-item-btn unfollow-btn"
+              disabled={unfollowingID === u.id}
+              onClick={() => handleUnfollowItem(u)}
+            >
+              {unfollowingID === u.id ? 'Unfollowing…' : 'Unfollow'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="user-item-btn view-btn"
+            onClick={() => navigate(`/profile/${u.id}`)}
+          >
+            View Profile
+          </button>
+        </div>
       </div>
     )
   }
@@ -458,8 +500,8 @@ export default function ProfilePage() {
                   <p className="form-error">{listError}</p>
                 </div>
               ) : followersList.length > 0 ? (
-                <div className="profile-users-grid">
-                  {followersList.map(renderUserCard)}
+                <div className="profile-users-list">
+                  {followersList.map((u) => renderUserItem(u, false))}
                 </div>
               ) : (
                 <div className="profile-empty-feed">
@@ -483,8 +525,8 @@ export default function ProfilePage() {
                   <p className="form-error">{listError}</p>
                 </div>
               ) : followingList.length > 0 ? (
-                <div className="profile-users-grid">
-                  {followingList.map(renderUserCard)}
+                <div className="profile-users-list">
+                  {followingList.map((u) => renderUserItem(u, true))}
                 </div>
               ) : (
                 <div className="profile-empty-feed">
