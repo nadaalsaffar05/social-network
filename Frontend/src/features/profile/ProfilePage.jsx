@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Camera, House, SignOut, NotePencil, EnvelopeSimple, Cake, ShieldCheck, Users, UserCheck, UserPlus } from '@phosphor-icons/react'
+import { ArrowLeft, Camera, House, SignOut, NotePencil, EnvelopeSimple, Cake, ShieldCheck, Users, UserCheck, UserPlus, Cat } from '@phosphor-icons/react'
 import { followUser, getFollowers, getFollowing, getProfile, getPublicProfile, isFollowing, unfollowUser, uploadAvatar } from '../../api/profile.js'
 import { deletePost, togglePostReaction } from '../../api/feed.js'
 import { logoutUser } from '../../api/auth'
@@ -41,14 +41,13 @@ export default function ProfilePage() {
     setSearchParams(newTab === 'posts' ? {} : { tab: newTab })
   }
 
-
   useEffect(() => {
     let isMounted = true
 
     async function loadProfile() {
       try {
         setLoading(true)
-        const myProfile = await getProfile({ includePosts: false })
+        const myProfile = await getProfile()
         const userProfile = id ? await getPublicProfile(id) : myProfile
         const isSelf = !id || (myProfile?.id && userProfile?.id && String(myProfile.id) === String(userProfile.id))
         const relationship = (id && !isSelf) ? await isFollowing(id) : null
@@ -293,96 +292,150 @@ export default function ProfilePage() {
       <div className="profile-layout-grid">
         {/* ==================== LEFT SIDEBAR ==================== */}
         <aside className="profile-sidebar">
-          {/* Edit Profile Button (Pen Icon top right) */}
-          {isOwnProfile && (
-            <button
-              type="button"
-              className="profile-edit-btn"
-              title="Edit profile"
-              aria-label="Edit profile"
-              onClick={() => setIsEditModalOpen(true)}
+          {/* Avatar Container with status cat badge */}
+          <div className="profile-avatar-container">
+            <div
+              className={`profile-avatar-wrapper ${isOwnProfile ? 'editable' : ''}`}
+              onClick={isOwnProfile ? () => setIsEditModalOpen(true) : undefined}
+              title={isOwnProfile ? 'Edit profile picture' : fullName}
             >
-              <NotePencil size={20} weight="bold" />
-            </button>
-          )}
-
-          {/* Profile Picture (PFP) */}
-          <div className="profile-avatar-wrapper">
-            {avatarUrl ? (
-              <img
-                id="profile-avatar"
-                src={avatarUrl}
-                alt={fullName}
-                className="profile-avatar-img"
-              />
-            ) : (
-              <div id="profile-avatar-initials" className="profile-avatar-initials">
-                {initials}
+              {avatarUrl ? (
+                <img
+                  id="profile-avatar"
+                  src={avatarUrl}
+                  alt={fullName}
+                  className="profile-avatar-img"
+                />
+              ) : (
+                <div id="profile-avatar-initials" className="profile-avatar-initials">
+                  {initials}
+                </div>
+              )}
+              {isOwnProfile && (
+                <div className="profile-avatar-overlay">
+                  <Camera size={26} weight="bold" />
+                </div>
+              )}
+            </div>
+            {isOwnProfile && (
+              <div
+                className="profile-status-badge"
+                title="Edit profile photo"
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                <NotePencil size={18} weight="bold" className="profile-status-edit-icon" />
               </div>
             )}
           </div>
 
-          {/* First Name & Username directly under PFP */}
+          {/* Display Name & Handle */}
           <div className="profile-names-section">
             <h1 className="profile-fullname">{fullName}</h1>
-            {username && <p className="profile-username">{username}</p>}
+            {username && (
+              <p className="profile-handle-line">{username}</p>
+            )}
           </div>
 
-          {/* About Me / Bio */}
+          {/* Bio */}
           {profile?.about_me && (
             <p className="profile-bio">{profile.about_me}</p>
           )}
 
-          {/* User Details */}
-          <div className="profile-details-list">
-            {isOwnProfile && <div className="profile-detail-item">
-              <EnvelopeSimple size={16} weight="bold" />
-              <strong>Email:</strong> <span>{profile?.email}</span>
-            </div>}
-            {isOwnProfile && profile?.date_of_birth && (
-              <div className="profile-detail-item">
-                <Cake size={16} weight="bold" />
-                <strong>Born:</strong> <span>{formatDate(profile.date_of_birth)}</span>
+          {/* Primary Action Button: "Edit profile" or "Follow" */}
+          <div className="profile-primary-actions">
+            {isOwnProfile ? (
+              <button
+                type="button"
+                className="profile-edit-profile-btn"
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                Edit profile
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={isFollowingProfile ? 'profile-edit-profile-btn secondary' : 'profile-edit-profile-btn primary'}
+                onClick={isFollowingProfile ? handleUnfollowProfile : handleFollowProfile}
+              >
+                {isFollowingProfile ? 'Unfollow' : 'Follow'}
+              </button>
+            )}
+          </div>
+
+          {/* Meta Details List with Phosphor Icons */}
+          <div className="profile-meta-list">
+            <div className="profile-meta-item">
+              <Users size={18} weight="regular" className="profile-meta-icon" />
+              <span className="profile-followers-following">
+                <button
+                  type="button"
+                  className="profile-meta-stat-btn"
+                  onClick={() => handleTabChange('followers')}
+                >
+                  <strong>{followersCount}</strong> followers
+                </button>
+                {' · '}
+                <button
+                  type="button"
+                  className="profile-meta-stat-btn"
+                  onClick={() => handleTabChange('following')}
+                >
+                  <strong>{followingCount}</strong> following
+                </button>
+              </span>
+            </div>
+            {isOwnProfile && profile?.email && (
+              <div className="profile-meta-item">
+                <EnvelopeSimple size={18} weight="regular" className="profile-meta-icon" />
+                <span>{profile.email}</span>
               </div>
             )}
-            <div className="profile-detail-item" style={{ marginTop: '4px' }}>
-              <ShieldCheck size={16} weight="bold" />
-              <strong>Account:</strong>
+
+            {isOwnProfile && profile?.date_of_birth && (
+              <div className="profile-meta-item">
+                <Cake size={18} weight="regular" className="profile-meta-icon" />
+                <span>Born {formatDate(profile.date_of_birth)}</span>
+              </div>
+            )}
+
+            <div className="profile-meta-item">
+              <ShieldCheck size={18} weight="regular" className="profile-meta-icon" />
               <span className={`profile-badge ${profile?.privacy === 1010 ? 'private' : ''}`}>
-                {profile?.privacy === 1010 ? 'Private' : 'Public'}
+                {profile?.privacy === 1010 ? 'Private Account' : 'Public Account'}
               </span>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="profile-sidebar-actions">
-            {isOwnProfile ? <>
-            <button
-              className="profile-action-btn secondary"
-              type="button"
-              onClick={() => navigate('/follow-requests')}
-            >
-              Follow requests
-            </button>
-            <button
-              className="profile-action-btn secondary"
-              type="button"
-              onClick={handleLogout}
-            >
-              <SignOut size={18} weight="bold" />
-              Log out
-            </button>
-            </> : <>
-            <button
-              className={isFollowingProfile ? 'profile-action-btn secondary' : 'primary-button profile-action-btn'}
-              type="button"
-              onClick={isFollowingProfile ? handleUnfollowProfile : handleFollowProfile}
-            >
-              {isFollowingProfile ? 'Unfollow' : 'Follow'}
-            </button>
-            <button className="profile-action-btn secondary" type="button" onClick={() => navigate(`/messages/${id}`)}>Message</button>
-            </>}
-          </div>
+          {/* Secondary Actions (Requests / Logout / Message) */}
+          {isOwnProfile ? (
+            <div className="profile-secondary-actions">
+              <button
+                type="button"
+                className="profile-secondary-btn"
+                onClick={() => navigate('/follow-requests')}
+              >
+                Follow requests
+              </button>
+              <button
+                type="button"
+                className="profile-secondary-btn danger"
+                onClick={handleLogout}
+              >
+                <SignOut size={16} weight="bold" />
+                Log out
+              </button>
+            </div>
+          ) : (
+            <div className="profile-secondary-actions">
+              <button
+                type="button"
+                className="profile-secondary-btn"
+                onClick={() => navigate(`/messages/${id}`)}
+              >
+                Message
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* ==================== MAIN BODY ==================== */}

@@ -3,9 +3,6 @@ import Skeleton from './Skeleton'
 import GradientWaves from '../../../features/feed/components/GradientWaves'
 import { GRADIENT_WAVE_PROPS } from '../../../features/feed/constants'
 
-/**
- * Skeleton component for individual user item in followers/following list
- */
 export function UserItemSkeleton({ count = 1 }) {
   return (
     <>
@@ -30,9 +27,6 @@ export function UserItemSkeleton({ count = 1 }) {
   )
 }
 
-/**
- * Skeleton loader for Post Card inside profile feed
- */
 export function PostCardSkeleton({ count = 1 }) {
   return (
     <>
@@ -76,9 +70,6 @@ export function PostCardSkeleton({ count = 1 }) {
   )
 }
 
-/**
- * Full page Skeleton for ProfilePage (`/profile`)
- */
 export function ProfileSkeleton() {
   return (
     <main className="profile-layout-container">
@@ -95,38 +86,37 @@ export function ProfileSkeleton() {
         <div className="profile-layout-grid">
           {/* LEFT SIDEBAR SKELETON */}
           <aside className="profile-sidebar" style={{ pointerEvents: 'none' }}>
-            <div className="profile-avatar-wrapper" style={{ border: 'none', background: 'transparent' }}>
-              <Skeleton variant="circular" width={130} height={130} />
+            <div className="profile-avatar-container" style={{ width: 270, height: 270 }}>
+              <Skeleton variant="circular" width={270} height={270} />
             </div>
 
-            <div className="profile-names-section" style={{ alignItems: 'center', width: '100%', gap: '8px' }}>
-              <Skeleton variant="text" width="70%" height={22} />
-              <Skeleton variant="text" width="45%" height={14} />
+            <div className="profile-names-section" style={{ width: '100%', gap: '8px', marginBottom: '12px' }}>
+              <Skeleton variant="text" width="70%" height={26} />
+              <Skeleton variant="text" width="50%" height={16} />
             </div>
 
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', margin: '8px 0' }}>
-              <Skeleton variant="text" width="85%" height={12} />
-              <Skeleton variant="text" width="60%" height={12} />
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+              <Skeleton variant="text" width="90%" height={14} />
+              <Skeleton variant="text" width="65%" height={14} />
             </div>
 
-            <div className="profile-details-list" style={{ width: '100%', gap: '10px' }}>
+            <div className="profile-primary-actions" style={{ width: '100%', marginBottom: '18px' }}>
+              <Skeleton variant="button" width="100%" height={36} radius={6} />
+            </div>
+
+            <div className="profile-meta-list" style={{ width: '100%', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Skeleton variant="circular" width={16} height={16} />
-                <Skeleton variant="text" width="80%" height={14} />
+                <Skeleton variant="circular" width={18} height={18} />
+                <Skeleton variant="text" width="75%" height={14} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Skeleton variant="circular" width={16} height={16} />
+                <Skeleton variant="circular" width={18} height={18} />
+                <Skeleton variant="text" width="50%" height={14} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Skeleton variant="circular" width={18} height={18} />
                 <Skeleton variant="text" width="60%" height={14} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Skeleton variant="circular" width={16} height={16} />
-                <Skeleton variant="text" width="70%" height={14} />
-              </div>
-            </div>
-
-            <div className="profile-sidebar-actions" style={{ width: '100%', gap: '10px', marginTop: '12px' }}>
-              <Skeleton variant="button" width="100%" height={40} radius={12} />
-              <Skeleton variant="button" width="100%" height={40} radius={12} />
             </div>
           </aside>
 
@@ -161,9 +151,6 @@ export function ProfileSkeleton() {
   )
 }
 
-/**
- * Skeleton loader for Follow Requests Page (`/follow-requests`)
- */
 export function FollowRequestsSkeleton() {
   return (
     <div className="follow-requests-layout">
