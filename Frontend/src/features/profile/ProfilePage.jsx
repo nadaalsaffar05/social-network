@@ -5,7 +5,7 @@ import { followUser, getFollowers, getFollowing, getProfile, getPublicProfile, i
 import { deletePost, togglePostReaction } from '../../api/feed.js'
 import { logoutUser } from '../../api/auth'
 import { BASE_API } from '../../config/api.js'
-import AvatarCropperModal from '../../shared/components/avatar-cropper/AvatarCropperModal'
+import EditProfileModal from './EditProfileModal'
 import PostCard from '../feed/components/PostCard.jsx'
 import GradientWaves from '../feed/components/GradientWaves.jsx'
 import { GRADIENT_WAVE_PROPS } from '../feed/constants.js'
@@ -15,9 +15,8 @@ import './ProfilePage.css'
 export default function ProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { error: showError } = useToast()
+  const { error: showError, success: showSuccess } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
-  const fileInputRef = useRef(null)
 
   const activeTab = searchParams.get('tab') || 'posts'
 
@@ -25,8 +24,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [reactingPostID, setReactingPostID] = useState('')
   const [deletingPostID, setDeletingPostID] = useState('')
-  const [selectedImageSrc, setSelectedImageSrc] = useState(null)
-  const [isCropperOpen, setIsCropperOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isFollowingProfile, setIsFollowingProfile] = useState(false)
 
   const [followersList, setFollowersList] = useState([])
@@ -124,37 +122,9 @@ export default function ProfilePage() {
     }
   }
 
-  function handleAvatarClick() {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-      fileInputRef.current.click()
-    }
-  }
-
-  function handleFileSelect(e) {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0]
-      const reader = new FileReader()
-      reader.addEventListener('load', () => {
-        setSelectedImageSrc(reader.result)
-        setIsCropperOpen(true)
-      })
-      reader.readAsDataURL(file)
-    }
-  }
-
-  async function handleCropSave(croppedFile) {
-    try {
-      const result = await uploadAvatar(croppedFile)
-      if (result.avatar_path) {
-        setProfile((prev) => (prev ? { ...prev, avatar_path: result.avatar_path } : prev))
-      }
-      setIsCropperOpen(false)
-      setSelectedImageSrc(null)
-    } catch (err) {
-      showError('Could not update avatar', err.message || 'Please try again.')
-      setIsCropperOpen(false)
-    }
+  function handleProfileSave(updatedUser) {
+    setProfile((prev) => (prev ? { ...prev, ...updatedUser } : updatedUser))
+    if (showSuccess) showSuccess('Profile updated', 'Your profile details have been updated successfully.')
   }
 
   if (loading) {
@@ -280,21 +250,21 @@ export default function ProfilePage() {
       <div className="profile-layout-grid">
         {/* ==================== LEFT SIDEBAR ==================== */}
         <aside className="profile-sidebar">
-          {/* Hidden File Input */}
-          {isOwnProfile && <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            accept="image/jpeg,image/png,image/gif"
-            style={{ display: 'none' }}
-          />}
+          {/* Edit Profile Button (Pen Icon top right) */}
+          {isOwnProfile && (
+            <button
+              type="button"
+              className="profile-edit-btn"
+              title="Edit profile"
+              aria-label="Edit profile"
+              onClick={() => setIsEditModalOpen(true)}
+            >
+              <NotePencil size={20} weight="bold" />
+            </button>
+          )}
 
           {/* Profile Picture (PFP) */}
-          <div
-            className="profile-avatar-wrapper"
-            onClick={isOwnProfile ? handleAvatarClick : undefined}
-            title={isOwnProfile ? 'Click to change profile picture' : undefined}
-          >
+          <div className="profile-avatar-wrapper">
             {avatarUrl ? (
               <img
                 id="profile-avatar"
@@ -307,10 +277,6 @@ export default function ProfilePage() {
                 {initials}
               </div>
             )}
-            {isOwnProfile && <div className="profile-avatar-overlay">
-              <Camera size={24} weight="bold" />
-              <span>Change</span>
-            </div>}
           </div>
 
           {/* First Name & Username directly under PFP */}
@@ -536,14 +502,11 @@ export default function ProfilePage() {
       </div>
       </div>
 
-      {isCropperOpen && selectedImageSrc && (
-        <AvatarCropperModal
-          imageSrc={selectedImageSrc}
-          onClose={() => {
-            setIsCropperOpen(false)
-            setSelectedImageSrc(null)
-          }}
-          onCropSave={handleCropSave}
+      {isEditModalOpen && profile && (
+        <EditProfileModal
+          profile={profile}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={handleProfileSave}
         />
       )}
     </main>

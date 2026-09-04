@@ -8,6 +8,14 @@ export async function getProfile({ includePosts = true } = {}) {
   return data.user || data
 }
 
+export async function updateProfile(profileData) {
+  const data = await request(['api', 'profile', 'update'], {
+    method: 'POST',
+    body: profileData,
+  })
+  return data.user || data
+}
+
 export async function uploadAvatar(file) {
   const url = buildApiUrl(['api', 'profile', 'avatar'])
   const formData = new FormData()
