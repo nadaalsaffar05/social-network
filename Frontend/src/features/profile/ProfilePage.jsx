@@ -10,6 +10,7 @@ import PostCard from '../feed/components/PostCard.jsx'
 import GradientWaves from '../feed/components/GradientWaves.jsx'
 import { GRADIENT_WAVE_PROPS } from '../feed/constants.js'
 import { useToast } from '../../shared/components/toast/useToast.js'
+import { ProfileSkeleton, UserItemSkeleton } from '../../shared/components/skeleton/PageSkeletons.jsx'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
@@ -129,11 +130,7 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return (
-      <main className="auth-page">
-        <p className="auth-description">Loading profile…</p>
-      </main>
-    )
+    return <ProfileSkeleton />
   }
 
   const mediaUrl = (path) => new URL(`/${String(path).replace(/^\/+/, '')}`, BASE_API).toString()
@@ -453,8 +450,8 @@ export default function ProfilePage() {
             {/* TAB CONTENT: FOLLOWERS */}
             {activeTab === 'followers' && (
               listLoading ? (
-                <div className="profile-empty-feed">
-                  <p className="profile-empty-text">Loading followers…</p>
+                <div className="profile-users-list">
+                  <UserItemSkeleton count={3} />
                 </div>
               ) : listError ? (
                 <div className="profile-empty-feed">
@@ -478,8 +475,8 @@ export default function ProfilePage() {
             {/* TAB CONTENT: FOLLOWING */}
             {activeTab === 'following' && (
               listLoading ? (
-                <div className="profile-empty-feed">
-                  <p className="profile-empty-text">Loading following list…</p>
+                <div className="profile-users-list">
+                  <UserItemSkeleton count={3} />
                 </div>
               ) : listError ? (
                 <div className="profile-empty-feed">
