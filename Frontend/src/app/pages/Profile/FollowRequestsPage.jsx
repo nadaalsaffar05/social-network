@@ -104,14 +104,14 @@ export default function FollowRequestsPage() {
       <div className="follow-requests-container">
         <header className="follow-requests-header-card">
           <div className="follow-requests-header-left">
-            <button
-              type="button"
-              className="follow-requests-back-btn"
-              onClick={() => navigate(-1)}
-              aria-label="Go back"
-            >
-              <ArrowLeft size={20} weight="bold" />
-            </button>
+            {/*<button*/}
+            {/*  type="button"*/}
+            {/*  className="follow-requests-back-btn"*/}
+            {/*  onClick={() => navigate(-1)}*/}
+            {/*  aria-label="Go back"*/}
+            {/*>*/}
+            {/*  <ArrowLeft size={20} weight="bold" />*/}
+            {/*</button>*/}
             <h1 className="follow-requests-title">
               Follow Requests
               {requests.length > 0 && (
