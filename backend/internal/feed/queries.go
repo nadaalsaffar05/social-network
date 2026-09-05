@@ -61,13 +61,20 @@ func deactivatePost(db *sql.DB, postID, authorID string) (bool, error) {
 
 func deactivateComment(db *sql.DB, commentID, postID, authorID string) (bool, error) {
 	result, err := db.Exec(`
+		WITH RECURSIVE comment_thread(id) AS (
+			SELECT id
+			FROM comments
+			WHERE id = ? AND post_id = ? AND author_id = ? AND is_active = 1
+			UNION ALL
+			SELECT child.id
+			FROM comments child
+			JOIN comment_thread parent ON child.parent_comment_id = parent.id
+			WHERE child.post_id = ? AND child.is_active = 1
+		)
 		UPDATE comments
 		SET is_active = 0
-		WHERE id = ?
-		  AND post_id = ?
-		  AND author_id = ?
-		  AND is_active = 1
-	`, commentID, postID, authorID)
+		WHERE id IN (SELECT id FROM comment_thread)
+	`, commentID, postID, authorID, postID)
 	if err != nil {
 		return false, err
 	}
@@ -80,8 +87,9 @@ func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit 
 	return db.Query(`
         SELECT p.id, p.author_id, COALESCE(pr.nickname, ''), u.first_name, u.last_name, am.file_path, p.content, p.privacy, p.created_at,
           COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
-          COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
-          (SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
+		  COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
+		  (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
+		  (SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
         FROM posts p
         JOIN users u ON u.id = p.author_id
         LEFT JOIN profiles pr ON pr.user_id = p.author_id
@@ -130,6 +138,7 @@ func getPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 		SELECT p.id, p.author_id, COALESCE(pr.nickname, ''), u.first_name, u.last_name, am.file_path, p.content, p.privacy, p.created_at,
 			COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
 			COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
+			(SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
 			(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
@@ -151,6 +160,7 @@ func getPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 		&post.CreatedAt,
 		&post.LikeCount,
 		&post.DislikeCount,
+		&post.CommentCount,
 		&post.ViewerReaction,
 	)
 	if err == sql.ErrNoRows {

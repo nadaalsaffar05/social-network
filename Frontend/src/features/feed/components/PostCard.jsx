@@ -118,7 +118,7 @@ export default function PostCard({
         />
         <button type="button" onClick={onComment}>
           <ChatCircle size={21} />
-          <span>Comment</span>
+          <span>Comments {post.comment_count ?? 0}</span>
         </button>
       </footer>
     </article>

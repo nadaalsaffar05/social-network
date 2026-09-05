@@ -21,5 +21,6 @@ type PostResponse struct {
 	Media            []string          `json:"media,omitempty"`
 	LikeCount        int               `json:"like_count"`
 	DislikeCount     int               `json:"dislike_count"`
+	CommentCount     int               `json:"comment_count"`
 	ViewerReaction   *string           `json:"viewer_reaction,omitempty"`
 }

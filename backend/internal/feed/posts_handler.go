@@ -216,6 +216,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			&post.CreatedAt,
 			&post.LikeCount,
 			&post.DislikeCount,
+			&post.CommentCount,
 			&post.ViewerReaction,
 		); err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "could not read feed post")

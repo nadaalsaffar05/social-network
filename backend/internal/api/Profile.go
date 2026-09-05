@@ -61,6 +61,7 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 			SELECT p.id, p.author_id, p.content, p.privacy, p.created_at, p.updated_at,
 				COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
 				COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
+				(SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
 				(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
 			FROM posts p
 			WHERE p.author_id = ? AND p.is_active = 1
@@ -71,7 +72,7 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 			defer rows.Close()
 			for rows.Next() {
 				var post models.UserPost
-				if scanErr := rows.Scan(&post.ID, &post.AuthorID, &post.Content, &post.Privacy, &post.CreatedAt, &post.UpdatedAt, &post.LikeCount, &post.DislikeCount, &post.ViewerReaction); scanErr == nil {
+				if scanErr := rows.Scan(&post.ID, &post.AuthorID, &post.Content, &post.Privacy, &post.CreatedAt, &post.UpdatedAt, &post.LikeCount, &post.DislikeCount, &post.CommentCount, &post.ViewerReaction); scanErr == nil {
 					mRows, mErr := database.Query(`
 						SELECT m.file_path
 						FROM post_media pm
