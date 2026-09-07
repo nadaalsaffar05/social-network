@@ -322,6 +322,37 @@ func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) MessageReaction(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	currentUser := auth.CurrentUser(r)
+	if currentUser == nil {
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	var request models.MessageReactionRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	otherUserID, publicID := strings.TrimSpace(r.PathValue("user_id")), strings.TrimSpace(r.PathValue("public_id"))
+	reactions, found, err := setMessageReaction(h.DB, currentUser.ID, otherUserID, publicID, request.Emoji)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !found {
+		helpers.WriteError(w, http.StatusNotFound, "message not found")
+		return
+	}
+	event := models.SocketEvent{Type: "message:reaction", Data: map[string]any{"public_id": publicID, "reactions": reactions}}
+	h.Hub.SendTo(currentUser.ID, event)
+	h.Hub.SendTo(otherUserID, event)
+	helpers.WriteJSON(w, http.StatusOK, map[string]any{"public_id": publicID, "reactions": reactions})
+}
+
 func (h *Handler) getMessages(w http.ResponseWriter, r *http.Request) {
 	currentUser := auth.CurrentUser(r)
 	if currentUser == nil {

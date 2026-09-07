@@ -9,6 +9,7 @@ import {
   getConversations,
   getMessageRequests,
   getPrivateMessages,
+  reactToPrivateMessage,
   sendPrivateMessage,
 } from "../../api/chat.js";
 import { useChatRealtime } from "./realtime/useChatRealtime.js";
@@ -16,6 +17,7 @@ import { useToast } from "../../shared/components/toast/useToast.js";
 import { BASE_API } from "../../config/api.js";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
+import MessageReactions from "./components/MessageReactions.jsx";
 import "../../shared/styles/components/post-composer.css";
 import "./ChatPage.css";
 
@@ -32,6 +34,20 @@ function shortTime(value) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function messageTime(value) {
+  return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function messageDay(value) {
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
 function addMessages(current, incoming, { prepend = false } = {}) {
@@ -65,6 +81,8 @@ export default function ChatPage() {
   const [nextCursor, setNextCursor] = useState("");
   const [lastSeenAt, setLastSeenAt] = useState(null);
   const [content, setContent] = useState("");
+  const [reactionTargetID, setReactionTargetID] = useState("");
+  const [quickReactionTargetID, setQuickReactionTargetID] = useState("");
   const [error, setError] = useState("");
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
@@ -150,6 +168,9 @@ export default function ChatPage() {
           ? { ...message, is_active: false }
           : message));
       }
+      if (event.type === "message:reaction") {
+        setMessages((current) => current.map((message) => message.public_id === event.data.public_id ? { ...message, reactions: event.data.reactions } : message));
+      }
 
       if (event.type === "message:delivered" || event.type === "message:read") {
         const field = event.type === "message:read" ? "read_at" : "delivered_at";
@@ -196,6 +217,36 @@ export default function ChatPage() {
       typingTimerRef.current = window.setTimeout(() => {
         sendEvent("typing", { recipient_id: userId, is_typing: false });
       }, 900);
+    }
+  }
+
+  function closeReactionPickers() {
+    setReactionTargetID("");
+    setQuickReactionTargetID("");
+  }
+
+  function toggleQuickReactionPicker(messageID) {
+    if (reactionTargetID === messageID) {
+      closeReactionPickers();
+      return;
+    }
+
+    setQuickReactionTargetID((current) => current === messageID ? "" : messageID);
+  }
+
+  function toggleReactionPicker(messageID) {
+    setReactionTargetID((current) => current === messageID ? "" : messageID);
+    setQuickReactionTargetID("");
+  }
+
+  async function submitReaction(targetID, emoji) {
+    closeReactionPickers();
+
+    try {
+      const response = await reactToPrivateMessage(userId, targetID, emoji);
+      setMessages((current) => current.map((message) => message.public_id === targetID ? { ...message, reactions: response.reactions } : message));
+    } catch (requestError) {
+      showError("Could not react to message", requestError.message || "Please try again.");
     }
   }
 
@@ -333,28 +384,39 @@ export default function ChatPage() {
                   {isLoadingThread ? <p className="chat-empty">Loading messages…</p> : (
                     <>
                       {isLoadingOlder && <p className="chat-loading-older">Loading older messages…</p>}
-                      {messages.map((message) => {
+                      {messages.map((message, index) => {
                         const isMine = message.sender_id !== userId;
                         const isDeleted = message.is_active === false;
+                        const showDay = index === 0 || messageDay(messages[index - 1].created_at) !== messageDay(message.created_at);
 
                         return (
-                          <article
-                            key={message.public_id}
-                            className={`chat-message${isMine ? " chat-message--mine" : ""}${isDeleted ? " chat-message--deleted" : ""}`}
-                          >
-                            <div>
+                          <div key={message.public_id}>
+                            {showDay && <p className="chat-day-divider">{messageDay(message.created_at)}</p>}
+                            <article className={`chat-message${isMine ? " chat-message--mine" : ""}${isDeleted ? " chat-message--deleted" : ""}`}>
+                              <div>
                               <p>{isDeleted ? "This message was deleted" : message.content}</p>
                               <footer>
-                                <time>{shortTime(message.created_at)}</time>
+                                <time>{messageTime(message.created_at)}</time>
                                 {!isDeleted && isMine && <span>{message.read_at ? "Read" : message.delivered_at ? "Delivered" : "Sent"}</span>}
                                 {!isDeleted && isMine && (
                                   <button type="button" onClick={() => handleDelete(message.public_id)} aria-label="Delete message">
                                     <Trash size={14} />
                                   </button>
                                 )}
+                                {!isDeleted && (
+                                  <MessageReactions
+                                    message={message}
+                                    isPickerOpen={reactionTargetID === message.public_id}
+                                    isQuickPickerOpen={quickReactionTargetID === message.public_id}
+                                    onReact={(messageID, emoji) => void submitReaction(messageID, emoji)}
+                                    onTogglePicker={toggleReactionPicker}
+                                    onToggleQuickPicker={toggleQuickReactionPicker}
+                                  />
+                                )}
                               </footer>
-                            </div>
-                          </article>
+                              </div>
+                            </article>
+                          </div>
                         );
                       })}
                       {isRemoteTyping && (

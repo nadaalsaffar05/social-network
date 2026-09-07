@@ -152,6 +152,9 @@ func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit in
 	if err := rows.Err(); err != nil {
 		return nil, "", err
 	}
+	if err := attachMessageReactions(db, messages); err != nil {
+		return nil, "", err
+	}
 
 	nextCursor := ""
 	if hasMore && len(messages) > 0 {
@@ -159,6 +162,77 @@ func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit in
 	}
 
 	return messages, nextCursor, nil
+}
+
+func attachMessageReactions(db *sql.DB, messages []models.PrivateMessage) error {
+	for index := range messages {
+		rows, err := db.Query(`SELECT reaction.emoji, reaction.user_id FROM private_message_reactions reaction JOIN private_messages message ON message.id = reaction.message_id WHERE message.public_id = ? ORDER BY reaction.created_at`, messages[index].PublicID)
+		if err != nil {
+			return err
+		}
+		messages[index].Reactions = make([]models.MessageReaction, 0)
+		for rows.Next() {
+			var reaction models.MessageReaction
+			if err := rows.Scan(&reaction.Emoji, &reaction.UserID); err != nil {
+				rows.Close()
+				return err
+			}
+			messages[index].Reactions = append(messages[index].Reactions, reaction)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+	}
+	return nil
+}
+
+func setMessageReaction(db *sql.DB, userID, otherUserID, publicID, emoji string) ([]models.MessageReaction, bool, error) {
+	emoji = strings.TrimSpace(emoji)
+	if emoji == "" || len([]rune(emoji)) > 32 {
+		return nil, false, errors.New("invalid emoji")
+	}
+	conversationID, found, err := findConversation(db, userID, otherUserID)
+	if err != nil || !found {
+		return nil, false, err
+	}
+	var messageID int64
+	if err := db.QueryRow(`SELECT id FROM private_messages WHERE public_id = ? AND conversation_id = ? AND is_active = TRUE`, publicID, conversationID).Scan(&messageID); errors.Is(err, sql.ErrNoRows) {
+		return nil, false, nil
+	} else if err != nil {
+		return nil, false, err
+	}
+	var current string
+	err = db.QueryRow(`SELECT emoji FROM private_message_reactions WHERE message_id = ? AND user_id = ?`, messageID, userID).Scan(&current)
+	if err == nil && current == emoji {
+		_, err = db.Exec(`DELETE FROM private_message_reactions WHERE message_id = ? AND user_id = ?`, messageID, userID)
+	} else if errors.Is(err, sql.ErrNoRows) {
+		_, err = db.Exec(`INSERT INTO private_message_reactions (message_id, user_id, emoji) VALUES (?, ?, ?)`, messageID, userID, emoji)
+	} else if err == nil {
+		_, err = db.Exec(`UPDATE private_message_reactions SET emoji = ?, created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE message_id = ? AND user_id = ?`, emoji, messageID, userID)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	message := models.PrivateMessage{PublicID: publicID}
+	if err := attachMessageReactions(db, []models.PrivateMessage{message}); err != nil {
+		return nil, false, err
+	}
+	rows, err := db.Query(`SELECT emoji, user_id FROM private_message_reactions WHERE message_id = ? ORDER BY created_at`, messageID)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	reactions := make([]models.MessageReaction, 0)
+	for rows.Next() {
+		var reaction models.MessageReaction
+		if err := rows.Scan(&reaction.Emoji, &reaction.UserID); err != nil {
+			return nil, false, err
+		}
+		reactions = append(reactions, reaction)
+	}
+	return reactions, true, rows.Err()
 }
 
 func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, error) {
