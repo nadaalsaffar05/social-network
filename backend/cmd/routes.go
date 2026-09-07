@@ -7,6 +7,7 @@ import (
 	"social-network/internal/auth"
 	"social-network/internal/chat"
 	"social-network/internal/feed"
+	"social-network/internal/groups"
 )
 
 func newRouter(db *sql.DB) *http.ServeMux {
@@ -21,6 +22,7 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	feedHandler := feed.NewHandler(db)
 	chatHub := chat.NewHub()
 	chatHandler := chat.NewHandler(db, chatHub)
+	groupHandler := groups.NewHandler(db)
 	protected := func(handler http.HandlerFunc) http.Handler { return auth.Middleware(db, handler) }
 
 	mux.HandleFunc("/api/register", authHandler.Register)
@@ -59,4 +61,10 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/conversations", protected(chatHandler.Conversations))
 	mux.Handle("/api/users/online", protected(chatHandler.OnlineUsers))
 	mux.Handle("/ws", protected(chatHandler.WebSocket))
+
+	// group routes
+	mux.Handle("/api/groups", protected(groupHandler.Groups))
+	mux.Handle("/api/groups/{group_id}", protected(groupHandler.GetGroupByID))
+	mux.Handle("/api/groups/{group_id}/members", protected(groupHandler.GetGroupMembers))
+	mux.Handle("/api/groups/{group_id}/join", protected(groupHandler.JoinGroup))
 }
