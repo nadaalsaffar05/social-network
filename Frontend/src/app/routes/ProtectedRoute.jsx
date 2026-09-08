@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "@phosphor-icons/react";
 import { getProfile } from "../../api/profile.js";
 import { ChatRealtimeProvider } from "../../features/chat/realtime/ChatRealtimeProvider.jsx";
+import HeaderNav from "../../shared/components/header-nav/HeaderNav.jsx";
 
 const unauthenticatedErrors = new Set([
   "unauthorized",
@@ -64,5 +65,17 @@ export default function ProtectedRoute() {
 
   const hasPageBackButton = location.pathname !== "/home" && !location.pathname.startsWith("/posts/") && !location.pathname.startsWith("/messages") && !location.pathname.startsWith("/profile");
   const pageTitle = location.pathname.startsWith("/follow-requests") ? "Follow requests" : "Message requests";
-  return <ChatRealtimeProvider>{hasPageBackButton && <button className="app-back-button" type="button" aria-label="Go back" onClick={() => window.history.length > 1 ? navigate(-1) : navigate("/home")}><ArrowLeft size={22} /><span>{pageTitle}</span></button>}<Outlet /></ChatRealtimeProvider>;
+  return (
+    <ChatRealtimeProvider>
+      <HeaderNav />
+      {hasPageBackButton && (
+        <button className="app-back-button" type="button" aria-label="Go back" onClick={() => window.history.length > 1 ? navigate(-1) : navigate("/home")}>
+          <ArrowLeft size={22} />
+          <span>{pageTitle}</span>
+        </button>
+      )}
+      <Outlet />
+    </ChatRealtimeProvider>
+  );
 }
+
