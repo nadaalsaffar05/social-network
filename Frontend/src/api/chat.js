@@ -16,6 +16,12 @@ export const deletePrivateMessage = (userID, publicID) =>
     method: "DELETE",
   });
 
+export const reactToPrivateMessage = (userID, publicID, emoji) =>
+  request(["api", "users", userID, "messages", publicID, "reaction"], {
+    method: "POST",
+    body: { emoji },
+  });
+
 export const getOnlineUsers = () => request(["api", "users", "online"]);
 
 export const getConversations = () => request(["api", "conversations"]);

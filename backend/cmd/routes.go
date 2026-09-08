@@ -56,6 +56,7 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	// Private-message REST API. Real-time WebSocket support is registered later.
 	mux.Handle("/api/users/{user_id}/messages", protected(chatHandler.Messages))
 	mux.Handle("/api/users/{user_id}/messages/{public_id}", protected(chatHandler.Message))
+	mux.Handle("/api/users/{user_id}/messages/{public_id}/reaction", protected(chatHandler.MessageReaction))
 	mux.Handle("/api/users/{user_id}/message-request", protected(chatHandler.MessageRequest))
 	mux.Handle("/api/message-requests", protected(chatHandler.MessageRequests))
 	mux.Handle("/api/conversations", protected(chatHandler.Conversations))

@@ -2,15 +2,25 @@ package models
 
 // PrivateMessage is a private message returned by the REST and WebSocket APIs.
 type PrivateMessage struct {
-	PublicID       string  `json:"public_id"`
-	ConversationID string  `json:"conversation_id"`
-	SenderID       string  `json:"sender_id"`
-	RecipientID    string  `json:"recipient_id"`
-	Content        string  `json:"content"`
-	CreatedAt      string  `json:"created_at"`
-	DeliveredAt    *string `json:"delivered_at,omitempty"`
-	ReadAt         *string `json:"read_at,omitempty"`
-	IsActive       bool    `json:"is_active"`
+	PublicID       string            `json:"public_id"`
+	ConversationID string            `json:"conversation_id"`
+	SenderID       string            `json:"sender_id"`
+	RecipientID    string            `json:"recipient_id"`
+	Content        string            `json:"content"`
+	CreatedAt      string            `json:"created_at"`
+	DeliveredAt    *string           `json:"delivered_at,omitempty"`
+	ReadAt         *string           `json:"read_at,omitempty"`
+	IsActive       bool              `json:"is_active"`
+	Reactions      []MessageReaction `json:"reactions,omitempty"`
+}
+
+type MessageReaction struct {
+	Emoji  string `json:"emoji"`
+	UserID string `json:"user_id"`
+}
+
+type MessageReactionRequest struct {
+	Emoji string `json:"emoji"`
 }
 
 type SendPrivateMessageRequest struct {
