@@ -68,4 +68,12 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/groups/{group_id}", protected(groupHandler.GetGroupByID))
 	mux.Handle("/api/groups/{group_id}/members", protected(groupHandler.GetGroupMembers))
 	mux.Handle("/api/groups/{group_id}/join", protected(groupHandler.JoinGroup))
+	mux.Handle("/api/groups/{group_id}/join/cancel", protected(groupHandler.CancelJoinRequest))
+	mux.Handle("/api/groups/{group_id}/leave", protected(groupHandler.LeaveGroup))
+	mux.Handle("/api/groups/{group_id}/join-requests", protected(groupHandler.GetJoinRequests))
+	mux.Handle("/api/groups/{group_id}/join-requests/{request_id}/respond", protected(groupHandler.RespondToJoinRequest))
+	mux.Handle("/api/group-invites", protected(groupHandler.GetUserInvites))
+	mux.Handle("/api/group-invites/{invite_id}/respond", protected(groupHandler.RespondToInvite))
+	mux.Handle("/api/groups/{group_id}/invites", protected(groupHandler.Invites))
+	mux.Handle("/api/groups/{group_id}/invites/{invite_id}/cancel", protected(groupHandler.CancelInvite))
 }

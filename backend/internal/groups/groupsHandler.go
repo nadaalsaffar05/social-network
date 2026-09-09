@@ -2,7 +2,6 @@ package groups
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"social-network/internal/auth"
@@ -35,7 +34,7 @@ func (h *Handler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req models.CreateGroupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := helpers.ParseJSON(r.Body, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
@@ -80,7 +79,7 @@ func (h *Handler) GetGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groups, err := getGroups(h.DB)
+	groups, err := getAllGroups(h.DB)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch groups")
 		return
@@ -117,7 +116,7 @@ func (h *Handler) GetGroupByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isMember, hasPendingRequest, err := getGroupUserState(h.DB, groupID, currentUser.ID)
+	isMember, hasPendingRequest, hasPendingInvite, err := getGroupUserState(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
 		return
@@ -125,6 +124,7 @@ func (h *Handler) GetGroupByID(w http.ResponseWriter, r *http.Request) {
 
 	group.IsMember = isMember
 	group.HasPendingRequest = hasPendingRequest
+	group.HasPendingInvite = hasPendingInvite
 	helpers.WriteJSON(w, http.StatusOK, group)
 }
 

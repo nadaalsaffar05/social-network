@@ -29,7 +29,7 @@ func getUserByEmail(db *sql.DB, email string) (*models.User, error) {
 	return getUser(db, userQuery+"WHERE u.email = ?", email)
 }
 
-func getUserByID(db *sql.DB, userID string) (*models.User, error) {
+func GetUserByID(db *sql.DB, userID string) (*models.User, error) {
 	return getUser(db, userQuery+"WHERE u.id = ?", userID)
 }
 
@@ -152,5 +152,5 @@ func createUser(
 		return nil, err
 	}
 
-	return getUserByID(db, userID.String())
+	return GetUserByID(db, userID.String())
 }

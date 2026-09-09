@@ -8,6 +8,7 @@ import ProfilePage from "../../features/profile/ProfilePage";
 import ChatPage from "../../features/chat/ChatPage";
 import MessageRequestsPage from "../../features/chat/MessageRequestsPage";
 import FollowRequestsPage from "../../app/pages/Profile/FollowRequestsPage";
+import NotificationsPage from "../../features/notifications/NotificationsPage";
 import ProtectedRoute from "./ProtectedRoute";
 
 export default function AppRoutes() {
@@ -21,6 +22,7 @@ export default function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
         <Route path="/follow-requests" element={<FollowRequestsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/messages" element={<ChatPage />} />
         <Route path="/messages/:userId" element={<ChatPage />} />
         <Route path="/message-requests" element={<MessageRequestsPage />} />

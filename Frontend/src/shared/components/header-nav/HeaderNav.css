@@ -1,0 +1,116 @@
+.header-nav {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 1000;
+
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+
+  /* glassmorphism container */
+  background: rgb(255 255 255 / 5%);
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 9%),
+    0 8px 24px rgb(0 0 0 / 18%);
+}
+
+
+.header-nav__divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgb(255 255 255 / 10%);
+  flex-shrink: 0;
+}
+
+.header-nav__btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+
+  /* smooth transitions */
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.header-nav__btn:hover {
+  color: #f1f5f9;
+  background: rgb(255 255 255 / 8%);
+}
+
+.header-nav__btn:active {
+  background: rgb(255 255 255 / 12%);
+}
+
+/* focus ring for keyboard nav */
+.header-nav__btn:focus-visible {
+  outline: 2px solid var(--color-primary, #6366f1);
+  outline-offset: -2px;
+  border-radius: 13px;
+}
+
+/* icon scale on hover */
+.header-nav__btn svg {
+  display: block;
+  transition: transform 0.18s ease;
+}
+
+.header-nav__btn:hover svg {
+  transform: scale(1.12);
+}
+
+
+.header-nav__badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+
+  background: var(--color-primary, #6366f1);
+  border-radius: 999px;
+  border: 2px solid var(--color-bg, #0b0f19);
+
+  /* subtle pulse so it grabs attention */
+  animation: badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes badge-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-nav__btn {
+    padding: 9px 13px;
+  }
+}
