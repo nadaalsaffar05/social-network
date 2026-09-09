@@ -12,17 +12,19 @@ const (
 type GroupInvitationStatus int
 
 const (
-	GroupInvitationStatusPending  GroupInvitationStatus = 1000
-	GroupInvitationStatusAccepted GroupInvitationStatus = 1010
-	GroupInvitationStatusDeclined GroupInvitationStatus = 1020
+	GroupInvitationStatusPending   GroupInvitationStatus = 1000
+	GroupInvitationStatusAccepted  GroupInvitationStatus = 1010
+	GroupInvitationStatusDeclined  GroupInvitationStatus = 1020
+	GroupInvitationStatusCancelled GroupInvitationStatus = 1030
 )
 
 type GroupJoinRequestStatus int
 
 const (
-	GroupJoinRequestStatusPending  GroupJoinRequestStatus = 1000
-	GroupJoinRequestStatusAccepted GroupJoinRequestStatus = 1010
-	GroupJoinRequestStatusDeclined GroupJoinRequestStatus = 1020
+	GroupJoinRequestStatusPending   GroupJoinRequestStatus = 1000
+	GroupJoinRequestStatusAccepted  GroupJoinRequestStatus = 1010
+	GroupJoinRequestStatusDeclined  GroupJoinRequestStatus = 1020
+	GroupJoinRequestStatusCancelled GroupJoinRequestStatus = 1030
 )
 
 type GroupMembershipStatus int

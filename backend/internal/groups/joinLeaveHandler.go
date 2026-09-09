@@ -38,7 +38,7 @@ func (h *Handler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isMember, hasPendingRequest, err := getGroupUserState(h.DB, groupID, currentUser.ID)
+	isMember, hasPendingRequest, hasPendingInvite, err := getGroupUserState(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
 		return
@@ -54,10 +54,15 @@ func (h *Handler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if hasPendingInvite {
+		helpers.WriteError(w, http.StatusConflict, "User already has a pending invitation for this group")
+		return
+	}
+
 	joinRequestID := uuid.New().String()
 	err = createJoinRequest(h.DB, joinRequestID, groupID, currentUser.ID)
 	if err != nil {
-		helpers.WriteError(w, http.StatusConflict, "Failed to create join request")
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create join request")
 		return
 	}
 
@@ -97,7 +102,7 @@ func (h *Handler) LeaveGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isMember, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
+	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
 		return
@@ -226,4 +231,31 @@ func (h *Handler) RespondToJoinRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	helpers.WriteJSON(w, http.StatusOK, map[string]string{"message": "Successfully responded to join request", "new_status": string(req.Action)})
+}
+
+func (h *Handler) CancelJoinRequest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		helpers.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	currentUser := auth.CurrentUser(r)
+	if currentUser == nil {
+		helpers.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	groupID := r.PathValue("group_id")
+	if groupID == "" {
+		helpers.WriteError(w, http.StatusBadRequest, "Group ID is required")
+		return
+	}
+
+	err := cancelJoinRequest(h.DB, groupID, currentUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to cancel join request")
+		return
+	}
+
+	helpers.WriteJSON(w, http.StatusOK, map[string]string{"message": "Join request cancelled"})
 }

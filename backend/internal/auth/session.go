@@ -108,7 +108,7 @@ func getUserFromSession(
 		WHERE token_hash = ?
 	`, tokenHash)
 
-	return getUserByID(db, userID)
+	return GetUserByID(db, userID)
 }
 
 func revokeSession(db *sql.DB, token string) error {
