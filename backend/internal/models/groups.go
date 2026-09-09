@@ -27,12 +27,12 @@ type GroupDetailsResponse struct {
 
 // can add avatar maybe
 type GroupMemberResponse struct {
-	UserID     string  `json:"user_id"`
-	FirstName  string  `json:"first_name"`
-	LastName   string  `json:"last_name"`
-	Nickname   *string `json:"nickname,omitempty"`
-	Role       int     `json:"role"`
-	JoinedAt   string  `json:"joined_at"`
+	UserID    string  `json:"user_id"`
+	FirstName string  `json:"first_name"`
+	LastName  string  `json:"last_name"`
+	Nickname  *string `json:"nickname,omitempty"`
+	Role      int     `json:"role"`
+	JoinedAt  string  `json:"joined_at"`
 }
 
 type GroupJoinRequest struct {
