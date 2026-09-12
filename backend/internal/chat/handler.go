@@ -366,7 +366,7 @@ func (h *Handler) getMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, err := messagesLimit(r.URL.Query().Get("limit"))
+	limit, err := MessagesLimit(r.URL.Query().Get("limit"))
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 50")
 		return
@@ -418,7 +418,7 @@ func (h *Handler) createMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := validateMessageContent(request.Content)
+	content, err := ValidateMessageContent(request.Content)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -451,7 +451,7 @@ func (h *Handler) createMessage(w http.ResponseWriter, r *http.Request) {
 	helpers.WriteJSON(w, http.StatusCreated, message)
 }
 
-func messagesLimit(value string) (int, error) {
+func MessagesLimit(value string) (int, error) {
 	if value == "" {
 		return 30, nil
 	}

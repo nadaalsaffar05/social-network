@@ -22,7 +22,7 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	feedHandler := feed.NewHandler(db)
 	chatHub := chat.NewHub()
 	chatHandler := chat.NewHandler(db, chatHub)
-	groupHandler := groups.NewHandler(db)
+	groupHandler := groups.NewHandler(db, chatHub)
 	protected := func(handler http.HandlerFunc) http.Handler { return auth.Middleware(db, handler) }
 
 	mux.HandleFunc("/api/register", authHandler.Register)
@@ -76,4 +76,8 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/group-invites/{invite_id}/respond", protected(groupHandler.RespondToInvite))
 	mux.Handle("/api/groups/{group_id}/invites", protected(groupHandler.Invites))
 	mux.Handle("/api/groups/{group_id}/invites/{invite_id}/cancel", protected(groupHandler.CancelInvite))
+	mux.Handle("/api/groups/{group_id}/events", protected(groupHandler.Events))
+	mux.Handle("/api/groups/{group_id}/events/{event_id}", protected(groupHandler.GetEvent))
+	mux.Handle("/api/groups/{group_id}/events/{event_id}/respond", protected(groupHandler.RespondToEvent))
+	mux.Handle("/api/groups/{group_id}/messages", protected(groupHandler.GroupMessages))
 }

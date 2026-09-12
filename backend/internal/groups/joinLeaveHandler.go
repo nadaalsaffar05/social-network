@@ -113,9 +113,14 @@ func (h *Handler) LeaveGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = updateMembershipStatus(h.DB, groupID, currentUser.ID)
+	rowsAffected, err := markRemoved(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to leave group")
+		return
+	}
+
+	if rowsAffected == 0 {
+		helpers.WriteError(w, http.StatusNotFound, "Active group membership not found")
 		return
 	}
 
@@ -251,9 +256,14 @@ func (h *Handler) CancelJoinRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := cancelJoinRequest(h.DB, groupID, currentUser.ID)
+	rowsAffected, err := cancelJoinRequest(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to cancel join request")
+		return
+	}
+
+	if rowsAffected == 0 {
+		helpers.WriteError(w, http.StatusNotFound, "No pending join request found")
 		return
 	}
 

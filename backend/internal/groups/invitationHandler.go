@@ -286,9 +286,14 @@ func (h *Handler) CancelInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = cancelInvite(h.DB, inviteID, groupID)
+	rowsAffected, err := cancelInvite(h.DB, inviteID, groupID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to cancel invite")
+		return
+	}
+
+	if rowsAffected == 0 {
+		helpers.WriteError(w, http.StatusNotFound, "No pending invite found")
 		return
 	}
 

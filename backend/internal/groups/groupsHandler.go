@@ -146,6 +146,17 @@ func (h *Handler) GetGroupMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err := getGroupByID(h.DB, groupID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.WriteError(w, http.StatusNotFound, "Group not found")
+			return
+		}
+
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group")
+		return
+	}
+
 	members, err := getGroupMembers(h.DB, groupID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group members")

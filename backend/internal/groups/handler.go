@@ -1,11 +1,15 @@
 package groups
 
-import "database/sql"
+import (
+	"database/sql"
+	"social-network/internal/chat"
+)
 
 type Handler struct {
-	DB *sql.DB
+	DB  *sql.DB
+	Hub *chat.Hub
 }
 
-func NewHandler(db *sql.DB) *Handler {
-	return &Handler{DB: db}
+func NewHandler(db *sql.DB, hub *chat.Hub) *Handler {
+	return &Handler{DB: db, Hub: hub}
 }

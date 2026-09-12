@@ -666,7 +666,7 @@ func isPendingMessageRequest(db *sql.DB, conversationID string) (bool, error) {
 	return pending == 1, err
 }
 
-func validateMessageContent(content string) (string, error) {
+func ValidateMessageContent(content string) (string, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return "", errors.New("content is required")
