@@ -193,7 +193,7 @@ export default function FeedPage() {
           <div className="feed-title">
             <button className="feed-title__brand" type="button" onClick={() => navigate('/home')}>
               <img src="/loop-logo.png" alt="" />
-              <span>Loop</span>
+              <span>loop</span>
             </button>
           </div>
           <div className="feed-search-wrap">

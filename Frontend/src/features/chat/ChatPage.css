@@ -22,7 +22,7 @@
 .chat-inbox { display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; border-right: 1px solid rgb(255 255 255 / 10%); }
 .chat-inbox__header, .chat-thread__header { display: flex; align-items: center; gap: 0.75rem; }
 .chat-inbox__header { padding: 1.25rem 1.25rem 0.75rem; }
-.chat-inbox h1, .chat-thread h2 { margin: 0; font-size: 1.15rem; letter-spacing: -0.03em; }
+.chat-inbox h1, .chat-thread h2 { margin: 0; font-size: 1.15rem; font-weight: 400; letter-spacing: normal; }
 
 .chat-inbox__back, .chat-back { display: grid; place-items: center; width: 1.6rem; height: 2rem; padding: 0; color: var(--color-text); background: transparent; border: 0; }
 .chat-inbox__back:hover, .chat-back:hover { opacity: 0.72; }

@@ -127,7 +127,8 @@
   margin: 0;
   color: #f8fafc;
   font-size: 1.12rem;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  letter-spacing: normal;
 }
 
 .post-composer__close,

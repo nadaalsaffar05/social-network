@@ -32,7 +32,7 @@ export default function LoginPage() {
 
       <section className="auth-card" aria-labelledby="login-title">
         <p className="auth-eyebrow">Welcome back</p>
-        <h1 id="login-title">Log in to Loop</h1>
+        <h1 id="login-title">Log in to loop</h1>
         <p className="auth-description">Connect with your communities and friends.</p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -65,7 +65,7 @@ export default function LoginPage() {
         </form>
 
         <p className="auth-switch">
-          New to Loop? <Link to="/register">Create an account</Link>
+          New to loop? <Link to="/register">Create an account</Link>
         </p>
       </section>
     </main>
