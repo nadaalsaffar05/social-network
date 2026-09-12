@@ -83,3 +83,20 @@ type GroupEventResponse struct {
 	CreatedAt        string               `json:"created_at"`
 	MyResponse       *enums.EventResponse `json:"my_response,omitempty"`
 }
+
+type GroupMessage struct {
+	PublicID        string  `json:"public_id"`
+	GroupID         string  `json:"group_id"`
+	SenderID        string  `json:"sender_id"`
+	SenderFirstName string  `json:"sender_first_name"`
+	SenderLastName  string  `json:"sender_last_name"`
+	SenderNickname  *string `json:"sender_nickname,omitempty"`
+	Content         string  `json:"content"`
+	CreatedAt       string  `json:"created_at"`
+	IsActive        bool    `json:"is_active"`
+}
+
+type GroupMessagesResponse struct {
+	Messages   []GroupMessage `json:"messages"`
+	NextCursor string         `json:"next_cursor,omitempty"`
+}

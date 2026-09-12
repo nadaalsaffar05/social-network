@@ -5,8 +5,11 @@ import (
 	"errors"
 	"social-network/internal/enums"
 	"social-network/internal/models"
+
+	"github.com/google/uuid"
 )
 
+// groups
 func createGroup(db *sql.DB, id string, creatorID string, title string, description string) (models.GroupResponse, error) {
 	var group models.GroupResponse
 	err := db.QueryRow(`
@@ -116,6 +119,9 @@ func getGroupUserState(db *sql.DB, groupID string, userID string) (bool, bool, b
 	return isMember, hasPendingRequest, hasPendingInvite, err
 }
 
+//////////////////////////////////////////////////////////////////////////////
+
+// join/leave
 func createJoinRequest(db *sql.DB, joinRequestID string, groupID string, userID string) error {
 	_, err := db.Exec(`
 		INSERT INTO group_join_requests (id, group_id, user_id, status)
@@ -244,6 +250,9 @@ func cancelJoinRequest(db *sql.DB, groupID string, userID string) (int64, error)
 	return result.RowsAffected()
 }
 
+//////////////////////////////////////////////////////////////////////////////
+
+// invite
 func createInvite(db *sql.DB, inviteID string, groupID string, inviterID string, invitedUserID string) error {
 	_, err := db.Exec(`
 	INSERT INTO group_invitations
@@ -497,6 +506,9 @@ func cancelInvite(db *sql.DB, inviteID string, groupID string) (int64, error) {
 	return result.RowsAffected()
 }
 
+//////////////////////////////////////////////////////////////////////////////
+
+// events
 func createEvent(db *sql.DB, eventID string, groupID string, creatorID string, title string, description string, startsAt string) error {
 	_, err := db.Exec(`
 		INSERT INTO group_events
@@ -634,4 +646,181 @@ func respondToEvent(db *sql.DB, action string, groupID string, eventID string, u
 	`, eventID, groupID, userID, newResponse)
 
 	return err
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+// group chat
+
+func getGroupMessages(db *sql.DB, groupID string, cursor string, limit int) ([]models.GroupMessage, string, error) {
+	cursorCreatedAt := ""
+	cursorID := int64(0)
+	if cursor != "" {
+		err := db.QueryRow(`
+			SELECT created_at, id
+			FROM group_messages
+			WHERE public_id = ?
+				AND group_id = ?
+		`, cursor, groupID).Scan(&cursorCreatedAt, &cursorID)
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, "", errInvalidCursor
+		}
+
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	rows, err := db.Query(`
+		SELECT
+			gm.public_id,
+			gm.group_id,
+			gm.sender_id,
+			u.first_name,
+			u.last_name,
+			p.nickname,
+			gm.content,
+			gm.created_at,
+			gm.is_active
+		FROM group_messages gm
+		JOIN users u
+			ON u.id = gm.sender_id
+		LEFT JOIN profiles p
+			ON p.user_id = u.id
+		WHERE gm.group_id = ?
+		  AND (
+			? = ''
+			OR gm.created_at < ?
+			OR (gm.created_at = ? AND gm.id < ?)
+		  )
+		ORDER BY gm.created_at DESC, gm.id DESC
+		LIMIT ?
+	`, groupID, cursor, cursorCreatedAt, cursorCreatedAt, cursorID, limit+1)
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	defer rows.Close()
+
+	messages := make([]models.GroupMessage, 0, limit)
+	hasMore := false
+	for rows.Next() {
+		if len(messages) == limit {
+			hasMore = true
+			break
+		}
+
+		var message models.GroupMessage
+		err := rows.Scan(&message.PublicID, &message.GroupID, &message.SenderID, &message.SenderFirstName,
+			&message.SenderLastName, &message.SenderNickname, &message.Content, &message.CreatedAt, &message.IsActive)
+
+		if err != nil {
+			return nil, "", err
+		}
+
+		messages = append(messages, message)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, "", err
+	}
+
+	nextCursor := ""
+
+	if hasMore && len(messages) > 0 {
+		nextCursor = messages[len(messages)-1].PublicID
+	}
+
+	return messages, nextCursor, nil
+}
+
+func getGroupChatID(db *sql.DB, groupID string) (string, error) {
+	var chatID string
+	err := db.QueryRow(`
+		SELECT id
+		FROM group_chats
+		WHERE group_id = ?
+	`, groupID).Scan(&chatID)
+
+	return chatID, err
+}
+
+func createGroupMessage(db *sql.DB, groupID string, senderID string, content string) (models.GroupMessage, error) {
+	chatID, err := getGroupChatID(db, groupID)
+	if err != nil {
+		return models.GroupMessage{}, err
+	}
+
+	publicID := uuid.New().String()
+	_, err = db.Exec(`
+		INSERT INTO group_messages
+		(public_id, chat_id, group_id, sender_id, content)
+		VALUES (?, ?, ?, ?, ?)
+	`, publicID, chatID, groupID, senderID, content)
+
+	if err != nil {
+		return models.GroupMessage{}, err
+	}
+
+	return getGroupMessageByPublicID(db, groupID, publicID)
+}
+
+func getGroupMessageByPublicID(db *sql.DB, groupID string, publicID string) (models.GroupMessage, error) {
+	var message models.GroupMessage
+	err := db.QueryRow(`
+		SELECT
+			gm.public_id,
+			gm.group_id,
+			gm.sender_id,
+			u.first_name,
+			u.last_name,
+			p.nickname,
+			gm.content,
+			gm.created_at,
+			gm.is_active
+		FROM group_messages gm
+		JOIN users u
+			ON u.id = gm.sender_id
+		LEFT JOIN profiles p
+			ON p.user_id = u.id
+		WHERE gm.group_id = ?
+		  AND gm.public_id = ?
+	`, groupID, publicID,
+	).Scan(&message.PublicID, &message.GroupID, &message.SenderID, &message.SenderFirstName, &message.SenderLastName,
+		&message.SenderNickname, &message.Content, &message.CreatedAt, &message.IsActive)
+
+	return message, err
+}
+
+func getActiveGroupMemberIDs(db *sql.DB, groupID string) ([]string, error) {
+	rows, err := db.Query(`
+		SELECT user_id
+		FROM group_members
+		WHERE group_id = ?
+		  AND status = ?
+	`, groupID, enums.GroupMembershipStatusActive)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	memberIDs := make([]string, 0)
+	for rows.Next() {
+		var userID string
+
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+
+		memberIDs = append(memberIDs, userID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return memberIDs, nil
 }
