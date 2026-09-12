@@ -824,3 +824,111 @@ func getActiveGroupMemberIDs(db *sql.DB, groupID string) ([]string, error) {
 
 	return memberIDs, nil
 }
+
+//////////////////////////////////////////////////////////////////////////////
+
+// group posts
+func createGroupPost(
+	db *sql.DB, postID string, authorID string, groupID string, content string) error {
+	_, err := db.Exec(`
+		INSERT INTO posts
+		(id, author_id, group_id, content, privacy)
+		VALUES (?, ?, ?, ?, ?)
+	`, postID, authorID, groupID, content, enums.PostPrivacyGroup)
+
+	return err
+}
+
+func getGroupPosts(db *sql.DB, groupID string, viewerID string, cursor string, limit int) ([]models.PostResponse, string, error) {
+	cursorCreatedAt := ""
+	cursorID := ""
+	if cursor != "" {
+		err := db.QueryRow(`
+			SELECT id, created_at
+			FROM posts
+			WHERE id = ?
+			  AND group_id = ?
+			  AND is_active = 1
+		`,
+			cursor,
+			groupID,
+		).Scan(&cursorID, &cursorCreatedAt)
+
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	rows, err := db.Query(`
+		SELECT
+			p.id,
+			p.author_id,
+			COALESCE(pr.nickname, ''),
+			u.first_name,
+			u.last_name,
+			am.file_path,
+			p.content,
+			p.privacy,
+			p.created_at,
+			COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
+			COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
+			(SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
+			(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
+		FROM posts p
+		JOIN users u
+			ON u.id = p.author_id
+		LEFT JOIN profiles pr
+			ON pr.user_id = p.author_id
+		LEFT JOIN profile_avatars pa
+			ON pa.user_id = p.author_id
+		LEFT JOIN media am
+			ON am.id = pa.media_id
+		WHERE p.group_id = ?
+		  AND p.is_active = 1
+		  AND (
+			? = ''
+			OR p.created_at < ?
+			OR (p.created_at = ? AND p.id < ?)
+		  )
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ?
+	`, viewerID, groupID, cursor, cursorCreatedAt, cursorCreatedAt, cursorID, limit+1)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	posts := make([]models.PostResponse, 0, limit)
+	hasMore := false
+	for rows.Next() {
+		if len(posts) == limit {
+			hasMore = true
+			break
+		}
+
+		var post models.PostResponse
+		if err := rows.Scan(&post.ID, &post.AuthorID, &post.AuthorNickname, &post.AuthorFirstName, &post.AuthorLastName,
+			&post.AuthorAvatarPath, &post.Content, &post.Privacy, &post.CreatedAt, &post.LikeCount, &post.DislikeCount,
+			&post.CommentCount, &post.ViewerReaction); err != nil {
+			return nil, "", err
+		}
+
+		if post.AuthorAvatarPath != nil {
+			path := "/" + *post.AuthorAvatarPath
+			post.AuthorAvatarPath = &path
+		}
+
+		posts = append(posts, post)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, "", err
+	}
+
+	nextCursor := ""
+	if hasMore && len(posts) > 0 {
+		nextCursor = posts[len(posts)-1].ID
+	}
+
+	return posts, nextCursor, nil
+}

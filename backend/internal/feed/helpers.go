@@ -10,7 +10,7 @@ import (
 	"social-network/internal/enums"
 )
 
-func feedLimit(value string) (int, error) {
+func FeedLimit(value string) (int, error) {
 	if value == "" {
 		return 10, nil
 	}

@@ -80,4 +80,5 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/groups/{group_id}/events/{event_id}", protected(groupHandler.GetEvent))
 	mux.Handle("/api/groups/{group_id}/events/{event_id}/respond", protected(groupHandler.RespondToEvent))
 	mux.Handle("/api/groups/{group_id}/messages", protected(groupHandler.GroupMessages))
+	mux.Handle("/api/groups/{group_id}/posts", protected(groupHandler.Posts))
 }

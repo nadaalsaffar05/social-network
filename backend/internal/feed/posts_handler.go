@@ -164,7 +164,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, err := feedLimit(r.URL.Query().Get("limit"))
+	limit, err := FeedLimit(r.URL.Query().Get("limit"))
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 50")
 		return
@@ -173,7 +173,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
 	cursorCreatedAt := ""
 	if cursor != "" {
-		cursorPost, found, err := getPostForViewer(h.DB, cursor, currentUser.ID)
+		cursorPost, found, err := GetPostForViewer(h.DB, cursor, currentUser.ID)
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "could not read feed cursor")
 			return
@@ -272,7 +272,7 @@ func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	postID := r.PathValue("post_id")
-	post, found, err := getPostForViewer(h.DB, postID, currentUser.ID)
+	post, found, err := GetPostForViewer(h.DB, postID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not fetch post")
 		return

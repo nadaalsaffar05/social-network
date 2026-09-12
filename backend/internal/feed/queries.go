@@ -127,7 +127,7 @@ func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit 
 	    `, viewerID, viewerID, viewerID, viewerID, cursorID, cursorCreatedAt, cursorCreatedAt, cursorID, limit)
 }
 
-func getPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse, bool, error) {
+func GetPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse, bool, error) {
 	allowed, err := canViewPost(db, postID, viewerID)
 	if err != nil || !allowed {
 		return models.PostResponse{}, allowed, err
@@ -147,7 +147,6 @@ func getPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 		LEFT JOIN media am ON am.id = pa.media_id
 		WHERE p.id = ?
 		  AND p.is_active = 1
-		  AND p.group_id IS NULL
 	`, viewerID, postID).Scan(
 		&post.ID,
 		&post.AuthorID,
@@ -195,10 +194,20 @@ func canViewPost(db *sql.DB, postID, viewerID string) (bool, error) {
 					WHERE pv.post_id = p.id AND pv.user_id = ?
 				)
 			)
-		) THEN 1 ELSE 0 END
+		) 
+		WHEN
+			p.group_id IS NOT NULL
+			AND EXISTS (
+				SELECT 1
+				FROM group_members gm
+				WHERE gm.group_id = p.group_id
+					AND gm.user_id = ?
+					AND gm.status = ?
+				)
+		THEN 1 ELSE 0 END
 		FROM posts p
 		WHERE p.id = ? AND p.is_active = 1
-	`, viewerID, viewerID, viewerID, postID).Scan(&allowed)
+	`, viewerID, viewerID, viewerID, viewerID, enums.GroupMembershipStatusActive, postID).Scan(&allowed)
 	if err == sql.ErrNoRows {
 		return false, nil
 	}
