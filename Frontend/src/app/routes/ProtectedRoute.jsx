@@ -63,7 +63,7 @@ export default function ProtectedRoute() {
     );
   }
 
-  const hasPageBackButton = location.pathname !== "/home" && !location.pathname.startsWith("/posts/") && !location.pathname.startsWith("/messages") && !location.pathname.startsWith("/profile");
+  const hasPageBackButton = location.pathname !== "/home" && !location.pathname.startsWith("/posts/") && !location.pathname.startsWith("/messages") && !location.pathname.startsWith("/profile")&& !location.pathname.startsWith("/notifications");
   const pageTitle = location.pathname.startsWith("/follow-requests") ? "Follow requests" : "Message requests";
   return (
     <ChatRealtimeProvider>
