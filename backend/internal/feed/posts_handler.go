@@ -231,17 +231,11 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postIDs := make([]string, len(posts))
-	for i, post := range posts {
-		postIDs[i] = post.ID
-	}
-	mediaByPost, err := getPostMediaForPosts(h.DB, postIDs)
-	if err != nil {
+	if err := AttachPostMedia(h.DB, posts); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not read post media")
 		return
 	}
 	for i := range posts {
-		posts[i].Media = mediaByPost[posts[i].ID]
 		if posts[i].AuthorAvatarPath != nil {
 			path := "/" + *posts[i].AuthorAvatarPath
 			posts[i].AuthorAvatarPath = &path

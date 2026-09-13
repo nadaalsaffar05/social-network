@@ -85,18 +85,49 @@ type GroupEventResponse struct {
 }
 
 type GroupMessage struct {
-	PublicID        string  `json:"public_id"`
-	GroupID         string  `json:"group_id"`
-	SenderID        string  `json:"sender_id"`
-	SenderFirstName string  `json:"sender_first_name"`
-	SenderLastName  string  `json:"sender_last_name"`
-	SenderNickname  *string `json:"sender_nickname,omitempty"`
-	Content         string  `json:"content"`
-	CreatedAt       string  `json:"created_at"`
-	IsActive        bool    `json:"is_active"`
+	PublicID        string                 `json:"public_id"`
+	GroupID         string                 `json:"group_id"`
+	SenderID        string                 `json:"sender_id"`
+	SenderFirstName string                 `json:"sender_first_name"`
+	SenderLastName  string                 `json:"sender_last_name"`
+	SenderNickname  *string                `json:"sender_nickname,omitempty"`
+	Content         string                 `json:"content"`
+	CreatedAt       string                 `json:"created_at"`
+	IsActive        bool                   `json:"is_active"`
+	ReadCount       int                    `json:"read_count"`
+	ReadBy          []ChatUser             `json:"read_by"`
+	Reactions       []MessageReaction      `json:"reactions"`
+	ReactionSummary []GroupMessageReaction `json:"reaction_summary"`
 }
 
 type GroupMessagesResponse struct {
 	Messages   []GroupMessage `json:"messages"`
 	NextCursor string         `json:"next_cursor,omitempty"`
+}
+
+type GroupMessageReaction struct {
+	Emoji          string   `json:"emoji"`
+	Count          int      `json:"count"`
+	ViewerReacted  bool     `json:"viewer_reacted"`
+	ReactedUserIDs []string `json:"reacted_user_ids,omitempty"`
+}
+
+type GroupMessageReactionEvent struct {
+	GroupID         string                 `json:"group_id"`
+	PublicID        string                 `json:"public_id"`
+	Reactions       []MessageReaction      `json:"reactions"`
+	ReactionSummary []GroupMessageReaction `json:"reaction_summary"`
+}
+
+type GroupMessageReadEvent struct {
+	GroupID   string     `json:"group_id"`
+	PublicID  string     `json:"public_id"`
+	ReadCount int        `json:"read_count"`
+	ReadBy    []ChatUser `json:"read_by"`
+}
+
+type GroupTypingEvent struct {
+	GroupID     string     `json:"group_id"`
+	TypingCount int        `json:"typing_count"`
+	Typers      []ChatUser `json:"typers"`
 }

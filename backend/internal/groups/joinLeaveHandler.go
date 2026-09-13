@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"social-network/internal/auth"
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
+	"social-network/internal/notifications"
 
 	"github.com/google/uuid"
 )
@@ -28,7 +30,7 @@ func (h *Handler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := getGroupByID(h.DB, groupID)
+	group, err := getGroupByID(h.DB, groupID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			helpers.WriteError(w, http.StatusNotFound, "Group not found")
@@ -60,8 +62,28 @@ func (h *Handler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	joinRequestID := uuid.New().String()
-	err = createJoinRequest(h.DB, joinRequestID, groupID, currentUser.ID)
+	tx, err := h.DB.Begin()
 	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to start join request")
+		return
+	}
+	defer tx.Rollback()
+
+	err = createJoinRequest(tx, joinRequestID, groupID, currentUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create join request")
+		return
+	}
+	if err := notifications.Create(tx, notifications.CreateInput{
+		RecipientID:        group.CreatorID,
+		ActorID:            currentUser.ID,
+		Type:               enums.NotificationTypeGroupJoinRequest,
+		GroupJoinRequestID: &joinRequestID,
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create join request notification")
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create join request")
 		return
 	}

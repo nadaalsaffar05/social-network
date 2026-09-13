@@ -10,6 +10,7 @@ import (
 	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
+	"social-network/internal/notifications"
 
 	"github.com/gofrs/uuid/v5"
 )
@@ -327,12 +328,32 @@ func FollowUser(database *sql.DB) http.HandlerFunc {
 		}
 		requestID := requestUUID.String()
 
-		_, err = database.Exec(`
+		tx, err := database.Begin()
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to start follow request")
+			return
+		}
+		defer tx.Rollback()
+
+		_, err = tx.Exec(`
 			INSERT INTO follow_requests (id, sender_id, recipient_id, status)
 			VALUES (?, ?, ?, ?)
 		`, requestID, currentUser.ID, targetID, int(enums.FollowRequestStatusPending))
 
 		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to send follow request")
+			return
+		}
+		if err := notifications.Create(tx, notifications.CreateInput{
+			RecipientID:     targetID,
+			ActorID:         currentUser.ID,
+			Type:            enums.NotificationTypeFollowRequest,
+			FollowRequestID: &requestID,
+		}); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to create follow notification")
+			return
+		}
+		if err := tx.Commit(); err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to send follow request")
 			return
 		}

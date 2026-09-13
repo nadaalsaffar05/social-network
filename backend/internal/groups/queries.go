@@ -9,6 +9,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type sqlExecer interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
+type sqlQueryer interface {
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
 // groups
 func createGroup(db *sql.DB, id string, creatorID string, title string, description string) (models.GroupResponse, error) {
 	var group models.GroupResponse
@@ -122,7 +130,7 @@ func getGroupUserState(db *sql.DB, groupID string, userID string) (bool, bool, b
 //////////////////////////////////////////////////////////////////////////////
 
 // join/leave
-func createJoinRequest(db *sql.DB, joinRequestID string, groupID string, userID string) error {
+func createJoinRequest(db sqlExecer, joinRequestID string, groupID string, userID string) error {
 	_, err := db.Exec(`
 		INSERT INTO group_join_requests (id, group_id, user_id, status)
 		VALUES (?, ?, ?, ?)
@@ -253,7 +261,7 @@ func cancelJoinRequest(db *sql.DB, groupID string, userID string) (int64, error)
 //////////////////////////////////////////////////////////////////////////////
 
 // invite
-func createInvite(db *sql.DB, inviteID string, groupID string, inviterID string, invitedUserID string) error {
+func createInvite(db sqlExecer, inviteID string, groupID string, inviterID string, invitedUserID string) error {
 	_, err := db.Exec(`
 	INSERT INTO group_invitations
 	(id, group_id, inviter_id, invited_user_id, status)
@@ -509,7 +517,7 @@ func cancelInvite(db *sql.DB, inviteID string, groupID string) (int64, error) {
 //////////////////////////////////////////////////////////////////////////////
 
 // events
-func createEvent(db *sql.DB, eventID string, groupID string, creatorID string, title string, description string, startsAt string) error {
+func createEvent(db sqlExecer, eventID string, groupID string, creatorID string, title string, description string, startsAt string) error {
 	_, err := db.Exec(`
 		INSERT INTO group_events
 		(id, group_id, creator_id, title, description, starts_at)
@@ -652,7 +660,7 @@ func respondToEvent(db *sql.DB, action string, groupID string, eventID string, u
 
 // group chat
 
-func getGroupMessages(db *sql.DB, groupID string, cursor string, limit int) ([]models.GroupMessage, string, error) {
+func getGroupMessages(db *sql.DB, groupID, viewerID, cursor string, limit int) ([]models.GroupMessage, string, error) {
 	cursorCreatedAt := ""
 	cursorID := int64(0)
 	if cursor != "" {
@@ -726,6 +734,9 @@ func getGroupMessages(db *sql.DB, groupID string, cursor string, limit int) ([]m
 	if err := rows.Err(); err != nil {
 		return nil, "", err
 	}
+	if err := attachGroupMessageMetadata(db, messages, viewerID); err != nil {
+		return nil, "", err
+	}
 
 	nextCursor := ""
 
@@ -791,10 +802,16 @@ func getGroupMessageByPublicID(db *sql.DB, groupID string, publicID string) (mod
 	).Scan(&message.PublicID, &message.GroupID, &message.SenderID, &message.SenderFirstName, &message.SenderLastName,
 		&message.SenderNickname, &message.Content, &message.CreatedAt, &message.IsActive)
 
-	return message, err
+	if err != nil {
+		return message, err
+	}
+	message.ReadBy = []models.ChatUser{}
+	message.Reactions = []models.MessageReaction{}
+	message.ReactionSummary = []models.GroupMessageReaction{}
+	return message, nil
 }
 
-func getActiveGroupMemberIDs(db *sql.DB, groupID string) ([]string, error) {
+func getActiveGroupMemberIDs(db sqlQueryer, groupID string) ([]string, error) {
 	rows, err := db.Query(`
 		SELECT user_id
 		FROM group_members

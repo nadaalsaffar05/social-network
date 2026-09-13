@@ -74,6 +74,10 @@ func (h *Handler) GetGroupPosts(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group posts")
 		return
 	}
+	if err := feed.AttachPostMedia(h.DB, posts); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group post media")
+		return
+	}
 
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{"posts": posts, "next_cursor": nextCursor})
 }

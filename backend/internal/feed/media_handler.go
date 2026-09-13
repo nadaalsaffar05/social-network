@@ -32,14 +32,14 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var ownedPostID string
+	var groupID sql.NullString
 	err := h.DB.QueryRow(`
-		SELECT id
+		SELECT group_id
 		FROM posts
 		WHERE id = ?
 		  AND author_id = ?
 		  AND is_active = 1
-	`, postID, currentUser.ID).Scan(&ownedPostID)
+	`, postID, currentUser.ID).Scan(&groupID)
 	if errors.Is(err, sql.ErrNoRows) {
 		helpers.WriteError(w, http.StatusNotFound, "post not found")
 		return
@@ -47,6 +47,18 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not check post")
 		return
+	}
+
+	if groupID.Valid {
+		active, err := isActiveGroupMember(h.DB, groupID.String, currentUser.ID)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "could not check group membership")
+			return
+		}
+		if !active {
+			helpers.WriteError(w, http.StatusForbidden, "you must be an active group member to upload group post media")
+			return
+		}
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {

@@ -96,26 +96,40 @@ func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit 
 		LEFT JOIN profile_avatars pa ON pa.user_id = p.author_id
 		LEFT JOIN media am ON am.id = pa.media_id
         WHERE p.is_active = 1
-          AND p.group_id IS NULL
           AND (
-            p.privacy = 1000
-            OR p.author_id = ?
-            OR (
-              p.privacy = 1010
-              AND EXISTS (
-                SELECT 1 FROM follows f
-                WHERE f.follower_id = ?
-                  AND f.following_id = p.author_id
-              )
-            )
-            OR (
-              p.privacy = 1020
-              AND EXISTS (
-                SELECT 1 FROM post_visibility pv
-                WHERE pv.post_id = p.id
-                  AND pv.user_id = ?
-              )
-            )
+			(
+				p.group_id IS NULL
+				AND (
+					p.privacy = ?
+					OR p.author_id = ?
+					OR (
+						p.privacy = ?
+						AND EXISTS (
+							SELECT 1 FROM follows f
+							WHERE f.follower_id = ?
+								AND f.following_id = p.author_id
+						)
+					)
+					OR (
+						p.privacy = ?
+						AND EXISTS (
+							SELECT 1 FROM post_visibility pv
+							WHERE pv.post_id = p.id
+								AND pv.user_id = ?
+						)
+					)
+				)
+			)
+			OR (
+				p.group_id IS NOT NULL
+				AND p.privacy = ?
+				AND EXISTS (
+					SELECT 1 FROM group_members gm
+					WHERE gm.group_id = p.group_id
+						AND gm.user_id = ?
+						AND gm.status = ?
+				)
+			)
           )
 		  AND (
 			? = ''
@@ -124,7 +138,23 @@ func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit 
 		  )
         ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ?
-	    `, viewerID, viewerID, viewerID, viewerID, cursorID, cursorCreatedAt, cursorCreatedAt, cursorID, limit)
+	    `,
+		viewerID,
+		enums.PostPrivacyPublic,
+		viewerID,
+		enums.PostPrivacyFollowers,
+		viewerID,
+		enums.PostPrivacySelected,
+		viewerID,
+		enums.PostPrivacyGroup,
+		viewerID,
+		enums.GroupMembershipStatusActive,
+		cursorID,
+		cursorCreatedAt,
+		cursorCreatedAt,
+		cursorID,
+		limit,
+	)
 }
 
 func GetPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse, bool, error) {
@@ -172,8 +202,118 @@ func GetPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 	return post, true, nil
 }
 
-// canViewPost centralizes the visibility rule for personal posts
-// Group posts use group-membership rules and are handled separately
+// GetProfilePostsForViewer returns posts written by profileUserID that the
+// viewer is permitted to see. Group posts remain private to active members,
+// even when the viewer is the post author.
+func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]models.UserPost, error) {
+	rows, err := db.Query(`
+		SELECT
+			p.id,
+			p.author_id,
+			p.content,
+			p.privacy,
+			p.created_at,
+			p.updated_at,
+			COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
+			COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
+			(SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
+			(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
+		FROM posts p
+		WHERE p.author_id = ?
+			AND p.is_active = 1
+			AND (
+				(
+					p.group_id IS NULL
+					AND (
+						p.author_id = ?
+						OR p.privacy = ?
+						OR (
+							p.privacy = ?
+							AND EXISTS (
+								SELECT 1 FROM follows f
+								WHERE f.follower_id = ?
+									AND f.following_id = p.author_id
+							)
+						)
+						OR (
+							p.privacy = ?
+							AND EXISTS (
+								SELECT 1 FROM post_visibility pv
+								WHERE pv.post_id = p.id
+									AND pv.user_id = ?
+							)
+						)
+					)
+				)
+				OR (
+					p.group_id IS NOT NULL
+					AND p.privacy = ?
+					AND EXISTS (
+						SELECT 1 FROM group_members gm
+						WHERE gm.group_id = p.group_id
+							AND gm.user_id = ?
+							AND gm.status = ?
+					)
+				)
+			)
+		ORDER BY p.created_at DESC, p.id DESC
+	`,
+		viewerID,
+		profileUserID,
+		viewerID,
+		enums.PostPrivacyPublic,
+		enums.PostPrivacyFollowers,
+		viewerID,
+		enums.PostPrivacySelected,
+		viewerID,
+		enums.PostPrivacyGroup,
+		viewerID,
+		enums.GroupMembershipStatusActive,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	posts := make([]models.UserPost, 0)
+	for rows.Next() {
+		var post models.UserPost
+		if err := rows.Scan(
+			&post.ID,
+			&post.AuthorID,
+			&post.Content,
+			&post.Privacy,
+			&post.CreatedAt,
+			&post.UpdatedAt,
+			&post.LikeCount,
+			&post.DislikeCount,
+			&post.CommentCount,
+			&post.ViewerReaction,
+		); err != nil {
+			return nil, err
+		}
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	postIDs := make([]string, len(posts))
+	for index := range posts {
+		postIDs[index] = posts[index].ID
+	}
+	mediaByPost, err := getPostMediaForPosts(db, postIDs)
+	if err != nil {
+		return nil, err
+	}
+	for index := range posts {
+		posts[index].Media = mediaByPost[posts[index].ID]
+	}
+
+	return posts, nil
+}
+
+// canViewPost centralizes visibility rules for personal and group posts.
 func canViewPost(db *sql.DB, postID, viewerID string) (bool, error) {
 	var allowed int
 	err := db.QueryRow(`
@@ -194,7 +334,7 @@ func canViewPost(db *sql.DB, postID, viewerID string) (bool, error) {
 					WHERE pv.post_id = p.id AND pv.user_id = ?
 				)
 			)
-		) 
+		) THEN 1
 		WHEN
 			p.group_id IS NOT NULL
 			AND EXISTS (
@@ -277,6 +417,40 @@ func getPostMediaForPosts(db *sql.DB, postIDs []string) (map[string][]string, er
 	}
 
 	return mediaByPost, rows.Err()
+}
+
+// AttachPostMedia uses the shared post-media relationship for every post list,
+// including group-post lists.
+func AttachPostMedia(db *sql.DB, posts []models.PostResponse) error {
+	postIDs := make([]string, len(posts))
+	for index := range posts {
+		postIDs[index] = posts[index].ID
+	}
+
+	mediaByPost, err := getPostMediaForPosts(db, postIDs)
+	if err != nil {
+		return err
+	}
+
+	for index := range posts {
+		posts[index].Media = mediaByPost[posts[index].ID]
+	}
+
+	return nil
+}
+
+func isActiveGroupMember(db *sql.DB, groupID, userID string) (bool, error) {
+	var active bool
+	err := db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM group_members
+			WHERE group_id = ?
+				AND user_id = ?
+				AND status = ?
+		)
+	`, groupID, userID, enums.GroupMembershipStatusActive).Scan(&active)
+	return active, err
 }
 
 func getActiveCommentAuthor(db *sql.DB, commentID, postID string) (string, bool, error) {

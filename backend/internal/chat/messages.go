@@ -189,9 +189,10 @@ func attachMessageReactions(db *sql.DB, messages []models.PrivateMessage) error 
 }
 
 func setMessageReaction(db *sql.DB, userID, otherUserID, publicID, emoji string) ([]models.MessageReaction, bool, error) {
-	emoji = strings.TrimSpace(emoji)
-	if emoji == "" || len([]rune(emoji)) > 32 {
-		return nil, false, errors.New("invalid emoji")
+	var err error
+	emoji, err = ValidateReactionEmoji(emoji)
+	if err != nil {
+		return nil, false, err
 	}
 	conversationID, found, err := findConversation(db, userID, otherUserID)
 	if err != nil || !found {
@@ -233,6 +234,15 @@ func setMessageReaction(db *sql.DB, userID, otherUserID, publicID, emoji string)
 		reactions = append(reactions, reaction)
 	}
 	return reactions, true, rows.Err()
+}
+
+// ValidateReactionEmoji is shared by private and group message reactions.
+func ValidateReactionEmoji(emoji string) (string, error) {
+	emoji = strings.TrimSpace(emoji)
+	if emoji == "" || len([]rune(emoji)) > 32 {
+		return "", errors.New("invalid emoji")
+	}
+	return emoji, nil
 }
 
 func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, error) {

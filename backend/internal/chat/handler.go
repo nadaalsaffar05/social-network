@@ -20,12 +20,24 @@ type incomingSocketEvent struct {
 }
 
 type Handler struct {
-	DB  *sql.DB
-	Hub *Hub
+	DB                           *sql.DB
+	Hub                          *Hub
+	groupSocketEventHandler      func(string, string, json.RawMessage)
+	groupSocketDisconnectHandler func(string)
 }
 
 func NewHandler(db *sql.DB, hub *Hub) *Handler {
 	return &Handler{DB: db, Hub: hub}
+}
+
+// SetGroupSocketHandlers lets the groups package reuse the single WebSocket
+// connection without creating an import cycle between chat and groups.
+func (h *Handler) SetGroupSocketHandlers(
+	eventHandler func(string, string, json.RawMessage),
+	disconnectHandler func(string),
+) {
+	h.groupSocketEventHandler = eventHandler
+	h.groupSocketDisconnectHandler = disconnectHandler
 }
 
 func (h *Handler) OnlineUsers(w http.ResponseWriter, r *http.Request) {
@@ -176,6 +188,9 @@ func (h *Handler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	go client.writePump()
 	defer func() {
 		if h.Hub.remove(currentUser.ID, client) {
+			if h.groupSocketDisconnectHandler != nil {
+				h.groupSocketDisconnectHandler(currentUser.ID)
+			}
 			lastSeenAt, _ := updateLastSeen(h.DB, currentUser.ID)
 			h.sendPresenceUpdate(models.UserPresence{UserID: currentUser.ID, IsOnline: false, LastSeenAt: lastSeenAt})
 		}
@@ -235,6 +250,11 @@ func (h *Handler) handleSocketEvent(userID string, payload []byte) {
 
 	case "message:deleted":
 		h.deleteMessageFromSocket(userID, event.Data)
+
+	default:
+		if strings.HasPrefix(event.Type, "group-") && h.groupSocketEventHandler != nil {
+			h.groupSocketEventHandler(userID, event.Type, event.Data)
+		}
 	}
 }
 

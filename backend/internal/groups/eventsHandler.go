@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"social-network/internal/auth"
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
+	"social-network/internal/notifications"
 	"strings"
 	"time"
 
@@ -103,8 +105,38 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	eventID := uuid.New().String()
-	err = createEvent(h.DB, eventID, groupID, currentUser.ID, req.Title, req.Description, req.StartsAt)
+	tx, err := h.DB.Begin()
 	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to start event")
+		return
+	}
+	defer tx.Rollback()
+
+	err = createEvent(tx, eventID, groupID, currentUser.ID, req.Title, req.Description, req.StartsAt)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create event")
+		return
+	}
+	members, err := getActiveGroupMemberIDs(tx, groupID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to load group members")
+		return
+	}
+	for _, memberID := range members {
+		if memberID == currentUser.ID {
+			continue
+		}
+		if err := notifications.Create(tx, notifications.CreateInput{
+			RecipientID:  memberID,
+			ActorID:      currentUser.ID,
+			Type:         enums.NotificationTypeEventCreated,
+			GroupEventID: &eventID,
+		}); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "Failed to create event notifications")
+			return
+		}
+	}
+	if err := tx.Commit(); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create event")
 		return
 	}

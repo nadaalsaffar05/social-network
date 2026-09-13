@@ -64,6 +64,8 @@ type PublicProfileResponse struct {
 	AvatarPath     *string              `json:"avatar_path,omitempty"`
 	FollowersCount int                  `json:"followers_count"`
 	FollowingCount int                  `json:"following_count"`
+	PostsCount     int                  `json:"posts_count"`
+	Posts          []UserPost           `json:"posts"`
 }
 
 type UpdateProfileRequest struct {
@@ -74,4 +76,3 @@ type UpdateProfileRequest struct {
 	DateOfBirth string               `json:"date_of_birth"`
 	Privacy     enums.ProfilePrivacy `json:"privacy"`
 }
-

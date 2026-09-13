@@ -11,6 +11,7 @@ import (
 
 	"social-network/internal/auth"
 	"social-network/internal/enums"
+	"social-network/internal/feed"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
 	"social-network/internal/utils"
@@ -56,41 +57,10 @@ func GetProfile(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Full profile view: load the user's posts and their media.
-		rows, err := database.Query(`
-			SELECT p.id, p.author_id, p.content, p.privacy, p.created_at, p.updated_at,
-				COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
-				COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
-				(SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
-				(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
-			FROM posts p
-			WHERE p.author_id = ? AND p.is_active = 1
-			ORDER BY created_at DESC
-		`, currentUser.ID, currentUser.ID)
-
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var post models.UserPost
-				if scanErr := rows.Scan(&post.ID, &post.AuthorID, &post.Content, &post.Privacy, &post.CreatedAt, &post.UpdatedAt, &post.LikeCount, &post.DislikeCount, &post.CommentCount, &post.ViewerReaction); scanErr == nil {
-					mRows, mErr := database.Query(`
-						SELECT m.file_path
-						FROM post_media pm
-						JOIN media m ON m.id = pm.media_id
-						WHERE pm.post_id = ?
-					`, post.ID)
-					if mErr == nil {
-						for mRows.Next() {
-							var mPath string
-							if mScanErr := mRows.Scan(&mPath); mScanErr == nil {
-								post.Media = append(post.Media, "/"+mPath)
-							}
-						}
-						mRows.Close()
-					}
-					profile.Posts = append(profile.Posts, post)
-				}
-			}
+		profile.Posts, err = feed.GetProfilePostsForViewer(database, currentUser.ID, currentUser.ID)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile posts")
+			return
 		}
 		profile.PostsCount = len(profile.Posts)
 
@@ -106,7 +76,8 @@ func GetPublicProfile(database *sql.DB) http.HandlerFunc {
 			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		if auth.CurrentUser(r) == nil {
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
 			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
@@ -131,6 +102,12 @@ func GetPublicProfile(database *sql.DB) http.HandlerFunc {
 		}
 		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE following_id = ?`, result.ID).Scan(&result.FollowersCount)
 		_ = database.QueryRow(`SELECT COUNT(*) FROM follows WHERE follower_id = ?`, result.ID).Scan(&result.FollowingCount)
+		result.Posts, err = feed.GetProfilePostsForViewer(database, result.ID, currentUser.ID)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile posts")
+			return
+		}
+		result.PostsCount = len(result.Posts)
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{"user": result})
 	}
 }

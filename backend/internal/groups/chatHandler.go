@@ -69,7 +69,7 @@ func (h *Handler) GetGroupMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	messages, nextCursor, err := getGroupMessages(h.DB, groupID, strings.TrimSpace(r.URL.Query().Get("cursor")), limit)
+	messages, nextCursor, err := getGroupMessages(h.DB, groupID, currentUser.ID, strings.TrimSpace(r.URL.Query().Get("cursor")), limit)
 	if err != nil {
 		if errors.Is(err, errInvalidCursor) {
 			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")
@@ -153,4 +153,69 @@ func (h *Handler) CreateGroupMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	helpers.WriteJSON(w, http.StatusCreated, message)
+}
+
+func (h *Handler) GroupMessageReaction(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	currentUser := auth.CurrentUser(r)
+	if currentUser == nil {
+		helpers.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	groupID := strings.TrimSpace(r.PathValue("group_id"))
+	publicID := strings.TrimSpace(r.PathValue("public_id"))
+	if groupID == "" || publicID == "" {
+		helpers.WriteError(w, http.StatusBadRequest, "Group ID and message ID are required")
+		return
+	}
+
+	if _, err := getGroupByID(h.DB, groupID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.WriteError(w, http.StatusNotFound, "Group not found")
+			return
+		}
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group")
+		return
+	}
+
+	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
+		return
+	}
+	if !isMember {
+		helpers.WriteError(w, http.StatusForbidden, "You must be a group member to react to messages")
+		return
+	}
+
+	var request models.MessageReactionRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	found, err := setGroupMessageReaction(h.DB, groupID, currentUser.ID, publicID, request.Emoji)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !found {
+		helpers.WriteError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+
+	reactions, err := getGroupMessageReactions(h.DB, groupID, publicID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to load message reactions")
+		return
+	}
+
+	event := newGroupMessageReactionEvent(groupID, publicID, currentUser.ID, reactions)
+	h.broadcastGroupMessageReactions(groupID, publicID, reactions)
+	helpers.WriteJSON(w, http.StatusOK, event)
 }

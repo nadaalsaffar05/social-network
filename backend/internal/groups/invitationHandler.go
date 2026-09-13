@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"social-network/internal/auth"
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
+	"social-network/internal/notifications"
 
 	"github.com/google/uuid"
 )
@@ -101,8 +103,28 @@ func (h *Handler) InviteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	inviteID := uuid.New().String()
-	err = createInvite(h.DB, inviteID, groupID, currentUser.ID, invitedUser.ID)
+	tx, err := h.DB.Begin()
 	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to start invite")
+		return
+	}
+	defer tx.Rollback()
+
+	err = createInvite(tx, inviteID, groupID, currentUser.ID, invitedUser.ID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create invite")
+		return
+	}
+	if err := notifications.Create(tx, notifications.CreateInput{
+		RecipientID:       invitedUser.ID,
+		ActorID:           currentUser.ID,
+		Type:              enums.NotificationTypeGroupInvitation,
+		GroupInvitationID: &inviteID,
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create invite notification")
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create invite")
 		return
 	}

@@ -8,6 +8,7 @@ import (
 	"social-network/internal/chat"
 	"social-network/internal/feed"
 	"social-network/internal/groups"
+	"social-network/internal/notifications"
 )
 
 func newRouter(db *sql.DB) *http.ServeMux {
@@ -23,6 +24,8 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	chatHub := chat.NewHub()
 	chatHandler := chat.NewHandler(db, chatHub)
 	groupHandler := groups.NewHandler(db, chatHub)
+	notificationHandler := notifications.NewHandler(db)
+	chatHandler.SetGroupSocketHandlers(groupHandler.HandleSocketEvent, groupHandler.HandleSocketDisconnect)
 	protected := func(handler http.HandlerFunc) http.Handler { return auth.Middleware(db, handler) }
 
 	mux.HandleFunc("/api/register", authHandler.Register)
@@ -41,6 +44,9 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/is-follower", protected(api.IsFollower(db)))
 	mux.Handle("/api/is-following", protected(api.IsFollowing(db)))
 	mux.Handle("/api/follow-request/respond", protected(api.RespondToFollowRequest(db)))
+	mux.Handle("/api/notifications", protected(notificationHandler.Notifications))
+	mux.Handle("/api/notifications/read-all", protected(notificationHandler.MarkAllRead))
+	mux.Handle("/api/notifications/{notification_id}/read", protected(notificationHandler.MarkRead))
 
 	// Feed routes remain grouped and use the same authentication wrapper.
 	mux.Handle("/api/posts", protected(feedHandler.CreatePost))
@@ -80,5 +86,6 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/groups/{group_id}/events/{event_id}", protected(groupHandler.GetEvent))
 	mux.Handle("/api/groups/{group_id}/events/{event_id}/respond", protected(groupHandler.RespondToEvent))
 	mux.Handle("/api/groups/{group_id}/messages", protected(groupHandler.GroupMessages))
+	mux.Handle("/api/groups/{group_id}/messages/{public_id}/reaction", protected(groupHandler.GroupMessageReaction))
 	mux.Handle("/api/groups/{group_id}/posts", protected(groupHandler.Posts))
 }
