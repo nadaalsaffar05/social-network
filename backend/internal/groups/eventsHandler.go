@@ -105,39 +105,38 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	eventID := uuid.New().String()
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to start event")
-		return
-	}
-	defer tx.Rollback()
+	operationError := "Failed to start event"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		operationError = "Failed to create event"
+		if err := createEvent(tx, eventID, groupID, currentUser.ID, req.Title, req.Description, req.StartsAt); err != nil {
+			return err
+		}
 
-	err = createEvent(tx, eventID, groupID, currentUser.ID, req.Title, req.Description, req.StartsAt)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create event")
-		return
-	}
-	members, err := getActiveGroupMemberIDs(tx, groupID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to load group members")
-		return
-	}
-	for _, memberID := range members {
-		if memberID == currentUser.ID {
-			continue
+		operationError = "Failed to load group members"
+		members, err := getActiveGroupMemberIDs(tx, groupID)
+		if err != nil {
+			return err
 		}
-		if err := notifications.Create(tx, notifications.CreateInput{
-			RecipientID:  memberID,
-			ActorID:      currentUser.ID,
-			Type:         enums.NotificationTypeEventCreated,
-			GroupEventID: &eventID,
-		}); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "Failed to create event notifications")
-			return
+
+		operationError = "Failed to create event notifications"
+		for _, memberID := range members {
+			if memberID == currentUser.ID {
+				continue
+			}
+			if err := notifications.Create(tx, notifications.CreateInput{
+				RecipientID:  memberID,
+				ActorID:      currentUser.ID,
+				Type:         enums.NotificationTypeEventCreated,
+				GroupEventID: &eventID,
+			}); err != nil {
+				return err
+			}
 		}
-	}
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create event")
+
+		operationError = "Failed to create event"
+		return nil
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
 

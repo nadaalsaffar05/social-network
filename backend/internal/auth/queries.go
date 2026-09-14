@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/rand"
 
+	"social-network/internal/helpers"
 	"social-network/internal/models"
 
 	"github.com/gofrs/uuid/v5"
@@ -69,86 +70,77 @@ func createUser(
 		return nil, err
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec(`
-		INSERT INTO users (
-			id,
-			email,
-			password_hash,
-			first_name,
-			last_name,
-			date_of_birth
-		)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`,
-		userID.String(),
-		request.Email,
-		passwordHash,
-		request.FirstName,
-		request.LastName,
-		request.DateOfBirth,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = tx.Exec(`
-		INSERT INTO profiles (
-			user_id,
-			nickname,
-			about_me
-		)
-		VALUES (?, ?, ?)
-	`,
-		userID.String(),
-		request.Nickname,
-		request.AboutMe,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-    // select a generic pfp from DB to assign it
-	poolRows, err := tx.Query(`
-		SELECT media_id FROM profile_avatars
-		WHERE type = 1000 AND user_id IS NULL
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer poolRows.Close()
-
-	var poolMediaIDs []string
-	for poolRows.Next() {
-		var mediaID string
-		if err := poolRows.Scan(&mediaID); err != nil {
-			return nil, err
+	err = helpers.WithTx(db, func(tx *sql.Tx) error {
+		if _, err := tx.Exec(`
+			INSERT INTO users (
+				id,
+				email,
+				password_hash,
+				first_name,
+				last_name,
+				date_of_birth
+			)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`,
+			userID.String(),
+			request.Email,
+			passwordHash,
+			request.FirstName,
+			request.LastName,
+			request.DateOfBirth,
+		); err != nil {
+			return err
 		}
-		poolMediaIDs = append(poolMediaIDs, mediaID)
-	}
-	if err := poolRows.Err(); err != nil {
-		return nil, err
-	}
 
-	if len(poolMediaIDs) > 0 {
+		if _, err := tx.Exec(`
+			INSERT INTO profiles (
+				user_id,
+				nickname,
+				about_me
+			)
+			VALUES (?, ?, ?)
+		`,
+			userID.String(),
+			request.Nickname,
+			request.AboutMe,
+		); err != nil {
+			return err
+		}
+
+		poolRows, err := tx.Query(`
+			SELECT media_id FROM profile_avatars
+			WHERE type = 1000 AND user_id IS NULL
+		`)
+		if err != nil {
+			return err
+		}
+		defer poolRows.Close()
+
+		var poolMediaIDs []string
+		for poolRows.Next() {
+			var mediaID string
+			if err := poolRows.Scan(&mediaID); err != nil {
+				return err
+			}
+			poolMediaIDs = append(poolMediaIDs, mediaID)
+		}
+		if err := poolRows.Err(); err != nil {
+			return err
+		}
+
+		if len(poolMediaIDs) == 0 {
+			return nil
+		}
+
 		selectedMediaID := poolMediaIDs[rand.Intn(len(poolMediaIDs))]
-
 		_, err = tx.Exec(`
 			UPDATE profile_avatars
 			SET user_id = ?
 			WHERE media_id = ? AND user_id IS NULL
 		`, userID.String(), selectedMediaID)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
+		return err
+	})
+	if err != nil {
 		return nil, err
 	}
 

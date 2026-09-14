@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -78,37 +79,34 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not start transaction")
-		return
-	}
-	defer tx.Rollback()
-
 	postID := uuid.New().String()
-
-	createdAt, err := createPost(
-		tx,
-		postID,
-		currentUser.ID,
-		req.Content,
-		req.Privacy,
-	)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not create post")
-		return
-	}
-
-	// Add selected users to post visibility.
-	for _, userID := range selectedUserIDs {
-		if err := addPostVisibility(tx, postID, userID); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "could not set post visibility")
-			return
+	var createdAt string
+	operationError := "could not start transaction"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		operationError = "could not create post"
+		var err error
+		createdAt, err = createPost(
+			tx,
+			postID,
+			currentUser.ID,
+			req.Content,
+			req.Privacy,
+		)
+		if err != nil {
+			return err
 		}
-	}
 
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save post")
+		operationError = "could not set post visibility"
+		for _, userID := range selectedUserIDs {
+			if err := addPostVisibility(tx, postID, userID); err != nil {
+				return err
+			}
+		}
+
+		operationError = "could not save post"
+		return nil
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
 

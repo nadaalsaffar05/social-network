@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"social-network/internal/helpers"
 	"social-network/internal/models"
 
 	"github.com/google/uuid"
@@ -23,48 +24,41 @@ func createPrivateMessage(db *sql.DB, senderID, recipientID, content string) (mo
 		return models.PrivateMessage{}, errCannotMessageSelf
 	}
 
-	tx, err := db.Begin()
+	var message models.PrivateMessage
+	err := helpers.WithTx(db, func(tx *sql.Tx) error {
+		if err := requireUser(tx, recipientID); err != nil {
+			return err
+		}
+
+		conversationID, err := findOrCreateConversation(tx, senderID, recipientID)
+		if err != nil {
+			return err
+		}
+
+		isFriends, err := areFriends(tx, senderID, recipientID)
+		if err != nil {
+			return err
+		}
+		if err := prepareMessageRequest(tx, conversationID, senderID, recipientID, isFriends); err != nil {
+			return err
+		}
+
+		message = models.PrivateMessage{
+			PublicID:       uuid.NewString(),
+			ConversationID: conversationID,
+			SenderID:       senderID,
+			RecipientID:    recipientID,
+			Content:        content,
+			IsActive:       true,
+		}
+
+		return tx.QueryRow(`
+			INSERT INTO private_messages (public_id, conversation_id, sender_id, content)
+			VALUES (?, ?, ?, ?)
+			RETURNING created_at
+		`, message.PublicID, message.ConversationID, message.SenderID, message.Content).Scan(&message.CreatedAt)
+	})
 	if err != nil {
-		return models.PrivateMessage{}, err
-	}
-	defer tx.Rollback()
-
-	if err := requireUser(tx, recipientID); err != nil {
-		return models.PrivateMessage{}, err
-	}
-
-	conversationID, err := findOrCreateConversation(tx, senderID, recipientID)
-	if err != nil {
-		return models.PrivateMessage{}, err
-	}
-
-	isFriends, err := areFriends(tx, senderID, recipientID)
-	if err != nil {
-		return models.PrivateMessage{}, err
-	}
-	if err := prepareMessageRequest(tx, conversationID, senderID, recipientID, isFriends); err != nil {
-		return models.PrivateMessage{}, err
-	}
-
-	message := models.PrivateMessage{
-		PublicID:       uuid.NewString(),
-		ConversationID: conversationID,
-		SenderID:       senderID,
-		RecipientID:    recipientID,
-		Content:        content,
-		IsActive:       true,
-	}
-
-	err = tx.QueryRow(`
-		INSERT INTO private_messages (public_id, conversation_id, sender_id, content)
-		VALUES (?, ?, ?, ?)
-		RETURNING created_at
-	`, message.PublicID, message.ConversationID, message.SenderID, message.Content).Scan(&message.CreatedAt)
-	if err != nil {
-		return models.PrivateMessage{}, err
-	}
-
-	if err := tx.Commit(); err != nil {
 		return models.PrivateMessage{}, err
 	}
 

@@ -103,29 +103,27 @@ func (h *Handler) InviteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	inviteID := uuid.New().String()
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to start invite")
-		return
-	}
-	defer tx.Rollback()
+	operationError := "Failed to start invite"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		operationError = "Failed to create invite"
+		if err := createInvite(tx, inviteID, groupID, currentUser.ID, invitedUser.ID); err != nil {
+			return err
+		}
 
-	err = createInvite(tx, inviteID, groupID, currentUser.ID, invitedUser.ID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create invite")
-		return
-	}
-	if err := notifications.Create(tx, notifications.CreateInput{
-		RecipientID:       invitedUser.ID,
-		ActorID:           currentUser.ID,
-		Type:              enums.NotificationTypeGroupInvitation,
-		GroupInvitationID: &inviteID,
+		operationError = "Failed to create invite notification"
+		if err := notifications.Create(tx, notifications.CreateInput{
+			RecipientID:       invitedUser.ID,
+			ActorID:           currentUser.ID,
+			Type:              enums.NotificationTypeGroupInvitation,
+			GroupInvitationID: &inviteID,
+		}); err != nil {
+			return err
+		}
+
+		operationError = "Failed to create invite"
+		return nil
 	}); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create invite notification")
-		return
-	}
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create invite")
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
 

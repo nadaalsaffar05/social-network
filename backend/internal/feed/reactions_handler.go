@@ -54,82 +54,69 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not start transaction")
-		return
-	}
-	defer tx.Rollback()
-
-	var existingReaction string
-
-	err = tx.QueryRow(`
-		SELECT reaction_type
-		FROM post_reactions
-		WHERE post_id = ? AND user_id = ?
-	`, postID, currentUser.ID).Scan(&existingReaction)
-
-	if err != nil && err != sql.ErrNoRows {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not check reaction")
-		return
-	}
-
 	action := "added"
 	var reactionType *string
+	var likeCount, dislikeCount int
+	operationError := "could not start transaction"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		var existingReaction string
 
-	if err == nil {
-		if existingReaction == req.ReactionType {
-			_, err = tx.Exec(`
-				DELETE FROM post_reactions
-				WHERE post_id = ? AND user_id = ?
-			`, postID, currentUser.ID)
+		operationError = "could not check reaction"
+		err := tx.QueryRow(`
+			SELECT reaction_type
+			FROM post_reactions
+			WHERE post_id = ? AND user_id = ?
+		`, postID, currentUser.ID).Scan(&existingReaction)
+		if err != nil && err != sql.ErrNoRows {
+			return err
+		}
 
-			if err != nil {
-				helpers.WriteError(w, http.StatusInternalServerError, "could not remove reaction")
-				return
+		if err == nil {
+			if existingReaction == req.ReactionType {
+				operationError = "could not remove reaction"
+				if _, err := tx.Exec(`
+					DELETE FROM post_reactions
+					WHERE post_id = ? AND user_id = ?
+				`, postID, currentUser.ID); err != nil {
+					return err
+				}
+				action = "removed"
+			} else {
+				operationError = "could not change reaction"
+				if _, err := tx.Exec(`
+					UPDATE post_reactions
+					SET reaction_type = ?
+					WHERE post_id = ? AND user_id = ?
+				`, req.ReactionType, postID, currentUser.ID); err != nil {
+					return err
+				}
+				reactionType = &req.ReactionType
 			}
-
-			action = "removed"
 		} else {
-			_, err = tx.Exec(`
-				UPDATE post_reactions
-				SET reaction_type = ?
-				WHERE post_id = ? AND user_id = ?
-			`, req.ReactionType, postID, currentUser.ID)
-
-			if err != nil {
-				helpers.WriteError(w, http.StatusInternalServerError, "could not change reaction")
-				return
+			operationError = "could not add reaction"
+			if _, err := tx.Exec(`
+				INSERT INTO post_reactions (
+					post_id,
+					user_id,
+					reaction_type
+				)
+				VALUES (?, ?, ?)
+			`, postID, currentUser.ID, req.ReactionType); err != nil {
+				return err
 			}
-
 			reactionType = &req.ReactionType
 		}
-	} else {
-		_, err = tx.Exec(`
-			INSERT INTO post_reactions (
-				post_id,
-				user_id,
-				reaction_type
-			)
-			VALUES (?, ?, ?)
-		`, postID, currentUser.ID, req.ReactionType)
 
+		operationError = "could not get reaction counts"
+		likeCount, dislikeCount, err = getPostReactionCounts(tx, postID)
 		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "could not add reaction")
-			return
+			return err
 		}
 
-		reactionType = &req.ReactionType
-	}
-
-	likeCount, dislikeCount, err := getPostReactionCounts(tx, postID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not get reaction counts")
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save reaction")
+		operationError = "could not save reaction"
+		return nil
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
 
@@ -199,82 +186,69 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not start transaction")
-		return
-	}
-	defer tx.Rollback()
-
-	var existingReaction string
-
-	err = tx.QueryRow(`
-		SELECT reaction_type
-		FROM comment_reactions
-		WHERE comment_id = ? AND user_id = ?
-	`, commentID, currentUser.ID).Scan(&existingReaction)
-
-	if err != nil && err != sql.ErrNoRows {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not check reaction")
-		return
-	}
-
 	action := "added"
 	var reactionType *string
+	var likeCount, dislikeCount int
+	operationError := "could not start transaction"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		var existingReaction string
 
-	if err == nil {
-		if existingReaction == req.ReactionType {
-			_, err = tx.Exec(`
-				DELETE FROM comment_reactions
-				WHERE comment_id = ? AND user_id = ?
-			`, commentID, currentUser.ID)
+		operationError = "could not check reaction"
+		err := tx.QueryRow(`
+			SELECT reaction_type
+			FROM comment_reactions
+			WHERE comment_id = ? AND user_id = ?
+		`, commentID, currentUser.ID).Scan(&existingReaction)
+		if err != nil && err != sql.ErrNoRows {
+			return err
+		}
 
-			if err != nil {
-				helpers.WriteError(w, http.StatusInternalServerError, "could not remove reaction")
-				return
+		if err == nil {
+			if existingReaction == req.ReactionType {
+				operationError = "could not remove reaction"
+				if _, err := tx.Exec(`
+					DELETE FROM comment_reactions
+					WHERE comment_id = ? AND user_id = ?
+				`, commentID, currentUser.ID); err != nil {
+					return err
+				}
+				action = "removed"
+			} else {
+				operationError = "could not change reaction"
+				if _, err := tx.Exec(`
+					UPDATE comment_reactions
+					SET reaction_type = ?
+					WHERE comment_id = ? AND user_id = ?
+				`, req.ReactionType, commentID, currentUser.ID); err != nil {
+					return err
+				}
+				reactionType = &req.ReactionType
 			}
-
-			action = "removed"
 		} else {
-			_, err = tx.Exec(`
-				UPDATE comment_reactions
-				SET reaction_type = ?
-				WHERE comment_id = ? AND user_id = ?
-			`, req.ReactionType, commentID, currentUser.ID)
-
-			if err != nil {
-				helpers.WriteError(w, http.StatusInternalServerError, "could not change reaction")
-				return
+			operationError = "could not add reaction"
+			if _, err := tx.Exec(`
+				INSERT INTO comment_reactions (
+					comment_id,
+					user_id,
+					reaction_type
+				)
+				VALUES (?, ?, ?)
+			`, commentID, currentUser.ID, req.ReactionType); err != nil {
+				return err
 			}
-
 			reactionType = &req.ReactionType
 		}
-	} else {
-		_, err = tx.Exec(`
-			INSERT INTO comment_reactions (
-				comment_id,
-				user_id,
-				reaction_type
-			)
-			VALUES (?, ?, ?)
-		`, commentID, currentUser.ID, req.ReactionType)
 
+		operationError = "could not get reaction counts"
+		likeCount, dislikeCount, err = getCommentReactionCounts(tx, commentID)
 		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "could not add reaction")
-			return
+			return err
 		}
 
-		reactionType = &req.ReactionType
-	}
-
-	likeCount, dislikeCount, err := getCommentReactionCounts(tx, commentID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not get reaction counts")
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save reaction")
+		operationError = "could not save reaction"
+		return nil
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
 

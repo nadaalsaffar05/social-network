@@ -62,29 +62,27 @@ func (h *Handler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	joinRequestID := uuid.New().String()
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to start join request")
-		return
-	}
-	defer tx.Rollback()
+	operationError := "Failed to start join request"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		operationError = "Failed to create join request"
+		if err := createJoinRequest(tx, joinRequestID, groupID, currentUser.ID); err != nil {
+			return err
+		}
 
-	err = createJoinRequest(tx, joinRequestID, groupID, currentUser.ID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create join request")
-		return
-	}
-	if err := notifications.Create(tx, notifications.CreateInput{
-		RecipientID:        group.CreatorID,
-		ActorID:            currentUser.ID,
-		Type:               enums.NotificationTypeGroupJoinRequest,
-		GroupJoinRequestID: &joinRequestID,
+		operationError = "Failed to create join request notification"
+		if err := notifications.Create(tx, notifications.CreateInput{
+			RecipientID:        group.CreatorID,
+			ActorID:            currentUser.ID,
+			Type:               enums.NotificationTypeGroupJoinRequest,
+			GroupJoinRequestID: &joinRequestID,
+		}); err != nil {
+			return err
+		}
+
+		operationError = "Failed to create join request"
+		return nil
 	}); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create join request notification")
-		return
-	}
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create join request")
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
 

@@ -119,20 +119,17 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not start transaction")
-		return
-	}
-	defer tx.Rollback()
+	operationError := "could not start transaction"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		operationError = "could not record post media"
+		if err := addPostMedia(tx, postID, mediaID, currentUser.ID, header.Filename, relativePath, mimeType, fileSize, position); err != nil {
+			return err
+		}
 
-	if err := addPostMedia(tx, postID, mediaID, currentUser.ID, header.Filename, relativePath, mimeType, fileSize, position); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not record post media")
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save post media")
+		operationError = "could not save post media"
+		return nil
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
 
@@ -256,30 +253,27 @@ func (h *Handler) UploadCommentMedia(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	tx, err := h.DB.Begin()
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not start transaction")
-		return
-	}
-	defer tx.Rollback()
+	operationError := "could not start transaction"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		operationError = "could not record comment media"
+		if err := addCommentMedia(
+			tx,
+			commentID,
+			mediaID,
+			currentUser.ID,
+			header.Filename,
+			relativePath,
+			mimeType,
+			fileSize,
+			position,
+		); err != nil {
+			return err
+		}
 
-	if err := addCommentMedia(
-		tx,
-		commentID,
-		mediaID,
-		currentUser.ID,
-		header.Filename,
-		relativePath,
-		mimeType,
-		fileSize,
-		position,
-	); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not record comment media")
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save comment media")
+		operationError = "could not save comment media"
+		return nil
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
 

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"social-network/internal/enums"
+	"social-network/internal/helpers"
 	"social-network/internal/models"
 
 	"github.com/google/uuid"
@@ -209,37 +210,31 @@ func respondToJoinRequest(db *sql.DB, action string, joinRequest models.GroupJoi
 	case "decline":
 		newStatus = enums.GroupJoinRequestStatusDeclined
 	}
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+	return helpers.WithTx(db, func(tx *sql.Tx) error {
+		if _, err := tx.Exec(`
+			UPDATE group_join_requests
+			SET status = ?,
+				responded_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+			WHERE id = ?
+				AND group_id = ?
+				AND status = ?
+		`, newStatus, joinRequest.RequestID, joinRequest.GroupID, enums.GroupJoinRequestStatusPending); err != nil {
+			return err
+		}
 
-	_, err = tx.Exec(`
-		UPDATE group_join_requests
-		SET status = ?,
-			responded_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-		WHERE id = ?
-			AND group_id = ?
-			AND status = ?
-	`, newStatus, joinRequest.RequestID, joinRequest.GroupID, enums.GroupJoinRequestStatusPending)
-	if err != nil {
-		return err
-	}
+		if newStatus != enums.GroupJoinRequestStatusAccepted {
+			return nil
+		}
 
-	if newStatus == enums.GroupJoinRequestStatusAccepted {
-		_, err = tx.Exec(`
+		_, err := tx.Exec(`
 			INSERT INTO group_members
 			(group_id, user_id, role, status)
 			VALUES (?, ?, ?, ?)
 			ON CONFLICT(group_id, user_id)
 			DO UPDATE SET status = excluded.status
 		`, joinRequest.GroupID, joinRequest.UserID, enums.GroupMemberRoleMember, enums.GroupMembershipStatusActive)
-		if err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
+		return err
+	})
 }
 
 func cancelJoinRequest(db *sql.DB, groupID string, userID string) (int64, error) {
@@ -460,42 +455,32 @@ func respondToInvite(db *sql.DB, action string, invite models.GroupInvitationRes
 		newStatus = enums.GroupInvitationStatusDeclined
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+	return helpers.WithTx(db, func(tx *sql.Tx) error {
+		if _, err := tx.Exec(`
+			UPDATE group_invitations
+			SET status = ?,
+			    responded_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+			WHERE id = ?
+			  AND group_id = ?
+			  AND invited_user_id = ?
+			  AND status = ?
+		`, newStatus, invite.InviteID, invite.GroupID, invite.InvitedUserID, enums.GroupInvitationStatusPending); err != nil {
+			return err
+		}
 
-	_, err = tx.Exec(`
-		UPDATE group_invitations
-		SET status = ?,
-		    responded_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-		WHERE id = ?
-		  AND group_id = ?
-		  AND invited_user_id = ?
-		  AND status = ?
-	`, newStatus, invite.InviteID, invite.GroupID, invite.InvitedUserID, enums.GroupInvitationStatusPending)
+		if newStatus != enums.GroupInvitationStatusAccepted {
+			return nil
+		}
 
-	if err != nil {
-		return err
-	}
-
-	if newStatus == enums.GroupInvitationStatusAccepted {
-		_, err = tx.Exec(`
+		_, err := tx.Exec(`
 			INSERT INTO group_members
 			(group_id, user_id, role, status)
 			VALUES (?, ?, ?, ?)
 			ON CONFLICT(group_id, user_id)
 			DO UPDATE SET status = excluded.status
-		`, invite.GroupID, invite.InvitedUserID, enums.GroupMemberRoleMember, enums.GroupMembershipStatusActive,
-		)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
+		`, invite.GroupID, invite.InvitedUserID, enums.GroupMemberRoleMember, enums.GroupMembershipStatusActive)
+		return err
+	})
 }
 
 func cancelInvite(db *sql.DB, inviteID string, groupID string) (int64, error) {

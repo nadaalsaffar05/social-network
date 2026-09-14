@@ -328,33 +328,30 @@ func FollowUser(database *sql.DB) http.HandlerFunc {
 		}
 		requestID := requestUUID.String()
 
-		tx, err := database.Begin()
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to start follow request")
-			return
-		}
-		defer tx.Rollback()
+		operationError := "failed to start follow request"
+		if err := helpers.WithTx(database, func(tx *sql.Tx) error {
+			operationError = "failed to send follow request"
+			if _, err := tx.Exec(`
+				INSERT INTO follow_requests (id, sender_id, recipient_id, status)
+				VALUES (?, ?, ?, ?)
+			`, requestID, currentUser.ID, targetID, int(enums.FollowRequestStatusPending)); err != nil {
+				return err
+			}
 
-		_, err = tx.Exec(`
-			INSERT INTO follow_requests (id, sender_id, recipient_id, status)
-			VALUES (?, ?, ?, ?)
-		`, requestID, currentUser.ID, targetID, int(enums.FollowRequestStatusPending))
+			operationError = "failed to create follow notification"
+			if err := notifications.Create(tx, notifications.CreateInput{
+				RecipientID:     targetID,
+				ActorID:         currentUser.ID,
+				Type:            enums.NotificationTypeFollowRequest,
+				FollowRequestID: &requestID,
+			}); err != nil {
+				return err
+			}
 
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to send follow request")
-			return
-		}
-		if err := notifications.Create(tx, notifications.CreateInput{
-			RecipientID:     targetID,
-			ActorID:         currentUser.ID,
-			Type:            enums.NotificationTypeFollowRequest,
-			FollowRequestID: &requestID,
+			operationError = "failed to send follow request"
+			return nil
 		}); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to create follow notification")
-			return
-		}
-		if err := tx.Commit(); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to send follow request")
+			helpers.WriteError(w, http.StatusInternalServerError, operationError)
 			return
 		}
 
@@ -433,38 +430,35 @@ func RespondToFollowRequest(database *sql.DB) http.HandlerFunc {
 			newStatus = int(enums.FollowRequestStatusAccepted)
 		}
 
-		tx, txErr := database.Begin()
-		if txErr != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to start transaction")
-			return
-		}
-		defer tx.Rollback()
+		operationError := "failed to start transaction"
+		if err := helpers.WithTx(database, func(tx *sql.Tx) error {
+			operationError = "failed to update follow request"
+			if _, err := tx.Exec(`
+				UPDATE follow_requests
+				SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+				WHERE id = ?
+			`, newStatus, req.RequestID); err != nil {
+				return err
+			}
 
-		_, err = tx.Exec(`
-			UPDATE follow_requests
-			SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-			WHERE id = ?
-		`, newStatus, req.RequestID)
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to update follow request")
-			return
-		}
+			if req.Action != "accept" {
+				operationError = "failed to commit transaction"
+				return nil
+			}
 
-		// If accepted, create the follow relationship
-		if req.Action == "accept" {
-			_, err = tx.Exec(`
+			operationError = "failed to create follow relationship"
+			if _, err := tx.Exec(`
 				INSERT INTO follows (follower_id, following_id)
 				VALUES (?, ?)
 				ON CONFLICT(follower_id, following_id) DO NOTHING
-			`, senderID, recipientID)
-			if err != nil {
-				helpers.WriteError(w, http.StatusInternalServerError, "failed to create follow relationship")
-				return
+			`, senderID, recipientID); err != nil {
+				return err
 			}
-		}
 
-		if err := tx.Commit(); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to commit transaction")
+			operationError = "failed to commit transaction"
+			return nil
+		}); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, operationError)
 			return
 		}
 

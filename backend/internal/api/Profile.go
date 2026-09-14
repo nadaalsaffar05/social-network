@@ -238,35 +238,30 @@ func UpdateProfile(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		tx, err := database.Begin()
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to start transaction")
-			return
-		}
-		defer tx.Rollback()
+		operationError := "failed to start transaction"
+		if err := helpers.WithTx(database, func(tx *sql.Tx) error {
+			operationError = "failed to update user details"
+			if _, err := tx.Exec(`
+				UPDATE users
+				SET first_name = ?, last_name = ?, date_of_birth = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+				WHERE id = ?
+			`, req.FirstName, req.LastName, strings.TrimSpace(req.DateOfBirth), currentUser.ID); err != nil {
+				return err
+			}
 
-		_, err = tx.Exec(`
-			UPDATE users
-			SET first_name = ?, last_name = ?, date_of_birth = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-			WHERE id = ?
-		`, req.FirstName, req.LastName, strings.TrimSpace(req.DateOfBirth), currentUser.ID)
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to update user details")
-			return
-		}
+			operationError = "failed to update profile details"
+			if _, err := tx.Exec(`
+				UPDATE profiles
+				SET nickname = ?, about_me = ?, privacy = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+				WHERE user_id = ?
+			`, nickname, aboutMe, req.Privacy, currentUser.ID); err != nil {
+				return err
+			}
 
-		_, err = tx.Exec(`
-			UPDATE profiles
-			SET nickname = ?, about_me = ?, privacy = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-			WHERE user_id = ?
-		`, nickname, aboutMe, req.Privacy, currentUser.ID)
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to update profile details")
-			return
-		}
-
-		if err := tx.Commit(); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to commit profile update")
+			operationError = "failed to commit profile update"
+			return nil
+		}); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, operationError)
 			return
 		}
 
@@ -354,51 +349,42 @@ func UpdateAvatar(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		tx, err := database.Begin()
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to start transaction")
-			return
-		}
-		defer tx.Rollback()
+		operationError := "failed to start transaction"
+		if err := helpers.WithTx(database, func(tx *sql.Tx) error {
+			var existingType int
+			var existingMediaID string
+			scanErr := tx.QueryRow(`
+				SELECT type, media_id FROM profile_avatars WHERE user_id = ?
+			`, currentUser.ID).Scan(&existingType, &existingMediaID)
 
-		var existingType int
-		var existingMediaID string
-		scanErr := tx.QueryRow(`
-			SELECT type, media_id FROM profile_avatars WHERE user_id = ?
-		`, currentUser.ID).Scan(&existingType, &existingMediaID)
-
-		if scanErr == nil {
-			if existingType == int(enums.ProfilePfpTypeGeneric) {
-				// Unlink generic pool avatar
-				_, _ = tx.Exec(`UPDATE profile_avatars SET user_id = NULL WHERE user_id = ?`, currentUser.ID)
-			} else if existingType == int(enums.ProfilePfpTypeCustom) {
-				// Remove custom avatar mapping
-				_, _ = tx.Exec(`DELETE FROM profile_avatars WHERE user_id = ?`, currentUser.ID)
+			if scanErr == nil {
+				if existingType == int(enums.ProfilePfpTypeGeneric) {
+					_, _ = tx.Exec(`UPDATE profile_avatars SET user_id = NULL WHERE user_id = ?`, currentUser.ID)
+				} else if existingType == int(enums.ProfilePfpTypeCustom) {
+					_, _ = tx.Exec(`DELETE FROM profile_avatars WHERE user_id = ?`, currentUser.ID)
+				}
 			}
-		}
 
-		// Insert into media
-		_, err = tx.Exec(`
-			INSERT INTO media (id, uploader_id, file_name, file_path, mime_type, file_size)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, mediaID, currentUser.ID, header.Filename, relativePath, string(mimeType), fileSize)
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to record media entry")
-			return
-		}
+			operationError = "failed to record media entry"
+			if _, err := tx.Exec(`
+				INSERT INTO media (id, uploader_id, file_name, file_path, mime_type, file_size)
+				VALUES (?, ?, ?, ?, ?, ?)
+			`, mediaID, currentUser.ID, header.Filename, relativePath, string(mimeType), fileSize); err != nil {
+				return err
+			}
 
-		// Insert custom profile avatar mapping
-		_, err = tx.Exec(`
-			INSERT INTO profile_avatars (user_id, media_id, type)
-			VALUES (?, ?, ?)
-		`, currentUser.ID, mediaID, int(enums.ProfilePfpTypeCustom))
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to update profile avatar")
-			return
-		}
+			operationError = "failed to update profile avatar"
+			if _, err := tx.Exec(`
+				INSERT INTO profile_avatars (user_id, media_id, type)
+				VALUES (?, ?, ?)
+			`, currentUser.ID, mediaID, int(enums.ProfilePfpTypeCustom)); err != nil {
+				return err
+			}
 
-		if err := tx.Commit(); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to commit transaction")
+			operationError = "failed to commit transaction"
+			return nil
+		}); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, operationError)
 			return
 		}
 
