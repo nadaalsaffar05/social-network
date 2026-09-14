@@ -99,16 +99,17 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !startsAt.After(time.Now()) {
+	if !startsAt.After(time.Now().UTC()) {
 		helpers.WriteError(w, http.StatusBadRequest, "Event must start in the future")
 		return
 	}
+	startsAtUTC := startsAt.UTC().Format(time.RFC3339)
 
 	eventID := uuid.New().String()
 	operationError := "Failed to start event"
 	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
 		operationError = "Failed to create event"
-		if err := createEvent(tx, eventID, groupID, currentUser.ID, req.Title, req.Description, req.StartsAt); err != nil {
+		if err := createEvent(tx, eventID, groupID, currentUser.ID, req.Title, req.Description, startsAtUTC); err != nil {
 			return err
 		}
 
@@ -345,7 +346,7 @@ func (h *Handler) RespondToEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !startsAt.After(time.Now()) {
+	if !startsAt.After(time.Now().UTC()) {
 		helpers.WriteError(w, http.StatusConflict, "Cannot respond to a past event")
 		return
 	}

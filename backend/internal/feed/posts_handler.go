@@ -2,7 +2,6 @@ package feed
 
 import (
 	"database/sql"
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -28,7 +27,7 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	var req models.CreatePostRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := helpers.ParseJSON(r.Body, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -50,22 +49,18 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Selected users are only allowed for Selected privacy.
 	if req.Privacy != enums.PostPrivacySelected && len(req.SelectedUserIDs) > 0 {
 		helpers.WriteError(w, http.StatusBadRequest, "selected users are only allowed for selected privacy")
 		return
 	}
 
-	// Remove duplicate or blank user IDs before validating selected privacy.
 	selectedUserIDs := helpers.UniqueIDs(req.SelectedUserIDs)
 
-	// Selected privacy requires at least one selected user.
 	if req.Privacy == enums.PostPrivacySelected && len(selectedUserIDs) == 0 {
 		helpers.WriteError(w, http.StatusBadRequest, "at least one selected user is required")
 		return
 	}
 
-	// Every selected user must follow the author.
 	for _, userID := range selectedUserIDs {
 		follows, err := helpers.IsFollowing(h.DB, userID, currentUser.ID)
 		if err != nil {
@@ -183,7 +178,6 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		cursorCreatedAt = cursorPost.CreatedAt
 	}
 
-	// Fetch one extra row so next_cursor is empty when this is the last page.
 	rows, err := getFeedPosts(h.DB, currentUser.ID, cursor, cursorCreatedAt, limit+1)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not fetch feed")
@@ -234,10 +228,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i := range posts {
-		if posts[i].AuthorAvatarPath != nil {
-			path := "/" + *posts[i].AuthorAvatarPath
-			posts[i].AuthorAvatarPath = &path
-		}
+		posts[i].AuthorAvatarPath = helpers.PublicMediaPath(posts[i].AuthorAvatarPath)
 	}
 
 	nextCursor := ""
@@ -279,10 +270,7 @@ func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not read post media")
 		return
 	}
-	if post.AuthorAvatarPath != nil {
-		path := "/" + *post.AuthorAvatarPath
-		post.AuthorAvatarPath = &path
-	}
+	post.AuthorAvatarPath = helpers.PublicMediaPath(post.AuthorAvatarPath)
 
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{"post": post})
 }

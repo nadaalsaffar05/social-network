@@ -1,7 +1,6 @@
 package feed
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -80,7 +79,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	var req models.CreateCommentRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := helpers.ParseJSON(r.Body, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -236,10 +235,7 @@ func (h *Handler) GetComments(w http.ResponseWriter, r *http.Request) {
 	}
 	for i := range comments {
 		comments[i].Media = mediaByComment[comments[i].ID]
-		if comments[i].AuthorAvatarPath != nil {
-			path := "/" + *comments[i].AuthorAvatarPath
-			comments[i].AuthorAvatarPath = &path
-		}
+		comments[i].AuthorAvatarPath = helpers.PublicMediaPath(comments[i].AuthorAvatarPath)
 	}
 
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{

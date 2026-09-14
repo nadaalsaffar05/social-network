@@ -1,0 +1,25 @@
+export const PROFILE_PRIVACY = Object.freeze({
+  PUBLIC: 1000,
+  PRIVATE: 1010,
+})
+
+export const POST_PRIVACY = Object.freeze({
+  PUBLIC: 1000,
+  FOLLOWERS: 1010,
+  SELECTED: 1020,
+})
+
+// Values returned by the backend notifications API.
+export const NOTIFICATION_TYPE = Object.freeze({
+  FOLLOW_REQUEST: 1000,
+  GROUP_INVITATION: 1010,
+  GROUP_JOIN_REQUEST: 1020,
+  EVENT_CREATED: 1030,
+  FOLLOW_ACCEPTED: 1040,
+  POST_REACTION: 1050,
+  COMMENT_REACTION: 1060,
+  COMMENT: 1070,
+  NEW_FOLLOWER: 1080,
+  BIRTHDAY: 1090,
+  EVENT_REMINDER: 1100,
+})

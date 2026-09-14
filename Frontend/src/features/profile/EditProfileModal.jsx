@@ -3,6 +3,7 @@ import { X, FloppyDisk, LockKey, Globe, NotePencil, Camera } from '@phosphor-ico
 import { updateProfile, uploadAvatar } from '../../api/profile.js'
 import AvatarCropperModal from '../../shared/components/avatar-cropper/AvatarCropperModal'
 import Avatar from '../../shared/components/avatar/Avatar.jsx'
+import { PROFILE_PRIVACY } from '../../shared/constants/enums.js'
 import './EditProfileModal.css'
 
 export default function EditProfileModal({ profile, onClose, onSave }) {
@@ -13,9 +14,8 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
   const [dateOfBirth, setDateOfBirth] = useState(
     profile?.date_of_birth ? profile.date_of_birth.split('T')[0] : ''
   )
-  const [privacy, setPrivacy] = useState(profile?.privacy ?? 1000)
+  const [privacy, setPrivacy] = useState(profile?.privacy ?? PROFILE_PRIVACY.PUBLIC)
 
-  // Avatar state
   const [newAvatarFile, setNewAvatarFile] = useState(null)
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(null)
   const [selectedImageSrc, setSelectedImageSrc] = useState(null)
@@ -195,13 +195,13 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
           <div className="edit-profile-field">
             <label>Account Privacy</label>
             <div className="edit-profile-privacy-options">
-              <label className={`privacy-option ${privacy === 1000 ? 'selected' : ''}`}>
+              <label className={`privacy-option ${privacy === PROFILE_PRIVACY.PUBLIC ? 'selected' : ''}`}>
                 <input
                   type="radio"
                   name="privacy"
-                  value={1000}
-                  checked={privacy === 1000}
-                  onChange={() => setPrivacy(1000)}
+                  value={PROFILE_PRIVACY.PUBLIC}
+                  checked={privacy === PROFILE_PRIVACY.PUBLIC}
+                  onChange={() => setPrivacy(PROFILE_PRIVACY.PUBLIC)}
                 />
                 <Globe size={18} weight="bold" />
                 <div className="privacy-option-text">
@@ -210,13 +210,13 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
                 </div>
               </label>
 
-              <label className={`privacy-option ${privacy === 1010 ? 'selected' : ''}`}>
+              <label className={`privacy-option ${privacy === PROFILE_PRIVACY.PRIVATE ? 'selected' : ''}`}>
                 <input
                   type="radio"
                   name="privacy"
-                  value={1010}
-                  checked={privacy === 1010}
-                  onChange={() => setPrivacy(1010)}
+                  value={PROFILE_PRIVACY.PRIVATE}
+                  checked={privacy === PROFILE_PRIVACY.PRIVATE}
+                  onChange={() => setPrivacy(PROFILE_PRIVACY.PRIVATE)}
                 />
                 <LockKey size={18} weight="bold" />
                 <div className="privacy-option-text">

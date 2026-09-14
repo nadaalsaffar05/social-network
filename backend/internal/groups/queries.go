@@ -522,8 +522,8 @@ func getAllActiveEvents(db *sql.DB, groupID string, userID string) ([]models.Gro
 			p.nickname,
 			ge.title,
 			ge.description,
-			ge.starts_at,
-			ge.created_at
+			strftime('%Y-%m-%dT%H:%M:%fZ', ge.starts_at),
+			ge.created_at,
 			ea.response
 		FROM group_events ge
 		JOIN users u
@@ -582,7 +582,7 @@ func getEventByID(db *sql.DB, groupID string, eventID string) (models.GroupEvent
 			p.nickname,
 			ge.title,
 			ge.description,
-			ge.starts_at,
+			strftime('%Y-%m-%dT%H:%M:%fZ', ge.starts_at),
 			ge.created_at
 		FROM group_events ge
 		JOIN users u
@@ -915,10 +915,7 @@ func getGroupPosts(db *sql.DB, groupID string, viewerID string, cursor string, l
 			return nil, "", err
 		}
 
-		if post.AuthorAvatarPath != nil {
-			path := "/" + *post.AuthorAvatarPath
-			post.AuthorAvatarPath = &path
-		}
+		post.AuthorAvatarPath = helpers.PublicMediaPath(post.AuthorAvatarPath)
 
 		posts = append(posts, post)
 	}

@@ -124,10 +124,10 @@ func (h *Handler) MessageRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := "ACCEPTED"
+	status := messageRequestStatusAccepted
 	eventType := "message-request:accepted"
 	if r.Method == http.MethodDelete {
-		status = "DECLINED"
+		status = messageRequestStatusDeclined
 		eventType = "message-request:declined"
 	}
 
@@ -353,14 +353,22 @@ func (h *Handler) MessageReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request models.MessageReactionRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := helpers.ParseJSON(r.Body, &request); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	otherUserID, publicID := strings.TrimSpace(r.PathValue("user_id")), strings.TrimSpace(r.PathValue("public_id"))
 	reactions, found, err := setMessageReaction(h.DB, currentUser.ID, otherUserID, publicID, request.Emoji)
 	if err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		if errors.Is(err, errInvalidReactionEmoji) {
+			helpers.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, errUserNotFound) {
+			helpers.WriteError(w, http.StatusNotFound, "user not found")
+			return
+		}
+		helpers.WriteError(w, http.StatusInternalServerError, "failed to update message reaction")
 		return
 	}
 	if !found {
@@ -433,7 +441,7 @@ func (h *Handler) createMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request models.SendPrivateMessageRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := helpers.ParseJSON(r.Body, &request); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}

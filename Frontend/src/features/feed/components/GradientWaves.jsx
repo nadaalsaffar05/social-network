@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Mesh, Program, Renderer, Triangle } from "ogl";
 
-import "./gradient-waves.css";
+import "./GradientWaves.css";
 
 const hexToRgb = (hex) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);

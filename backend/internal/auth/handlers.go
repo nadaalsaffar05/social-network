@@ -2,7 +2,6 @@ package auth
 
 import (
 	"database/sql"
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -49,7 +48,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	var request models.RegisterRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := helpers.ParseJSON(r.Body, &request); err != nil {
 		helpers.WriteError(
 			w,
 			http.StatusBadRequest,
@@ -165,7 +164,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var request models.LoginRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := helpers.ParseJSON(r.Body, &request); err != nil {
 		helpers.WriteError(
 			w,
 			http.StatusBadRequest,
@@ -233,7 +232,10 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie(sessionCookieName)
 	if err == nil {
-		_ = revokeSession(h.DB, cookie.Value)
+		if err := revokeSession(h.DB, cookie.Value); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "could not end session")
+			return
+		}
 	}
 
 	clearSessionCookie(w)

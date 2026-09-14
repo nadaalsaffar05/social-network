@@ -76,3 +76,12 @@ type UpdateProfileRequest struct {
 	DateOfBirth string               `json:"date_of_birth"`
 	Privacy     enums.ProfilePrivacy `json:"privacy"`
 }
+
+type FollowUserRequest struct {
+	UserID string `json:"user_id"`
+}
+
+type RespondToFollowRequestRequest struct {
+	RequestID string `json:"request_id"`
+	Action    string `json:"action"`
+}

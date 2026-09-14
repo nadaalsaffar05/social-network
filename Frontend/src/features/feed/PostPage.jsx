@@ -23,7 +23,7 @@ import {
   getMediaUrl,
   getPostDisplayName,
 } from './utils/post.js'
-import './post-detail.css'
+import './PostPage.css'
 
 function CommentItem({ comment, currentUserID, isReacting, isDeleting, onDelete, onLike, onReply }) {
   const isOwner = comment.author_id === currentUserID
@@ -129,7 +129,7 @@ export default function PostPage() {
         if (isMounted) setStatus('ready')
       } catch (requestError) {
         if (!isMounted) return
-        setError(requestError.message || 'Could not load this post')
+        setError(requestError.message || 'Failed to load this post')
         setStatus('error')
       }
     }
@@ -153,7 +153,7 @@ export default function PostPage() {
         dislike_count: response.counts.DISLIKE,
       })
     } catch (requestError) {
-      showError('Could not update reaction', requestError.message || 'Please try again')
+      showError('Failed to update reaction', requestError.message || 'Please try again')
     } finally {
       setReactingID('')
     }
@@ -175,7 +175,7 @@ export default function PostPage() {
           : comment
       )))
     } catch (requestError) {
-      showError('Could not update reaction', requestError.message || 'Please try again')
+      showError('Failed to update reaction', requestError.message || 'Please try again')
     } finally {
       setReactingID('')
     }
@@ -205,7 +205,7 @@ export default function PostPage() {
       navigate('/home', { replace: true })
       showSuccess('Post deleted')
     } catch (requestError) {
-      showError('Could not delete post', requestError.message || 'Please try again')
+      showError('Failed to delete post', requestError.message || 'Please try again')
     }
   }
 
@@ -219,7 +219,7 @@ export default function PostPage() {
       await loadComments()
       showSuccess('Comment deleted')
     } catch (requestError) {
-      showError('Could not delete comment', requestError.message || 'Please try again')
+      showError('Failed to delete comment', requestError.message || 'Please try again')
     } finally {
       setDeletingCommentID('')
     }

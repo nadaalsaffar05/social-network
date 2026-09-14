@@ -69,6 +69,8 @@ const (
 	NotificationTypeCommentReaction  NotificationType = 1060
 	NotificationTypeComment          NotificationType = 1070
 	NotificationTypeNewFollower      NotificationType = 1080
+	NotificationTypeBirthday         NotificationType = 1090
+	NotificationTypeEventReminder    NotificationType = 1100
 )
 
 type ProfilePfpType int

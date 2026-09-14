@@ -18,7 +18,8 @@ import Avatar from "../../shared/components/avatar/Avatar.jsx";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
 import MessageReactions from "./components/MessageReactions.jsx";
-import "../../shared/styles/components/post-composer.css";
+import { formatLocalDate, formatLocalDateTime, formatLocalTime, isSameLocalDay, parseAPITimestamp } from "../../shared/utils/dateTime.js";
+import "../../shared/styles/components/PostComposer.css";
 import "./ChatPage.css";
 
 function displayName(user) {
@@ -28,7 +29,7 @@ function displayName(user) {
 
 function shortTime(value) {
   if (!value) return "";
-  return new Date(value).toLocaleString(undefined, {
+  return formatLocalDateTime(value, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -37,17 +38,18 @@ function shortTime(value) {
 }
 
 function messageTime(value) {
-  return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return formatLocalTime(value, { hour: "numeric", minute: "2-digit" });
 }
 
 function messageDay(value) {
-  const date = new Date(value);
+  const date = parseAPITimestamp(value);
+  if (!date) return value;
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === today.toDateString()) return "Today";
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  if (isSameLocalDay(date, today)) return "Today";
+  if (isSameLocalDay(date, yesterday)) return "Yesterday";
+  return formatLocalDate(value, { day: "numeric", month: "short", year: "numeric" });
 }
 
 function addMessages(current, incoming, { prepend = false } = {}) {
@@ -82,7 +84,7 @@ export default function ChatPage() {
       setConversations(conversationResponse.conversations ?? []);
       setRequests(requestResponse.requests ?? []);
     } catch (requestError) {
-      setError(requestError.message || "Could not load messages");
+      setError(requestError.message || "Failed to load messages");
     }
   }, []);
 
@@ -107,7 +109,7 @@ export default function ChatPage() {
           sendEvent("message:read", { public_id: message.public_id });
         });
     } catch (requestError) {
-      setError(requestError.message || "Could not load messages");
+      setError(requestError.message || "Failed to load messages");
     } finally {
       if (appendOlder) setIsLoadingOlder(false);
       else setIsLoadingThread(false);
@@ -186,7 +188,7 @@ export default function ChatPage() {
       sendEvent("typing", { recipient_id: userId, is_typing: false });
       await loadInbox();
     } catch (requestError) {
-      showError("Could not send message", requestError.message || "Please try again");
+      showError("Failed to send message", requestError.message || "Please try again");
     } finally {
       setIsSending(false);
     }
@@ -233,7 +235,7 @@ export default function ChatPage() {
       const response = await reactToPrivateMessage(userId, targetID, emoji);
       setMessages((current) => current.map((message) => message.public_id === targetID ? { ...message, reactions: response.reactions } : message));
     } catch (requestError) {
-      showError("Could not react to message", requestError.message || "Please try again");
+      showError("Failed to react to message", requestError.message || "Please try again");
     }
   }
 
@@ -247,7 +249,7 @@ export default function ChatPage() {
       await loadInbox();
       showSuccess("Message deleted");
     } catch (requestError) {
-      showError("Could not delete message", requestError.message || "Please try again");
+      showError("Failed to delete message", requestError.message || "Please try again");
     }
   }
 
@@ -265,7 +267,7 @@ export default function ChatPage() {
       await loadInbox();
       showSuccess(action === "accept" ? "Message request accepted" : "Message request declined");
     } catch (requestError) {
-      showError("Could not update message request", requestError.message || "Please try again");
+      showError("Failed to update message request", requestError.message || "Please try again");
     }
   }
 

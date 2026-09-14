@@ -17,6 +17,13 @@ var (
 	errInvalidCursor          = errors.New("invalid cursor")
 	errMessageRequestOpen     = errors.New("message request is pending")
 	errMessageRequestDeclined = errors.New("message request was declined")
+	errInvalidReactionEmoji   = errors.New("invalid emoji")
+)
+
+const (
+	messageRequestStatusPending  = "PENDING"
+	messageRequestStatusAccepted = "ACCEPTED"
+	messageRequestStatusDeclined = "DECLINED"
 )
 
 func createPrivateMessage(db *sql.DB, senderID, recipientID, content string) (models.PrivateMessage, error) {
@@ -160,26 +167,40 @@ func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit in
 
 func attachMessageReactions(db *sql.DB, messages []models.PrivateMessage) error {
 	for index := range messages {
-		rows, err := db.Query(`SELECT reaction.emoji, reaction.user_id FROM private_message_reactions reaction JOIN private_messages message ON message.id = reaction.message_id WHERE message.public_id = ? ORDER BY reaction.created_at`, messages[index].PublicID)
+		reactions, err := getMessageReactions(db, messages[index].PublicID)
 		if err != nil {
 			return err
 		}
-		messages[index].Reactions = make([]models.MessageReaction, 0)
-		for rows.Next() {
-			var reaction models.MessageReaction
-			if err := rows.Scan(&reaction.Emoji, &reaction.UserID); err != nil {
-				rows.Close()
-				return err
-			}
-			messages[index].Reactions = append(messages[index].Reactions, reaction)
-		}
-		if err := rows.Err(); err != nil {
-			rows.Close()
-			return err
-		}
-		rows.Close()
+		messages[index].Reactions = reactions
 	}
 	return nil
+}
+
+func getMessageReactions(db *sql.DB, publicID string) ([]models.MessageReaction, error) {
+	rows, err := db.Query(`
+		SELECT reaction.emoji, reaction.user_id
+		FROM private_message_reactions reaction
+		JOIN private_messages message ON message.id = reaction.message_id
+		WHERE message.public_id = ?
+		ORDER BY reaction.created_at
+	`, publicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	reactions := make([]models.MessageReaction, 0)
+	for rows.Next() {
+		var reaction models.MessageReaction
+		if err := rows.Scan(&reaction.Emoji, &reaction.UserID); err != nil {
+			return nil, err
+		}
+		reactions = append(reactions, reaction)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return reactions, nil
 }
 
 func setMessageReaction(db *sql.DB, userID, otherUserID, publicID, emoji string) ([]models.MessageReaction, bool, error) {
@@ -210,31 +231,18 @@ func setMessageReaction(db *sql.DB, userID, otherUserID, publicID, emoji string)
 	if err != nil {
 		return nil, false, err
 	}
-	message := models.PrivateMessage{PublicID: publicID}
-	if err := attachMessageReactions(db, []models.PrivateMessage{message}); err != nil {
-		return nil, false, err
-	}
-	rows, err := db.Query(`SELECT emoji, user_id FROM private_message_reactions WHERE message_id = ? ORDER BY created_at`, messageID)
+	reactions, err := getMessageReactions(db, publicID)
 	if err != nil {
 		return nil, false, err
 	}
-	defer rows.Close()
-	reactions := make([]models.MessageReaction, 0)
-	for rows.Next() {
-		var reaction models.MessageReaction
-		if err := rows.Scan(&reaction.Emoji, &reaction.UserID); err != nil {
-			return nil, false, err
-		}
-		reactions = append(reactions, reaction)
-	}
-	return reactions, true, rows.Err()
+	return reactions, true, nil
 }
 
 // ValidateReactionEmoji is shared by private and group message reactions.
 func ValidateReactionEmoji(emoji string) (string, error) {
 	emoji = strings.TrimSpace(emoji)
 	if emoji == "" || len([]rune(emoji)) > 32 {
-		return "", errors.New("invalid emoji")
+		return "", errInvalidReactionEmoji
 	}
 	return emoji, nil
 }
@@ -250,8 +258,8 @@ func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, 
 			avatar_media.file_path,
 			CASE WHEN last_message.is_active THEN last_message.content ELSE 'This message was deleted' END,
 			last_message.created_at,
-			COALESCE(request.status, 'ACCEPTED'),
-			CASE WHEN request.status = 'PENDING' AND request.recipient_id = ? THEN 1 ELSE 0 END
+			COALESCE(request.status, ?),
+			CASE WHEN request.status = ? AND request.recipient_id = ? THEN 1 ELSE 0 END
 		FROM private_conversations conversation
 		JOIN conversation_participants current_participant
 			ON current_participant.conversation_id = conversation.id
@@ -272,7 +280,7 @@ func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, 
 		)
 		LEFT JOIN private_message_requests request ON request.conversation_id = conversation.id
 		ORDER BY last_message.created_at DESC, last_message.id DESC
-	`, userID, userID, userID)
+	`, messageRequestStatusAccepted, messageRequestStatusPending, userID, userID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -296,10 +304,7 @@ func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, 
 		); err != nil {
 			return nil, err
 		}
-		if conversation.User.AvatarPath != nil {
-			path := "/" + strings.TrimLeft(*conversation.User.AvatarPath, "/")
-			conversation.User.AvatarPath = &path
-		}
+		conversation.User.AvatarPath = helpers.PublicMediaPath(conversation.User.AvatarPath)
 		conversation.IsIncomingRequest = incomingRequest == 1
 		conversations = append(conversations, conversation)
 	}
@@ -524,18 +529,18 @@ func prepareMessageRequest(tx *sql.Tx, conversationID, senderID, recipientID str
 	if err != nil {
 		return err
 	}
-	if status == "ACCEPTED" {
+	if status == messageRequestStatusAccepted {
 		return nil
 	}
 	if isFriends {
 		_, err = tx.Exec(`
 			UPDATE private_message_requests
-			SET status = 'ACCEPTED', responded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-			WHERE conversation_id = ? AND status = 'PENDING'
-		`, conversationID)
+			SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+			WHERE conversation_id = ? AND status = ?
+		`, messageRequestStatusAccepted, conversationID, messageRequestStatusPending)
 		return err
 	}
-	if status == "DECLINED" {
+	if status == messageRequestStatusDeclined {
 		return errMessageRequestDeclined
 	}
 	return errMessageRequestOpen
@@ -546,8 +551,8 @@ func respondToMessageRequest(db *sql.DB, recipientID, requesterID, status string
 	err := db.QueryRow(`
 		SELECT conversation_id, requester_id, recipient_id, status, created_at
 		FROM private_message_requests
-		WHERE requester_id = ? AND recipient_id = ? AND status = 'PENDING'
-	`, requesterID, recipientID).Scan(
+		WHERE requester_id = ? AND recipient_id = ? AND status = ?
+	`, requesterID, recipientID, messageRequestStatusPending).Scan(
 		&request.ConversationID,
 		&request.RequesterID,
 		&request.RecipientID,
@@ -564,8 +569,8 @@ func respondToMessageRequest(db *sql.DB, recipientID, requesterID, status string
 	result, err := db.Exec(`
 		UPDATE private_message_requests
 		SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-		WHERE conversation_id = ? AND status = 'PENDING'
-	`, status, request.ConversationID)
+		WHERE conversation_id = ? AND status = ?
+	`, status, request.ConversationID, messageRequestStatusPending)
 	if err != nil {
 		return models.MessageRequestResponse{}, false, err
 	}
@@ -613,9 +618,9 @@ func getMessageRequests(db *sql.DB, recipientID string) ([]models.MessageRequest
 			LIMIT 1
 		)
 		LEFT JOIN private_message_receipts receipt ON receipt.message_id = message.id
-		WHERE request.recipient_id = ? AND request.status = 'PENDING'
+		WHERE request.recipient_id = ? AND request.status = ?
 		ORDER BY request.created_at DESC
-	`, recipientID)
+	`, recipientID, messageRequestStatusPending)
 	if err != nil {
 		return nil, err
 	}
@@ -646,10 +651,7 @@ func getMessageRequests(db *sql.DB, recipientID string) ([]models.MessageRequest
 		); err != nil {
 			return nil, err
 		}
-		if requester.AvatarPath != nil {
-			path := "/" + strings.TrimLeft(*requester.AvatarPath, "/")
-			requester.AvatarPath = &path
-		}
+		requester.AvatarPath = helpers.PublicMediaPath(requester.AvatarPath)
 		message.ConversationID = request.ConversationID
 		request.Message = &message
 		request.Requester = &requester
@@ -664,9 +666,9 @@ func isPendingMessageRequest(db *sql.DB, conversationID string) (bool, error) {
 		SELECT EXISTS(
 			SELECT 1
 			FROM private_message_requests
-			WHERE conversation_id = ? AND status = 'PENDING'
+			WHERE conversation_id = ? AND status = ?
 		)
-	`, conversationID).Scan(&pending)
+	`, conversationID, messageRequestStatusPending).Scan(&pending)
 	return pending == 1, err
 }
 

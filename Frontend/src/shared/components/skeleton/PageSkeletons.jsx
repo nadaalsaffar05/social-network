@@ -1,4 +1,3 @@
-import React from 'react'
 import Skeleton from './Skeleton'
 import GradientWaves from '../../../features/feed/components/GradientWaves'
 import { GRADIENT_WAVE_PROPS } from '../../../features/feed/constants'

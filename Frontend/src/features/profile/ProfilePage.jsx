@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Camera, House, SignOut, NotePencil, EnvelopeSimple, Cake, ShieldCheck, Users, UserCheck, UserPlus, Cat } from '@phosphor-icons/react'
+import { ArrowLeft, Camera, SignOut, NotePencil, EnvelopeSimple, Cake, ShieldCheck, Users, UserPlus } from '@phosphor-icons/react'
 import { followUser, getFollowers, getFollowing, getProfile, getPublicProfile, isFollowing, unfollowUser } from '../../api/profile.js'
 import { deletePost, togglePostReaction } from '../../api/feed.js'
 import { logoutUser } from '../../api/auth'
@@ -9,8 +9,10 @@ import EditProfileModal from './EditProfileModal'
 import PostCard from '../feed/components/PostCard.jsx'
 import GradientWaves from '../feed/components/GradientWaves.jsx'
 import { GRADIENT_WAVE_PROPS } from '../feed/constants.js'
+import { formatDateOnly } from '../../shared/utils/dateTime.js'
 import { useToast } from '../../shared/components/toast/useToast.js'
 import { ProfileSkeleton, UserItemSkeleton } from '../../shared/components/skeleton/PageSkeletons.jsx'
+import { PROFILE_PRIVACY } from '../../shared/constants/enums.js'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
@@ -65,7 +67,7 @@ export default function ProfilePage() {
           return
         }
         if (isMounted) {
-          showError('Could not load profile', requestError.message || 'Please try again')
+          showError('Failed to load profile', requestError.message || 'Please try again')
           navigate('/home', { replace: true })
         }
       } finally {
@@ -122,7 +124,7 @@ export default function ProfilePage() {
       await logoutUser()
       navigate('/login', { replace: true })
     } catch (requestError) {
-      showError('Could not log out', requestError.message)
+      showError('Failed to log out', requestError.message)
     }
   }
 
@@ -143,20 +145,6 @@ export default function ProfilePage() {
   const postsCount = profile?.posts_count ?? (profile?.posts?.length ?? 0)
   const posts = profile?.posts ?? []
 
-  function formatDate(dateStr) {
-    if (!dateStr) return ''
-    try {
-      const d = new Date(dateStr)
-      return d.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
-    } catch {
-      return dateStr
-    }
-  }
-
   async function refreshProfile() {
     const nextProfile = id ? await getPublicProfile(id) : await getProfile()
     setProfile(nextProfile)
@@ -167,7 +155,7 @@ export default function ProfilePage() {
       const response = await followUser(id)
       setIsFollowingProfile(response.status === 'following')
     } catch (requestError) {
-      showError('Could not follow user', requestError.message || 'Please try again')
+      showError('Failed to follow user', requestError.message || 'Please try again')
     }
   }
 
@@ -176,19 +164,19 @@ export default function ProfilePage() {
       await unfollowUser(id)
       setIsFollowingProfile(false)
     } catch (requestError) {
-      showError('Could not unfollow user', requestError.message || 'Please try again')
+      showError('Failed to unfollow user', requestError.message || 'Please try again')
     }
   }
 
   async function handlePostReaction(postId) {
     setReactingPostID(postId)
-    try { await togglePostReaction(postId, 'LIKE'); await refreshProfile() } catch (requestError) { showError('Could not update reaction', requestError.message || 'Please try again') } finally { setReactingPostID('') }
+    try { await togglePostReaction(postId, 'LIKE'); await refreshProfile() } catch (requestError) { showError('Failed to update reaction', requestError.message || 'Please try again') } finally { setReactingPostID('') }
   }
 
   async function handleDeletePost(postId) {
     if (!window.confirm('Delete this post?')) return
     setDeletingPostID(postId)
-    try { await deletePost(postId); await refreshProfile() } catch (requestError) { showError('Could not delete post', requestError.message || 'Please try again') } finally { setDeletingPostID('') }
+    try { await deletePost(postId); await refreshProfile() } catch (requestError) { showError('Failed to delete post', requestError.message || 'Please try again') } finally { setDeletingPostID('') }
   }
 
   async function handleUnfollowItem(targetUser) {
@@ -206,7 +194,7 @@ export default function ProfilePage() {
           : prev
       )
     } catch (requestError) {
-      showError('Could not unfollow', requestError.message || 'Please try again')
+      showError('Failed to unfollow', requestError.message || 'Please try again')
     } finally {
       setUnfollowingID(null)
     }
@@ -234,8 +222,8 @@ export default function ProfilePage() {
               <h4 className="user-item-name" onClick={() => navigate(`/profile/${u.id}`)}>
                 {uFullName}
               </h4>
-              <span className={`profile-badge ${u.privacy === 1010 ? 'private' : ''}`}>
-                {u.privacy === 1010 ? 'Private' : 'Public'}
+              <span className={`profile-badge ${u.privacy === PROFILE_PRIVACY.PRIVATE ? 'private' : ''}`}>
+                {u.privacy === PROFILE_PRIVACY.PRIVATE ? 'Private' : 'Public'}
               </span>
             </div>
             {uHandle && <span className="user-item-handle">{uHandle}</span>}
@@ -377,14 +365,14 @@ export default function ProfilePage() {
             {isOwnProfile && profile?.date_of_birth && (
               <div className="profile-meta-item">
                 <Cake size={18} weight="regular" className="profile-meta-icon" />
-                <span>Born {formatDate(profile.date_of_birth)}</span>
+                <span>Born {formatDateOnly(profile.date_of_birth, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
               </div>
             )}
 
             <div className="profile-meta-item">
               <ShieldCheck size={18} weight="regular" className="profile-meta-icon" />
-              <span className={`profile-badge ${profile?.privacy === 1010 ? 'private' : ''}`}>
-                {profile?.privacy === 1010 ? 'Private Account' : 'Public Account'}
+              <span className={`profile-badge ${profile?.privacy === PROFILE_PRIVACY.PRIVATE ? 'private' : ''}`}>
+                {profile?.privacy === PROFILE_PRIVACY.PRIVATE ? 'Private Account' : 'Public Account'}
               </span>
             </div>
           </div>

@@ -25,15 +25,21 @@ export async function request(pathSegments, options = {}) {
     body: hasBody && !isFormData ? JSON.stringify(body) : body,
   })
 
-  const isJSON = response.headers
-    .get('content-type')
-    ?.includes('application/json')
+  const responseText = await response.text()
+  const isJSON = response.headers.get('content-type')?.includes('application/json')
+  let data = null
 
-  const data = isJSON ? await response.json() : null
+  if (responseText && isJSON) {
+    try {
+      data = JSON.parse(responseText)
+    } catch {
+      throw new Error('Invalid JSON response received from server')
+    }
+  }
 
   if (!response.ok) {
     throw new Error(
-      data?.error || response.statusText || 'Something went wrong',
+      data?.error || data?.message || responseText || response.statusText || 'Something went wrong',
     )
   }
 

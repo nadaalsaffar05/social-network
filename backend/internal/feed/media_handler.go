@@ -136,7 +136,7 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 	keepFile = true
 	helpers.WriteJSON(w, http.StatusCreated, map[string]string{
 		"media_id":  mediaID,
-		"file_path": "/" + relativePath,
+		"file_path": helpers.PublicMediaURL(relativePath),
 	})
 }
 
@@ -160,8 +160,6 @@ func (h *Handler) UploadCommentMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Make sure the comment belongs to this post and the current user
-	// is allowed to view the post.
 	canView, err := canViewPost(h.DB, postID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not check post")
@@ -281,6 +279,6 @@ func (h *Handler) UploadCommentMedia(w http.ResponseWriter, r *http.Request) {
 
 	helpers.WriteJSON(w, http.StatusCreated, map[string]string{
 		"media_id":  mediaID,
-		"file_path": "/" + relativePath,
+		"file_path": helpers.PublicMediaURL(relativePath),
 	})
 }

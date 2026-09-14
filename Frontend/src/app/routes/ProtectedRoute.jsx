@@ -32,7 +32,7 @@ export default function ProtectedRoute() {
           return;
         }
 
-        setError(requestError.message || "Could not verify your session");
+        setError(requestError.message || "Failed to verify your session");
         setStatus("error");
       }
     }

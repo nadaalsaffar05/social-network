@@ -1,10 +1,6 @@
-import { BASE_API } from '../../../config/api.js'
+import { parseAPITimestamp } from '../../../shared/utils/dateTime.js'
 
-export function getMediaUrl(path) {
-  if (/^[a-z][a-z\d+.-]*:/i.test(path)) return path
-
-  return new URL(`/${String(path).replace(/^\/+/, '')}`, BASE_API).toString()
-}
+export { getMediaUrl } from '../../../shared/utils/media.js'
 
 export function getPostDisplayName(post) {
   return (
@@ -15,8 +11,8 @@ export function getPostDisplayName(post) {
 }
 
 export function formatPostTime(value, { detailed = false } = {}) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
+  const date = parseAPITimestamp(value)
+  if (!date) return value
 
   if (detailed) {
     return new Intl.DateTimeFormat(undefined, {

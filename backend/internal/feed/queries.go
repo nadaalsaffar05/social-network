@@ -2,9 +2,11 @@ package feed
 
 import (
 	"database/sql"
+	"errors"
 	"strings"
 
 	"social-network/internal/enums"
+	"social-network/internal/helpers"
 	"social-network/internal/models"
 )
 
@@ -192,7 +194,7 @@ func GetPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 		&post.CommentCount,
 		&post.ViewerReaction,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return models.PostResponse{}, false, nil
 	}
 	if err != nil {
@@ -318,17 +320,17 @@ func canViewPost(db *sql.DB, postID, viewerID string) (bool, error) {
 	var allowed int
 	err := db.QueryRow(`
 		SELECT CASE WHEN p.group_id IS NULL AND (
-			p.privacy = 1000
+			p.privacy = ?
 			OR p.author_id = ?
 			OR (
-				p.privacy = 1010
+				p.privacy = ?
 				AND EXISTS (
 					SELECT 1 FROM follows f
 					WHERE f.follower_id = ? AND f.following_id = p.author_id
 				)
 			)
 			OR (
-				p.privacy = 1020
+				p.privacy = ?
 				AND EXISTS (
 					SELECT 1 FROM post_visibility pv
 					WHERE pv.post_id = p.id AND pv.user_id = ?
@@ -347,8 +349,8 @@ func canViewPost(db *sql.DB, postID, viewerID string) (bool, error) {
 		THEN 1 ELSE 0 END
 		FROM posts p
 		WHERE p.id = ? AND p.is_active = 1
-	`, viewerID, viewerID, viewerID, viewerID, enums.GroupMembershipStatusActive, postID).Scan(&allowed)
-	if err == sql.ErrNoRows {
+	`, enums.PostPrivacyPublic, viewerID, enums.PostPrivacyFollowers, viewerID, enums.PostPrivacySelected, viewerID, viewerID, enums.GroupMembershipStatusActive, postID).Scan(&allowed)
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
@@ -377,7 +379,7 @@ func getPostMedia(db *sql.DB, postID string) ([]string, error) {
 		if err := rows.Scan(&path); err != nil {
 			return nil, err
 		}
-		paths = append(paths, "/"+path)
+		paths = append(paths, helpers.PublicMediaURL(path))
 	}
 
 	return paths, rows.Err()
@@ -413,7 +415,7 @@ func getPostMediaForPosts(db *sql.DB, postIDs []string) (map[string][]string, er
 		if err := rows.Scan(&postID, &path); err != nil {
 			return nil, err
 		}
-		mediaByPost[postID] = append(mediaByPost[postID], "/"+path)
+		mediaByPost[postID] = append(mediaByPost[postID], helpers.PublicMediaURL(path))
 	}
 
 	return mediaByPost, rows.Err()
@@ -462,7 +464,7 @@ func getActiveCommentAuthor(db *sql.DB, commentID, postID string) (string, bool,
 		  AND post_id = ?
 		  AND is_active = 1
 	`, commentID, postID).Scan(&authorID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
 	}
 	if err != nil {

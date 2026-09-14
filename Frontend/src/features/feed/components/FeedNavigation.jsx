@@ -14,7 +14,7 @@ export default function FeedNavigation() {
       await logoutUser();
       navigate("/login", { replace: true });
     } catch {
-      // Keep the user on the current page when the server could not end the session.
+      // Keep the user on the current page when ending the session fails.
     }
   }
 

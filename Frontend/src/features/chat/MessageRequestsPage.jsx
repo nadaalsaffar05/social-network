@@ -11,7 +11,7 @@ export default function MessageRequestsPage() {
   useEffect(() => {
     getMessageRequests()
       .then((response) => setRequests(response.requests ?? []))
-      .catch((requestError) => showError("Could not load message requests", requestError.message || "Please try again"));
+      .catch((requestError) => showError("Failed to load message requests", requestError.message || "Please try again"));
   }, [showError]);
 
   async function respond(request, action) {
@@ -21,7 +21,7 @@ export default function MessageRequestsPage() {
       setRequests((current) => current.filter((item) => item.conversation_id !== request.conversation_id));
       showSuccess(action === "accept" ? "Message request accepted" : "Message request declined");
     } catch (requestError) {
-      showError("Could not update message request", requestError.message || "Please try again");
+      showError("Failed to update message request", requestError.message || "Please try again");
     }
   }
 

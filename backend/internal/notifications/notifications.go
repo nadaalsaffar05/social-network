@@ -36,8 +36,19 @@ func NewHandler(db *sql.DB) *Handler {
 }
 
 func Create(execer Execer, input CreateInput) error {
+	return create(execer, input, "INSERT")
+}
+
+// CreateIgnoringDuplicate creates a notification when its database uniqueness
+// constraint permits it. It is used by scheduled notifications that may be
+// checked more than once.
+func CreateIgnoringDuplicate(execer Execer, input CreateInput) error {
+	return create(execer, input, "INSERT OR IGNORE")
+}
+
+func create(execer Execer, input CreateInput, statement string) error {
 	_, err := execer.Exec(`
-		INSERT INTO notifications (
+		`+statement+` INTO notifications (
 			id,
 			recipient_id,
 			actor_id,
@@ -75,7 +86,7 @@ func (h *Handler) Notifications(w http.ResponseWriter, r *http.Request) {
 
 	notifications, unreadCount, err := list(h.DB, currentUser.ID)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not load notifications")
+		helpers.WriteError(w, http.StatusInternalServerError, "failed to load notifications")
 		return
 	}
 
@@ -105,7 +116,7 @@ func (h *Handler) MarkRead(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := markRead(h.DB, currentUser.ID, notificationID)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not mark notification as read")
+		helpers.WriteError(w, http.StatusInternalServerError, "failed to mark notification as read")
 		return
 	}
 	if !updated {
@@ -129,7 +140,7 @@ func (h *Handler) MarkAllRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := markAllRead(h.DB, currentUser.ID); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not mark notifications as read")
+		helpers.WriteError(w, http.StatusInternalServerError, "failed to mark notifications as read")
 		return
 	}
 
@@ -223,8 +234,7 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 				actor.Nickname = &nickname
 			}
 			if actorAvatarPath.Valid {
-				avatarPath := "/" + strings.TrimLeft(actorAvatarPath.String, "/")
-				actor.AvatarPath = &avatarPath
+				actor.AvatarPath = helpers.PublicMediaPath(&actorAvatarPath.String)
 			}
 			notification.Actor = &actor
 		}

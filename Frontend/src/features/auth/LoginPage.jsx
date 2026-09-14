@@ -20,7 +20,7 @@ export default function LoginPage() {
       await loginUser({ email, password })
       navigate('/home', { replace: true })
     } catch (requestError) {
-      showError('Could not log in', requestError.message || 'Please try again')
+      showError('Failed to log in', requestError.message || 'Please try again')
     } finally {
       setIsSubmitting(false)
     }

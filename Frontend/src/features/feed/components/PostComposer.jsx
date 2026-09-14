@@ -17,23 +17,24 @@ import { getFollowers } from "../../../api/profile.js";
 import AnimatedContent from "./AnimatedContent.jsx";
 import ClickSpark from "./ClickSpark.jsx";
 import GlassSurface from "./GlassSurface.jsx";
-import "../../../shared/styles/components/post-composer.css";
+import { POST_PRIVACY } from "../../../shared/constants/enums.js";
+import "../../../shared/styles/components/PostComposer.css";
 
 const privacyOptions = [
   {
-    value: 1000,
+    value: POST_PRIVACY.PUBLIC,
     title: "Public",
     description: "Anyone can see this post",
     icon: Globe,
   },
   {
-    value: 1010,
+    value: POST_PRIVACY.FOLLOWERS,
     title: "Followers",
     description: "Only your followers can see it",
     icon: UsersThree,
   },
   {
-    value: 1020,
+    value: POST_PRIVACY.SELECTED,
     title: "Selected",
     description: "Only people you choose can see it",
     icon: LockKey,
@@ -54,7 +55,7 @@ export default function PostComposer({
   const fileInputRef = useRef(null);
   const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(false);
   const [content, setContent] = useState("");
-  const [privacy, setPrivacy] = useState(1000);
+  const [privacy, setPrivacy] = useState(POST_PRIVACY.PUBLIC);
   const [files, setFiles] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [selectedUserIDs, setSelectedUserIDs] = useState([]);
@@ -77,20 +78,20 @@ export default function PostComposer({
     if (
       isCommentComposer ||
       !isOpen ||
-      privacy !== 1020 ||
+      privacy !== POST_PRIVACY.SELECTED ||
       followers.length > 0
     )
       return;
 
     getFollowers()
       .then(setFollowers)
-      .catch(() => setError("Could not load your followers"));
+      .catch(() => setError("Failed to load your followers"));
   }, [followers.length, isCommentComposer, isOpen, privacy]);
 
   function resetComposer() {
     setIsOpen(false);
     setContent("");
-    setPrivacy(1000);
+    setPrivacy(POST_PRIVACY.PUBLIC);
     setFiles([]);
     setSelectedUserIDs([]);
     setError("");
@@ -124,7 +125,7 @@ export default function PostComposer({
 
     if (
       !isCommentComposer &&
-      privacy === 1020 &&
+      privacy === POST_PRIVACY.SELECTED &&
       selectedUserIDs.length === 0
     ) {
       setError("Select at least one follower");
@@ -146,7 +147,7 @@ export default function PostComposer({
         const post = await createPost({
           content: content.trim(),
           privacy,
-          ...(privacy === 1020 ? { selected_user_ids: selectedUserIDs } : {}),
+          ...(privacy === POST_PRIVACY.SELECTED ? { selected_user_ids: selectedUserIDs } : {}),
         });
         await uploadFiles(files, (file, position) =>
           uploadPostMedia(post.id, file, position),
@@ -156,7 +157,7 @@ export default function PostComposer({
       await onCreated();
       resetComposer();
     } catch (requestError) {
-      setError(requestError.message || "Could not create the post");
+      setError(requestError.message || "Failed to create the post");
     } finally {
       setIsSubmitting(false);
     }
@@ -315,7 +316,7 @@ export default function PostComposer({
                       })}
                     </div>
 
-                    {privacy === 1020 && (
+                    {privacy === POST_PRIVACY.SELECTED && (
                       <fieldset className="post-composer__followers">
                         <legend>Select followers</legend>
                         {followers.length === 0 ? (

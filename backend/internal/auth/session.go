@@ -49,10 +49,7 @@ func createSession(db *sql.DB, userID string) (string, error) {
 
 	tokenHash := hashSessionToken(token)
 
-	expiresAt := time.Now().
-		UTC().
-		Add(sessionDuration).
-		Format("2006-01-02T15:04:05Z")
+	expiresAt := time.Now().UTC().Add(sessionDuration).Format(time.RFC3339)
 
 	_, err = db.Exec(`
 		INSERT INTO sessions (
@@ -101,12 +98,14 @@ func getUserFromSession(
 		return nil, err
 	}
 
-	_, _ = db.Exec(`
+	if _, err := db.Exec(`
 		UPDATE sessions
 		SET last_seen_at =
 			strftime('%Y-%m-%dT%H:%M:%fZ','now')
 		WHERE token_hash = ?
-	`, tokenHash)
+	`, tokenHash); err != nil {
+		return nil, err
+	}
 
 	return GetUserByID(db, userID)
 }

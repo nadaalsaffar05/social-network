@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/rand"
 
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
 
@@ -109,8 +110,8 @@ func createUser(
 
 		poolRows, err := tx.Query(`
 			SELECT media_id FROM profile_avatars
-			WHERE type = 1000 AND user_id IS NULL
-		`)
+			WHERE type = ? AND user_id IS NULL
+		`, enums.ProfilePfpTypeGeneric)
 		if err != nil {
 			return err
 		}

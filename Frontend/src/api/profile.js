@@ -1,5 +1,4 @@
 import { request } from './client'
-import { buildApiUrl } from '../config/api.js'
 
 export async function getProfile({ includePosts = true } = {}) {
   const data = await request(['api', 'profile'], {
@@ -16,33 +15,14 @@ export async function updateProfile(profileData) {
   return data.user || data
 }
 
-export async function uploadAvatar(file) {
-  const url = buildApiUrl(['api', 'profile', 'avatar'])
+export function uploadAvatar(file) {
   const formData = new FormData()
   formData.append('avatar', file)
 
-  const response = await fetch(url, {
+  return request(['api', 'profile', 'avatar'], {
     method: 'POST',
     body: formData,
-    credentials: 'include',
   })
-
-  const responseText = await response.text()
-  let data
-  try {
-    data = JSON.parse(responseText)
-  } catch {
-    if (!response.ok) {
-      throw new Error(responseText || `Upload failed with status ${response.status}`)
-    }
-    throw new Error('Invalid response received from server')
-  }
-
-  if (!response.ok) {
-    throw new Error(data.error || data.message || 'Failed to upload avatar')
-  }
-
-  return data
 }
 
 export async function getFollowers(userId) {
@@ -60,7 +40,7 @@ export async function getFollowing(userId) {
 }
 
 export async function followUser(userId) {
-  return await request(['api', 'follow'], {
+  return request(['api', 'follow'], {
     method: 'POST',
     body: { user_id: userId },
   })
@@ -72,7 +52,7 @@ export async function getFollowRequests() {
 }
 
 export async function respondToFollowRequest(requestId, action) {
-  return await request(['api', 'follow-request', 'respond'], {
+  return request(['api', 'follow-request', 'respond'], {
     method: 'POST',
     body: {
       request_id: requestId,
@@ -81,19 +61,12 @@ export async function respondToFollowRequest(requestId, action) {
   })
 }
 
-
 export async function unfollowUser(userId) {
-  return await request(['api', 'unfollow'], {
+  return request(['api', 'unfollow'], {
     method: 'POST',
     body: { user_id: userId },
   })
 }
-
-// export const respondToFollowRequest = (requestID, action) =>
-//   request(['api', 'follow-request', 'respond'], {
-//     method: 'POST',
-//     body: { request_id: requestID, action },
-//   })
 
 export const searchUsers = (query) =>
   request(['api', 'users', 'search'], { queryParams: { q: query } })

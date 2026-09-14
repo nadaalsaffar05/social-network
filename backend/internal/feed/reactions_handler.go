@@ -2,7 +2,7 @@ package feed
 
 import (
 	"database/sql"
-	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -42,7 +42,7 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 
 	var req models.ToggleReactionRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := helpers.ParseJSON(r.Body, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -67,7 +67,7 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 			FROM post_reactions
 			WHERE post_id = ? AND user_id = ?
 		`, postID, currentUser.ID).Scan(&existingReaction)
-		if err != nil && err != sql.ErrNoRows {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 
@@ -174,7 +174,7 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 
 	var req models.ToggleReactionRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := helpers.ParseJSON(r.Body, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -199,7 +199,7 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 			FROM comment_reactions
 			WHERE comment_id = ? AND user_id = ?
 		`, commentID, currentUser.ID).Scan(&existingReaction)
-		if err != nil && err != sql.ErrNoRows {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 

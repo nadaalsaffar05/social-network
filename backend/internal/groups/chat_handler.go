@@ -2,7 +2,6 @@ package groups
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"social-network/internal/auth"
@@ -120,7 +119,7 @@ func (h *Handler) CreateGroupMessages(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Content string `json:"content"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := helpers.ParseJSON(r.Body, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
@@ -194,14 +193,19 @@ func (h *Handler) GroupMessageReaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request models.MessageReactionRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := helpers.ParseJSON(r.Body, &request); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-
-	found, err := setGroupMessageReaction(h.DB, groupID, currentUser.ID, publicID, request.Emoji)
+	emoji, err := chat.ValidateReactionEmoji(request.Emoji)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	found, err := setGroupMessageReaction(h.DB, groupID, currentUser.ID, publicID, emoji)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to update message reaction")
 		return
 	}
 	if !found {

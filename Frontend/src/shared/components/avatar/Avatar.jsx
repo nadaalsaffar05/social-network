@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { BASE_API } from '../../../config/api.js'
+import { getMediaUrl } from '../../utils/media.js'
 
 const fallbackAvatarPaths = [
   'tmp/doof.jpg',
@@ -8,13 +8,6 @@ const fallbackAvatarPaths = [
   'tmp/download.jpg',
   'tmp/chinchillamaru.jpg',
 ]
-
-function getMediaUrl(path) {
-  if (!path) return null
-  if (/^[a-z][a-z\d+.-]*:/i.test(path)) return path
-
-  return new URL(`/${String(path).replace(/^\/+/, '')}`, BASE_API).toString()
-}
 
 function getFallbackAvatarUrl(seed) {
   const value = String(seed ?? '')

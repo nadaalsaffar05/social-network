@@ -1,5 +1,5 @@
-import './feed.css'
-import '../../shared/styles/components/post-composer.css'
+import './FeedPage.css'
+import '../../shared/styles/components/PostComposer.css'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MagnifyingGlass } from '@phosphor-icons/react'
@@ -116,7 +116,7 @@ export default function FeedPage() {
     try {
       await removePost(postID)
     } catch (requestError) {
-      setOperationError(requestError.message || 'Could not delete the post')
+      setOperationError(requestError.message || 'Failed to delete the post')
     } finally {
       setDeletingPostID('')
     }
@@ -134,7 +134,7 @@ export default function FeedPage() {
         dislike_count: response.counts.DISLIKE,
       })
     } catch (requestError) {
-      setOperationError(requestError.message || 'Could not update reaction')
+      setOperationError(requestError.message || 'Failed to update reaction')
     } finally {
       setReactingPostID('')
     }
@@ -149,7 +149,7 @@ export default function FeedPage() {
         setRequestedIDs((current) => new Set(current).add(userID))
       }
     } catch (requestError) {
-      setOperationError(requestError.message || 'Could not follow this user')
+      setOperationError(requestError.message || 'Failed to follow this user')
     }
   }
 
@@ -167,7 +167,7 @@ export default function FeedPage() {
         return next
       })
     } catch (requestError) {
-      setOperationError(requestError.message || 'Could not unfollow this user')
+      setOperationError(requestError.message || 'Failed to unfollow this user')
     }
   }
 

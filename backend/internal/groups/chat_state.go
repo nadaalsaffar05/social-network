@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"social-network/internal/chat"
 	"social-network/internal/enums"
+	"social-network/internal/helpers"
 	"social-network/internal/models"
 )
 
@@ -25,10 +25,7 @@ func scanGroupChatUser(scanner groupChatUserScanner) (models.ChatUser, error) {
 	); err != nil {
 		return models.ChatUser{}, err
 	}
-	if user.AvatarPath != nil {
-		path := "/" + strings.TrimLeft(*user.AvatarPath, "/")
-		user.AvatarPath = &path
-	}
+	user.AvatarPath = helpers.PublicMediaPath(user.AvatarPath)
 	return user, nil
 }
 
@@ -120,10 +117,7 @@ func attachGroupMessageMetadata(db *sql.DB, messages []models.GroupMessage, view
 		if err := readerRows.Scan(&publicID, &reader.ID, &reader.FirstName, &reader.LastName, &reader.Nickname, &reader.AvatarPath); err != nil {
 			return err
 		}
-		if reader.AvatarPath != nil {
-			path := "/" + strings.TrimLeft(*reader.AvatarPath, "/")
-			reader.AvatarPath = &path
-		}
+		reader.AvatarPath = helpers.PublicMediaPath(reader.AvatarPath)
 		if index, found := messageIndexes[publicID]; found {
 			messages[index].ReadBy = append(messages[index].ReadBy, reader)
 			messages[index].ReadCount = len(messages[index].ReadBy)
@@ -269,13 +263,8 @@ func markGroupMessageRead(db *sql.DB, groupID, userID, publicID string) (models.
 }
 
 func setGroupMessageReaction(db *sql.DB, groupID, userID, publicID, emoji string) (bool, error) {
-	validatedEmoji, err := chat.ValidateReactionEmoji(emoji)
-	if err != nil {
-		return false, err
-	}
-
 	var messageID int64
-	err = db.QueryRow(`
+	err := db.QueryRow(`
 		SELECT message.id
 		FROM group_messages message
 		WHERE message.group_id = ?
@@ -303,7 +292,7 @@ func setGroupMessageReaction(db *sql.DB, groupID, userID, publicID, emoji string
 		WHERE message_id = ? AND user_id = ?
 	`, messageID, userID).Scan(&currentEmoji)
 	switch {
-	case err == nil && currentEmoji == validatedEmoji:
+	case err == nil && currentEmoji == emoji:
 		_, err = db.Exec(`
 			DELETE FROM group_message_reactions
 			WHERE message_id = ? AND user_id = ?
@@ -312,13 +301,13 @@ func setGroupMessageReaction(db *sql.DB, groupID, userID, publicID, emoji string
 		_, err = db.Exec(`
 			INSERT INTO group_message_reactions (message_id, user_id, emoji)
 			VALUES (?, ?, ?)
-		`, messageID, userID, validatedEmoji)
+		`, messageID, userID, emoji)
 	case err == nil:
 		_, err = db.Exec(`
 			UPDATE group_message_reactions
 			SET emoji = ?, created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 			WHERE message_id = ? AND user_id = ?
-		`, validatedEmoji, messageID, userID)
+		`, emoji, messageID, userID)
 	}
 	if err != nil {
 		return false, err

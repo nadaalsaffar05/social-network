@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"social-network/internal/helpers"
 	"social-network/internal/models"
 )
 
@@ -62,10 +63,7 @@ func getOnlineUsers(db *sql.DB, currentUserID string, userIDs []string) ([]model
 		if err := rows.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Nickname, &user.AvatarPath); err != nil {
 			return nil, err
 		}
-		if user.AvatarPath != nil {
-			path := "/" + strings.TrimLeft(*user.AvatarPath, "/")
-			user.AvatarPath = &path
-		}
+		user.AvatarPath = helpers.PublicMediaPath(user.AvatarPath)
 		users = append(users, user)
 	}
 	return users, rows.Err()

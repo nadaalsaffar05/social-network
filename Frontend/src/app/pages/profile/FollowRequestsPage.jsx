@@ -5,22 +5,15 @@ import { getFollowRequests, respondToFollowRequest } from '../../../api/profile.
 import Avatar from '../../../shared/components/avatar/Avatar.jsx'
 import GradientWaves from '../../../features/feed/components/GradientWaves.jsx'
 import { GRADIENT_WAVE_PROPS } from '../../../features/feed/constants.js'
+import { formatLocalDate } from '../../../shared/utils/dateTime.js'
 import './FollowRequestsPage.css'
 
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  try {
-    const d = new Date(dateStr)
-    return d.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return dateStr
-  }
+const followRequestDateOptions = {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
 }
 
 export default function FollowRequestsPage() {
@@ -153,7 +146,7 @@ export default function FollowRequestsPage() {
                       <h3 className="follow-request-name">{fullName}</h3>
                       {handle && <span className="follow-request-handle">{handle}</span>}
                       {req.created_at && (
-                        <span className="follow-request-time">{formatDate(req.created_at)}</span>
+                        <span className="follow-request-time">{formatLocalDate(req.created_at, followRequestDateOptions)}</span>
                       )}
                     </div>
                   </div>

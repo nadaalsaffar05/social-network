@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import Cropper from 'react-easy-crop'
 import { X, MagnifyingGlassMinus, MagnifyingGlassPlus, Check } from '@phosphor-icons/react'
-import { getCroppedImg } from '../../utils/crop-image'
+import { getCroppedImg } from '../../utils/cropImage'
 import './AvatarCropperModal.css'
 
 export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {

@@ -22,7 +22,6 @@ type GroupDetailsResponse struct {
 	HasPendingInvite  bool `json:"has_pending_invite"`
 }
 
-// can add avatar maybe
 type GroupMemberResponse struct {
 	UserID    string                `json:"user_id"`
 	FirstName string                `json:"first_name"`

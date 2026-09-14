@@ -47,7 +47,7 @@ export default function RegisterPage() {
       await registerUser(user)
       navigate('/home', { replace: true })
     } catch (requestError) {
-      showError('Could not create your account', requestError.message || 'Please check your details and try again')
+      showError('Failed to create your account', requestError.message || 'Please check your details and try again')
     } finally {
       setIsSubmitting(false)
     }
