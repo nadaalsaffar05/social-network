@@ -23,19 +23,19 @@ const privacyOptions = [
   {
     value: 1000,
     title: "Public",
-    description: "Anyone can see this post.",
+    description: "Anyone can see this post",
     icon: Globe,
   },
   {
     value: 1010,
     title: "Followers",
-    description: "Only your followers can see it.",
+    description: "Only your followers can see it",
     icon: UsersThree,
   },
   {
     value: 1020,
     title: "Selected",
-    description: "Only people you choose can see it.",
+    description: "Only people you choose can see it",
     icon: LockKey,
   },
 ];
@@ -84,7 +84,7 @@ export default function PostComposer({
 
     getFollowers()
       .then(setFollowers)
-      .catch(() => setError("Could not load your followers."));
+      .catch(() => setError("Could not load your followers"));
   }, [followers.length, isCommentComposer, isOpen, privacy]);
 
   function resetComposer() {
@@ -118,7 +118,7 @@ export default function PostComposer({
     setError("");
 
     if (!content.trim()) {
-      setError("Write something before posting.");
+      setError("Write something before posting");
       return;
     }
 
@@ -127,7 +127,7 @@ export default function PostComposer({
       privacy === 1020 &&
       selectedUserIDs.length === 0
     ) {
-      setError("Select at least one follower.");
+      setError("Select at least one follower");
       return;
     }
 
@@ -156,7 +156,7 @@ export default function PostComposer({
       await onCreated();
       resetComposer();
     } catch (requestError) {
-      setError(requestError.message || "Could not create the post.");
+      setError(requestError.message || "Could not create the post");
     } finally {
       setIsSubmitting(false);
     }

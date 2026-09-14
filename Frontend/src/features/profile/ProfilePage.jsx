@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Camera, House, SignOut, NotePencil, EnvelopeSimple, Cake, ShieldCheck, Users, UserCheck, UserPlus, Cat } from '@phosphor-icons/react'
-import { followUser, getFollowers, getFollowing, getProfile, getPublicProfile, isFollowing, unfollowUser, uploadAvatar } from '../../api/profile.js'
+import { followUser, getFollowers, getFollowing, getProfile, getPublicProfile, isFollowing, unfollowUser } from '../../api/profile.js'
 import { deletePost, togglePostReaction } from '../../api/feed.js'
 import { logoutUser } from '../../api/auth'
-import { BASE_API } from '../../config/api.js'
+import Avatar from '../../shared/components/avatar/Avatar.jsx'
 import EditProfileModal from './EditProfileModal'
 import PostCard from '../feed/components/PostCard.jsx'
 import GradientWaves from '../feed/components/GradientWaves.jsx'
@@ -31,7 +31,6 @@ export default function ProfilePage() {
 
   const [followersList, setFollowersList] = useState([])
   const [followingList, setFollowingList] = useState([])
-  const [failedAvatarIDs, setFailedAvatarIDs] = useState(new Set())
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState('')
   const [unfollowingID, setUnfollowingID] = useState(null)
@@ -66,7 +65,7 @@ export default function ProfilePage() {
           return
         }
         if (isMounted) {
-          showError('Could not load profile', requestError.message || 'Please try again.')
+          showError('Could not load profile', requestError.message || 'Please try again')
           navigate('/home', { replace: true })
         }
       } finally {
@@ -129,17 +128,13 @@ export default function ProfilePage() {
 
   function handleProfileSave(updatedUser) {
     setProfile((prev) => (prev ? { ...prev, ...updatedUser } : updatedUser))
-    if (showSuccess) showSuccess('Profile updated', 'Your profile details have been updated successfully.')
+    if (showSuccess) showSuccess('Profile updated', 'Your profile details have been updated successfully')
   }
 
   if (loading) {
     return <ProfileSkeleton />
   }
 
-  const mediaUrl = (path) => new URL(`/${String(path).replace(/^\/+/, '')}`, BASE_API).toString()
-  const avatarUrl = profile?.avatar_path ? mediaUrl(profile.avatar_path) : null
-
-  const initials = `${profile?.first_name?.[0] ?? ''}${profile?.last_name?.[0] ?? ''}`.toUpperCase()
   const fullName = `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim()
   const username = profile?.nickname ? `@${profile.nickname}` : (profile?.email ? `@${profile.email.split('@')[0]}` : '')
 
@@ -172,7 +167,7 @@ export default function ProfilePage() {
       const response = await followUser(id)
       setIsFollowingProfile(response.status === 'following')
     } catch (requestError) {
-      showError('Could not follow user', requestError.message || 'Please try again.')
+      showError('Could not follow user', requestError.message || 'Please try again')
     }
   }
 
@@ -181,26 +176,26 @@ export default function ProfilePage() {
       await unfollowUser(id)
       setIsFollowingProfile(false)
     } catch (requestError) {
-      showError('Could not unfollow user', requestError.message || 'Please try again.')
+      showError('Could not unfollow user', requestError.message || 'Please try again')
     }
   }
 
   async function handlePostReaction(postId) {
     setReactingPostID(postId)
-    try { await togglePostReaction(postId, 'LIKE'); await refreshProfile() } catch (requestError) { showError('Could not update reaction', requestError.message || 'Please try again.') } finally { setReactingPostID('') }
+    try { await togglePostReaction(postId, 'LIKE'); await refreshProfile() } catch (requestError) { showError('Could not update reaction', requestError.message || 'Please try again') } finally { setReactingPostID('') }
   }
 
   async function handleDeletePost(postId) {
     if (!window.confirm('Delete this post?')) return
     setDeletingPostID(postId)
-    try { await deletePost(postId); await refreshProfile() } catch (requestError) { showError('Could not delete post', requestError.message || 'Please try again.') } finally { setDeletingPostID('') }
+    try { await deletePost(postId); await refreshProfile() } catch (requestError) { showError('Could not delete post', requestError.message || 'Please try again') } finally { setDeletingPostID('') }
   }
 
   async function handleUnfollowItem(targetUser) {
     setUnfollowingID(targetUser.id)
     try {
       await unfollowUser(targetUser.id)
-      if (showSuccess) showSuccess('Unfollowed', `You unfollowed ${targetUser.first_name || 'user'}.`)
+      if (showSuccess) showSuccess('Unfollowed', `You unfollowed ${targetUser.first_name || 'user'}`)
       setFollowingList((prev) => prev.filter((item) => item.id !== targetUser.id))
       setProfile((prev) =>
         prev
@@ -211,17 +206,15 @@ export default function ProfilePage() {
           : prev
       )
     } catch (requestError) {
-      showError('Could not unfollow', requestError.message || 'Please try again.')
+      showError('Could not unfollow', requestError.message || 'Please try again')
     } finally {
       setUnfollowingID(null)
     }
   }
 
   function renderUserItem(u, isFollowingTab) {
-    const uInitials = `${u.first_name?.[0] ?? ''}${u.last_name?.[0] ?? ''}`.toUpperCase()
     const uFullName = `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
     const uHandle = u.nickname ? `@${u.nickname}` : (u.email ? `@${u.email.split('@')[0]}` : '')
-    const uAvatarUrl = u.avatar_path && !failedAvatarIDs.has(u.id) ? mediaUrl(u.avatar_path) : null
 
     return (
       <div key={u.id} className="profile-user-item">
@@ -230,16 +223,11 @@ export default function ProfilePage() {
             className="user-item-avatar-wrapper"
             onClick={() => navigate(`/profile/${u.id}`)}
           >
-            {uAvatarUrl ? (
-              <img
-                src={uAvatarUrl}
-                alt=""
-                className="user-item-avatar-img"
-                onError={() => setFailedAvatarIDs((previous) => new Set(previous).add(u.id))}
-              />
-            ) : (
-              <div className="user-item-avatar-initials">{uInitials}</div>
-            )}
+            <Avatar
+              avatarPath={u.avatar_path}
+              seed={u.id}
+              className="user-item-avatar-img"
+            />
           </div>
           <div className="user-item-info">
             <div className="user-item-name-row">
@@ -299,18 +287,13 @@ export default function ProfilePage() {
               onClick={isOwnProfile ? () => setIsEditModalOpen(true) : undefined}
               title={isOwnProfile ? 'Edit profile picture' : fullName}
             >
-              {avatarUrl ? (
-                <img
-                  id="profile-avatar"
-                  src={avatarUrl}
-                  alt={fullName}
-                  className="profile-avatar-img"
-                />
-              ) : (
-                <div id="profile-avatar-initials" className="profile-avatar-initials">
-                  {initials}
-                </div>
-              )}
+              <Avatar
+                id="profile-avatar"
+                avatarPath={profile?.avatar_path}
+                seed={profile?.id}
+                alt={fullName}
+                className="profile-avatar-img"
+              />
               {isOwnProfile && (
                 <div className="profile-avatar-overlay">
                   <Camera size={26} weight="bold" />

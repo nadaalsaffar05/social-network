@@ -4,7 +4,7 @@ import { ArrowLeft, UserCheck, Check, X } from "@phosphor-icons/react";
 
 import { getFollowRequests, respondToFollowRequest } from "../../api/profile.js";
 import { useToast } from "../../shared/components/toast/useToast.js";
-import { BASE_API } from "../../config/api.js";
+import Avatar from "../../shared/components/avatar/Avatar.jsx";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
 import { FollowRequestsSkeleton } from "../../shared/components/skeleton/PageSkeletons.jsx";
@@ -20,7 +20,6 @@ export default function FollowRequestsPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionID, setActionID] = useState(null);
-  const [failedAvatars, setFailedAvatars] = useState(new Set());
 
   useEffect(() => {
     let isMounted = true;
@@ -33,7 +32,7 @@ export default function FollowRequestsPage() {
       })
       .catch((requestError) => {
         if (isMounted) {
-          showError("Could not load follow requests", requestError.message || "Please try again.");
+          showError("Could not load follow requests", requestError.message || "Please try again");
         }
       })
       .finally(() => {
@@ -54,7 +53,7 @@ export default function FollowRequestsPage() {
       setRequests((current) => current.filter((request) => request.id !== requestID));
       showSuccess(action === "accept" ? "Follow request accepted" : "Follow request declined");
     } catch (requestError) {
-      showError("Could not update follow request", requestError.message || "Please try again.");
+      showError("Could not update follow request", requestError.message || "Please try again");
     } finally {
       setActionID(null);
     }
@@ -63,8 +62,6 @@ export default function FollowRequestsPage() {
   if (loading) {
     return <FollowRequestsSkeleton />;
   }
-
-  const mediaUrl = (path) => new URL(`/${String(path).replace(/^\/+/, '')}`, BASE_API).toString();
 
   return (
     <div className="follow-requests-layout">
@@ -105,25 +102,17 @@ export default function FollowRequestsPage() {
             requests.map((request) => {
               const displayName = nameOf(request);
               const handle = request.nickname ? `@${request.nickname}` : (request.email ? `@${request.email.split('@')[0]}` : '');
-              const initials = `${request.first_name?.[0] ?? ''}${request.last_name?.[0] ?? ''}`.toUpperCase() || 'U';
-              const avatarUrl = request.avatar_path && !failedAvatars.has(request.id) ? mediaUrl(request.avatar_path) : null;
-
               return (
                 <article key={request.id} className="follow-request-card">
                   <div
                     className="follow-request-user"
                     onClick={() => navigate(`/profile/${request.id}`)}
                   >
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt=""
-                        className="follow-request-avatar"
-                        onError={() => setFailedAvatars((prev) => new Set(prev).add(request.id))}
-                      />
-                    ) : (
-                      <div className="follow-request-avatar-initials">{initials}</div>
-                    )}
+                    <Avatar
+                      avatarPath={request.avatar_path}
+                      seed={request.id}
+                      className="follow-request-avatar"
+                    />
                     <div className="follow-request-info">
                       <h4 className="follow-request-name">{displayName}</h4>
                       {handle && <span className="follow-request-handle">{handle}</span>}

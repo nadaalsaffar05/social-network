@@ -20,7 +20,7 @@ export default function LoginPage() {
       await loginUser({ email, password })
       navigate('/home', { replace: true })
     } catch (requestError) {
-      showError('Could not log in', requestError.message || 'Please try again.')
+      showError('Could not log in', requestError.message || 'Please try again')
     } finally {
       setIsSubmitting(false)
     }
@@ -33,7 +33,7 @@ export default function LoginPage() {
       <section className="auth-card" aria-labelledby="login-title">
         <p className="auth-eyebrow">Welcome back</p>
         <h1 id="login-title">Log in to loop</h1>
-        <p className="auth-description">Connect with your communities and friends.</p>
+        <p className="auth-description">Connect with your communities and friends</p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>

@@ -4,6 +4,7 @@ import { ArrowLeft, ChatCircle, DotsThree, Trash } from '@phosphor-icons/react'
 
 import { getProfile } from '../../api/profile.js'
 import { useToast } from '../../shared/components/toast/useToast.js'
+import Avatar from '../../shared/components/avatar/Avatar.jsx'
 import {
   deleteComment,
   deletePost,
@@ -21,24 +22,8 @@ import {
   formatPostTime,
   getMediaUrl,
   getPostDisplayName,
-  getPostInitials,
 } from './utils/post.js'
 import './post-detail.css'
-
-function Avatar({ item }) {
-  const avatarPath = item?.author_avatar_path
-  const initials = getPostInitials(item)
-
-  if (avatarPath) {
-    return <img className="post-detail-avatar" src={getMediaUrl(avatarPath)} alt="" />
-  }
-
-  return (
-    <span className="post-detail-avatar post-detail-avatar--initials" aria-hidden="true">
-      {initials}
-    </span>
-  )
-}
 
 function CommentItem({ comment, currentUserID, isReacting, isDeleting, onDelete, onLike, onReply }) {
   const isOwner = comment.author_id === currentUserID
@@ -46,7 +31,11 @@ function CommentItem({ comment, currentUserID, isReacting, isDeleting, onDelete,
 
   return (
     <article className={`post-detail-comment${comment.parent_comment_id ? ' post-detail-comment--reply' : ''}`}>
-      <Avatar item={comment} />
+      <Avatar
+        avatarPath={comment.author_avatar_path}
+        seed={comment.author_id}
+        className="post-detail-avatar"
+      />
       <div>
         <header>
           <div className="post-detail-comment__author">
@@ -140,7 +129,7 @@ export default function PostPage() {
         if (isMounted) setStatus('ready')
       } catch (requestError) {
         if (!isMounted) return
-        setError(requestError.message || 'Could not load this post.')
+        setError(requestError.message || 'Could not load this post')
         setStatus('error')
       }
     }
@@ -164,7 +153,7 @@ export default function PostPage() {
         dislike_count: response.counts.DISLIKE,
       })
     } catch (requestError) {
-      showError('Could not update reaction', requestError.message || 'Please try again.')
+      showError('Could not update reaction', requestError.message || 'Please try again')
     } finally {
       setReactingID('')
     }
@@ -186,7 +175,7 @@ export default function PostPage() {
           : comment
       )))
     } catch (requestError) {
-      showError('Could not update reaction', requestError.message || 'Please try again.')
+      showError('Could not update reaction', requestError.message || 'Please try again')
     } finally {
       setReactingID('')
     }
@@ -216,7 +205,7 @@ export default function PostPage() {
       navigate('/home', { replace: true })
       showSuccess('Post deleted')
     } catch (requestError) {
-      showError('Could not delete post', requestError.message || 'Please try again.')
+      showError('Could not delete post', requestError.message || 'Please try again')
     }
   }
 
@@ -230,7 +219,7 @@ export default function PostPage() {
       await loadComments()
       showSuccess('Comment deleted')
     } catch (requestError) {
-      showError('Could not delete comment', requestError.message || 'Please try again.')
+      showError('Could not delete comment', requestError.message || 'Please try again')
     } finally {
       setDeletingCommentID('')
     }
@@ -241,7 +230,7 @@ export default function PostPage() {
   }
 
   if (status === 'error' || !post) {
-    return <main className="post-detail-page"><p>{error || 'Post not found.'}</p></main>
+    return <main className="post-detail-page"><p>{error || 'Post not found'}</p></main>
   }
 
   return (
@@ -292,7 +281,7 @@ export default function PostPage() {
             />
           ))}
 
-          {comments.length === 0 && <p className="post-detail-empty">No replies yet.</p>}
+          {comments.length === 0 && <p className="post-detail-empty">No replies yet</p>}
         </section>
       </section>
     </main>

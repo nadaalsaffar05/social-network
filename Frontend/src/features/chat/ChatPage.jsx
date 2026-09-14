@@ -14,7 +14,7 @@ import {
 } from "../../api/chat.js";
 import { useChatRealtime } from "./realtime/useChatRealtime.js";
 import { useToast } from "../../shared/components/toast/useToast.js";
-import { BASE_API } from "../../config/api.js";
+import Avatar from "../../shared/components/avatar/Avatar.jsx";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
 import MessageReactions from "./components/MessageReactions.jsx";
@@ -54,19 +54,6 @@ function addMessages(current, incoming, { prepend = false } = {}) {
   const knownIDs = new Set(current.map((message) => message.public_id));
   const additions = incoming.filter((message) => !knownIDs.has(message.public_id));
   return prepend ? [...additions, ...current] : [...current, ...additions];
-}
-
-function initials(user) {
-  return `${user?.first_name?.[0] ?? ""}${user?.last_name?.[0] ?? ""}`.toUpperCase() || "?";
-}
-
-function Avatar({ user, className = "" }) {
-  const [failed, setFailed] = useState(false);
-  const src = user?.avatar_path && !failed
-    ? new URL(`/${String(user.avatar_path).replace(/^\/+/, "")}`, BASE_API).toString()
-    : "";
-
-  return src ? <img className={className} src={src} alt="" onError={() => setFailed(true)} /> : <span className={`${className} chat-avatar--initials`} aria-hidden="true">{initials(user)}</span>;
 }
 
 export default function ChatPage() {
@@ -199,7 +186,7 @@ export default function ChatPage() {
       sendEvent("typing", { recipient_id: userId, is_typing: false });
       await loadInbox();
     } catch (requestError) {
-      showError("Could not send message", requestError.message || "Please try again.");
+      showError("Could not send message", requestError.message || "Please try again");
     } finally {
       setIsSending(false);
     }
@@ -246,7 +233,7 @@ export default function ChatPage() {
       const response = await reactToPrivateMessage(userId, targetID, emoji);
       setMessages((current) => current.map((message) => message.public_id === targetID ? { ...message, reactions: response.reactions } : message));
     } catch (requestError) {
-      showError("Could not react to message", requestError.message || "Please try again.");
+      showError("Could not react to message", requestError.message || "Please try again");
     }
   }
 
@@ -260,7 +247,7 @@ export default function ChatPage() {
       await loadInbox();
       showSuccess("Message deleted");
     } catch (requestError) {
-      showError("Could not delete message", requestError.message || "Please try again.");
+      showError("Could not delete message", requestError.message || "Please try again");
     }
   }
 
@@ -278,7 +265,7 @@ export default function ChatPage() {
       await loadInbox();
       showSuccess(action === "accept" ? "Message request accepted" : "Message request declined");
     } catch (requestError) {
-      showError("Could not update message request", requestError.message || "Please try again.");
+      showError("Could not update message request", requestError.message || "Please try again");
     }
   }
 
@@ -324,7 +311,7 @@ export default function ChatPage() {
 
             <div className="chat-inbox__scroll">
               {filteredChats.length === 0 ? (
-                <p className="chat-empty">{inboxQuery ? "No matching chats." : "No chats yet."}</p>
+                <p className="chat-empty">{inboxQuery ? "No matching chats" : "No chats yet"}</p>
               ) : filteredChats.map((conversation) => (
                 <button
                   key={conversation.conversation_id}
@@ -332,7 +319,11 @@ export default function ChatPage() {
                   className={`chat-preview${conversation.user.id === userId ? " chat-preview--active" : ""}`}
                   onClick={() => navigate(`/messages/${conversation.user.id}`)}
                 >
-                  <Avatar user={conversation.user} className="chat-avatar" />
+                  <Avatar
+                    avatarPath={conversation.user.avatar_path}
+                    seed={conversation.user.id}
+                    className="chat-avatar"
+                  />
                   <span className="chat-preview__copy">
                     <strong>{displayName(conversation.user)}</strong>
                     <small className={typingUserIDs.includes(conversation.user.id) ? "chat-preview__typing" : ""}>
@@ -346,10 +337,14 @@ export default function ChatPage() {
               <section className="chat-requests" aria-label="Message requests">
                 <h2>Message requests {requests.length > 0 && <span>{requests.length}</span>}</h2>
                 {requests.length === 0 ? (
-                  <p className="chat-empty">No message requests.</p>
+                  <p className="chat-empty">No message requests</p>
                 ) : requests.map((request) => (
                   <article key={request.conversation_id} className="chat-request">
-                    <Avatar user={request.requester} className="chat-avatar" />
+                    <Avatar
+                      avatarPath={request.requester.avatar_path}
+                      seed={request.requester.id}
+                      className="chat-avatar"
+                    />
                     <div>
                       <strong>{displayName(request.requester)}</strong>
                       <p>{request.message?.content}</p>
@@ -365,7 +360,7 @@ export default function ChatPage() {
           <section className="chat-thread" aria-label="Conversation">
             {!userId ? (
               <div className="chat-thread__empty">
-                <p>Select a chat to start messaging.</p>
+                <p>Select a chat to start messaging</p>
               </div>
             ) : (
               <>
@@ -373,7 +368,11 @@ export default function ChatPage() {
                   <button className="chat-back" type="button" onClick={() => navigate("/messages")} aria-label="Back to chats">
                     <ArrowLeft size={22} />
                   </button>
-                  <Avatar user={activeUser} className="chat-avatar" />
+                  <Avatar
+                    avatarPath={activeUser?.avatar_path}
+                    seed={activeUser?.id}
+                    className="chat-avatar"
+                  />
                   <div>
                     <h2>{displayName(activeUser)}</h2>
                     <p>{onlineUserIDs.includes(userId) ? "Online" : lastSeenAt ? `Last seen ${shortTime(lastSeenAt)}` : "Offline"}</p>

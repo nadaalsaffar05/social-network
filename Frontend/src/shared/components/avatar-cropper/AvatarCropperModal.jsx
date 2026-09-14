@@ -84,7 +84,7 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <Check size={18} weight="bold" />
-              {isSaving ? 'Saving...' : 'Save Avatar'}
+              {isSaving ? 'Saving' : 'Save Avatar'}
             </button>
           </div>
         </div>

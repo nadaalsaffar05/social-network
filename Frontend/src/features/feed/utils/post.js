@@ -1,6 +1,8 @@
 import { BASE_API } from '../../../config/api.js'
 
 export function getMediaUrl(path) {
+  if (/^[a-z][a-z\d+.-]*:/i.test(path)) return path
+
   return new URL(`/${String(path).replace(/^\/+/, '')}`, BASE_API).toString()
 }
 
@@ -9,13 +11,6 @@ export function getPostDisplayName(post) {
     post.author_nickname ||
     [post.author_first_name, post.author_last_name].filter(Boolean).join(' ') ||
     'User'
-  )
-}
-
-export function getPostInitials(post) {
-  return (
-    `${post.author_first_name?.[0] || ''}${post.author_last_name?.[0] || ''}`.toUpperCase() ||
-    '?'
   )
 }
 

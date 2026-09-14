@@ -72,15 +72,6 @@
   border-radius: 50%;
 }
 
-.post-detail-avatar--initials {
-  display: grid;
-  place-items: center;
-  color: var(--color-text);
-  font-size: 0.78rem;
-  font-weight: 700;
-  background: var(--color-overlay);
-}
-
 .post-detail-comment header {
   position: relative;
   padding-right: 2.25rem;

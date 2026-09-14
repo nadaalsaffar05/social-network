@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
 import { X, FloppyDisk, LockKey, Globe, NotePencil, Camera } from '@phosphor-icons/react'
 import { updateProfile, uploadAvatar } from '../../api/profile.js'
-import { BASE_API } from '../../config/api.js'
 import AvatarCropperModal from '../../shared/components/avatar-cropper/AvatarCropperModal'
+import Avatar from '../../shared/components/avatar/Avatar.jsx'
 import './EditProfileModal.css'
 
 export default function EditProfileModal({ profile, onClose, onSave }) {
@@ -24,10 +24,6 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  const mediaUrl = (path) => new URL(`/${String(path).replace(/^\/+/, '')}`, BASE_API).toString()
-  const currentAvatarUrl = avatarPreviewUrl || (profile?.avatar_path ? mediaUrl(profile.avatar_path) : null)
-  const initials = `${firstName?.[0] ?? profile?.first_name?.[0] ?? ''}${lastName?.[0] ?? profile?.last_name?.[0] ?? ''}`.toUpperCase()
 
   function handleAvatarClick() {
     if (fileInputRef.current) {
@@ -97,7 +93,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
       onSave(updatedUser)
       onClose()
     } catch (err) {
-      setError(err.message || 'Failed to update profile. Please try again.')
+      setError(err.message || 'Failed to update profile — please try again')
     } finally {
       setSaving(false)
     }
@@ -129,11 +125,12 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
               style={{ display: 'none' }}
             />
             <div className="edit-avatar-preview-wrapper" onClick={handleAvatarClick} title="Change Profile Picture">
-              {currentAvatarUrl ? (
-                <img src={currentAvatarUrl} alt="Profile" className="edit-avatar-preview-img" />
-              ) : (
-                <div className="edit-avatar-preview-initials">{initials}</div>
-              )}
+              <Avatar
+                avatarPath={avatarPreviewUrl || profile?.avatar_path}
+                seed={profile?.id}
+                alt="Profile"
+                className="edit-avatar-preview-img"
+              />
               <div className="edit-avatar-overlay">
                 <Camera size={22} weight="bold" />
                 <span>Change</span>
@@ -237,7 +234,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
               rows={3}
               value={aboutMe}
               onChange={(e) => setAboutMe(e.target.value)}
-              placeholder="Tell others about yourself..."
+              placeholder="Tell others about yourself"
               maxLength={2000}
             />
             <span className="edit-profile-char-count">{aboutMe.length}/2000</span>
@@ -258,7 +255,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
               disabled={saving}
             >
               <FloppyDisk size={18} weight="bold" />
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? 'Saving' : 'Save Changes'}
             </button>
           </div>
         </form>

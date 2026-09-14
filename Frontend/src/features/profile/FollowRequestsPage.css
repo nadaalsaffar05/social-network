@@ -132,20 +132,6 @@
   flex-shrink: 0;
 }
 
-.follow-request-avatar-initials {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: #fff;
-  font-weight: 700;
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-
 .follow-request-info {
   display: flex;
   flex-direction: column;

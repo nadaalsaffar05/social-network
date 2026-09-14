@@ -11,8 +11,8 @@ import PostComposer from './components/PostComposer.jsx'
 import PostCard from './components/PostCard.jsx'
 import { GRADIENT_WAVE_PROPS } from './constants.js'
 import { useFeed } from './hooks/useFeed.js'
-import { getMediaUrl } from './utils/post.js'
 import { useChatRealtime } from '../chat/realtime/useChatRealtime.js'
+import Avatar from '../../shared/components/avatar/Avatar.jsx'
 
 function getProfileName(profile) {
   return (
@@ -22,30 +22,16 @@ function getProfileName(profile) {
   )
 }
 
-function getProfileInitials(profile) {
-  return `${profile?.first_name?.[0] ?? ''}${profile?.last_name?.[0] ?? ''}`.toUpperCase()
-}
-
 function OnlineFriend({ user, onOpen }) {
-  const [avatarFailed, setAvatarFailed] = useState(false)
-  const avatarPath = user.avatar_path
-
   return (
     <li className="feed-online-users__item">
       <button type="button" className="feed-online-users__button" onClick={onOpen}>
         <span className="feed-online-users__avatar-wrap">
-          {avatarPath && !avatarFailed ? (
-            <img
-              className="feed-online-users__avatar"
-              src={getMediaUrl(avatarPath)}
-              alt=""
-              onError={() => setAvatarFailed(true)}
-            />
-          ) : (
-            <span className="feed-online-users__avatar feed-online-users__avatar--initials" aria-hidden="true">
-              {getProfileInitials(user) || '?'}
-            </span>
-          )}
+          <Avatar
+            avatarPath={user.avatar_path}
+            seed={user.id}
+            className="feed-online-users__avatar"
+          />
           <span className="feed-online-users__status" aria-label="Online" />
         </span>
         <span className="feed-online-users__copy">
@@ -130,7 +116,7 @@ export default function FeedPage() {
     try {
       await removePost(postID)
     } catch (requestError) {
-      setOperationError(requestError.message || 'Could not delete the post.')
+      setOperationError(requestError.message || 'Could not delete the post')
     } finally {
       setDeletingPostID('')
     }
@@ -148,7 +134,7 @@ export default function FeedPage() {
         dislike_count: response.counts.DISLIKE,
       })
     } catch (requestError) {
-      setOperationError(requestError.message || 'Could not update reaction.')
+      setOperationError(requestError.message || 'Could not update reaction')
     } finally {
       setReactingPostID('')
     }
@@ -163,7 +149,7 @@ export default function FeedPage() {
         setRequestedIDs((current) => new Set(current).add(userID))
       }
     } catch (requestError) {
-      setOperationError(requestError.message || 'Could not follow this user.')
+      setOperationError(requestError.message || 'Could not follow this user')
     }
   }
 
@@ -181,7 +167,7 @@ export default function FeedPage() {
         return next
       })
     } catch (requestError) {
-      setOperationError(requestError.message || 'Could not unfollow this user.')
+      setOperationError(requestError.message || 'Could not unfollow this user')
     }
   }
 
@@ -240,7 +226,7 @@ export default function FeedPage() {
             )}
 
             {status !== 'loading' && !error && posts.length === 0 && (
-              <p className="feed-message">No posts to show yet.</p>
+              <p className="feed-message">No posts to show yet</p>
             )}
 
             {operationError && (
@@ -286,17 +272,11 @@ export default function FeedPage() {
             type="button"
             onClick={() => navigate('/profile')}
           >
-            {currentUser?.avatar_path ? (
-              <img
-                className="feed-profile-avatar"
-                src={getMediaUrl(currentUser.avatar_path)}
-                alt=""
-              />
-            ) : (
-              <span className="feed-profile-avatar feed-profile-initials" aria-hidden="true">
-                {getProfileInitials(currentUser)}
-              </span>
-            )}
+            <Avatar
+              avatarPath={currentUser?.avatar_path}
+              seed={currentUser?.id}
+              className="feed-profile-avatar"
+            />
             <span>
               <span className="feed-sidebar-label">Profile</span>
               <strong>{getProfileName(currentUser)}</strong>
@@ -305,8 +285,8 @@ export default function FeedPage() {
 
           <section className="feed-sidebar-panel">
             <span className="feed-sidebar-label">Your feed</span>
-            <h2>Catch up with your circle.</h2>
-            <p>Posts from people you follow will appear here as they share.</p>
+            <h2>Catch up with your circle</h2>
+            <p>Posts from people you follow will appear here as they share</p>
           </section>
 
           <section className="feed-sidebar-panel feed-online-users" aria-label="Online friends">
@@ -315,7 +295,7 @@ export default function FeedPage() {
               <span>{visibleOnlineUsers.length}</span>
             </div>
             {visibleOnlineUsers.length === 0 ? (
-              <p className="feed-online-users__empty">No friends are online.</p>
+              <p className="feed-online-users__empty">No friends are online</p>
             ) : (
               <ul className="feed-online-users__list">
                 {visibleOnlineUsers.map((user) => (

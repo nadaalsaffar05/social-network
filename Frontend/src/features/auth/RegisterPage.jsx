@@ -47,7 +47,7 @@ export default function RegisterPage() {
       await registerUser(user)
       navigate('/home', { replace: true })
     } catch (requestError) {
-      showError('Could not create your account', requestError.message || 'Please check your details and try again.')
+      showError('Could not create your account', requestError.message || 'Please check your details and try again')
     } finally {
       setIsSubmitting(false)
     }
@@ -109,7 +109,7 @@ export default function RegisterPage() {
               onChange={updateField}
               minLength={6}
               pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{6,}"
-              title="Password must be at least 6 characters and contain uppercase, lowercase, number, and special character."
+              title="Password must be at least 6 characters and contain uppercase, lowercase, number, and special character"
               autoComplete="new-password"
               required
             />

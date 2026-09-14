@@ -13,6 +13,7 @@ import (
 
 func newRouter(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
+	mux.Handle("/tmp/", http.StripPrefix("/tmp/", http.FileServer(http.Dir("tmp"))))
 	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
 	registerRoutes(mux, db)
 	return mux

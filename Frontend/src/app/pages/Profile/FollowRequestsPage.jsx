@@ -1,18 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, X, UserPlus } from '@phosphor-icons/react'
+import { Check, X, UserPlus } from '@phosphor-icons/react'
 import { getFollowRequests, respondToFollowRequest } from '../../../api/profile.js'
-import { BASE_API } from '../../../config/api.js'
+import Avatar from '../../../shared/components/avatar/Avatar.jsx'
 import GradientWaves from '../../../features/feed/components/GradientWaves.jsx'
 import { GRADIENT_WAVE_PROPS } from '../../../features/feed/constants.js'
 import './FollowRequestsPage.css'
-
-function mediaUrl(path) {
-  if (!path) return null
-  if (path.startsWith('http://') || path.startsWith('https://')) return path
-  const normalized = path.startsWith('/') ? path : `/${path}`
-  return `${BASE_API}${normalized}`
-}
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -37,7 +30,6 @@ export default function FollowRequestsPage() {
   const [error, setError] = useState('')
   const [actionMessage, setActionMessage] = useState({ type: '', text: '' })
   const [processingId, setProcessingId] = useState(null)
-  const [failedAvatarIds, setFailedAvatarIds] = useState(new Set())
 
   useEffect(() => {
     let isMounted = true
@@ -83,7 +75,7 @@ export default function FollowRequestsPage() {
       setRequests((prev) => prev.filter((r) => r.id !== requestId))
       setActionMessage({
         type: 'success',
-        text: action === 'accept' ? 'Follow request accepted!' : 'Follow request declined.',
+        text: action === 'accept' ? 'Follow request accepted!' : 'Follow request declined',
       })
     } catch (err) {
       setActionMessage({
@@ -136,14 +128,12 @@ export default function FollowRequestsPage() {
         <section className="follow-requests-content">
           {loading ? (
             <div className="follow-requests-empty">
-              <p className="follow-requests-empty-text">Loading follow requests...</p>
+              <p className="follow-requests-empty-text">Loading follow requests</p>
             </div>
           ) : requests.length > 0 ? (
             requests.map((req) => {
               const fullName = `${req.first_name || ''} ${req.last_name || ''}`.trim() || 'User'
               const handle = req.nickname ? `@${req.nickname}` : (req.email ? `@${req.email.split('@')[0]}` : '')
-              const initials = `${req.first_name?.[0] ?? ''}${req.last_name?.[0] ?? ''}`.toUpperCase() || 'U'
-              const avatarUrl = req.avatar_path && !failedAvatarIds.has(req.id) ? mediaUrl(req.avatar_path) : null
               const isProcessing = processingId === req.id
 
               return (
@@ -154,16 +144,11 @@ export default function FollowRequestsPage() {
                     role="button"
                     tabIndex={0}
                   >
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt=""
-                        className="follow-request-avatar"
-                        onError={() => setFailedAvatarIds((prev) => new Set(prev).add(req.id))}
-                      />
-                    ) : (
-                      <div className="follow-request-avatar-initials">{initials}</div>
-                    )}
+                    <Avatar
+                      avatarPath={req.avatar_path}
+                      seed={req.id}
+                      className="follow-request-avatar"
+                    />
                     <div className="follow-request-info">
                       <h3 className="follow-request-name">{fullName}</h3>
                       {handle && <span className="follow-request-handle">{handle}</span>}
@@ -181,7 +166,7 @@ export default function FollowRequestsPage() {
                       onClick={() => handleResponse(req.id, 'accept')}
                     >
                       <Check size={16} weight="bold" />
-                      {isProcessing ? 'Saving...' : 'Accept'}
+                      {isProcessing ? 'Saving' : 'Accept'}
                     </button>
                     <button
                       type="button"

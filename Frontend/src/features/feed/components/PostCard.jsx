@@ -1,11 +1,11 @@
 import { ChatCircle, DotsThree, Trash } from "@phosphor-icons/react";
 
+import Avatar from "../../../shared/components/avatar/Avatar.jsx";
 import LikeButton from "./LikeButton.jsx";
 import {
   formatPostTime,
   getMediaUrl,
   getPostDisplayName,
-  getPostInitials,
 } from "../utils/post.js";
 import "./PostCard.css";
 
@@ -61,20 +61,11 @@ export default function PostCard({
           role={onAuthorOpen ? "link" : undefined}
           tabIndex={onAuthorOpen ? 0 : undefined}
         >
-          {post.author_avatar_path ? (
-            <img
-              src={getMediaUrl(post.author_avatar_path)}
-              alt=""
-              className="post-card__avatar"
-            />
-          ) : (
-            <span
-              className="post-card__avatar post-card__avatar--initials"
-              aria-hidden="true"
-            >
-              {getPostInitials(post)}
-            </span>
-          )}
+          <Avatar
+            avatarPath={post.author_avatar_path}
+            seed={post.author_id}
+            className="post-card__avatar"
+          />
           <div>
             <strong>{getPostDisplayName(post)}</strong>
             <time dateTime={post.created_at}>

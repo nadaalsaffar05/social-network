@@ -116,7 +116,6 @@
 .feed-profile-card:hover { background: rgb(255 255 255 / 7%); transform: translateY(-2px); }
 .feed-profile-card strong, .feed-profile-card .feed-sidebar-label { display: block; }
 .feed-profile-avatar { flex: 0 0 42px; width: 42px; height: 42px; object-fit: cover; border: 1px solid rgb(255 255 255 / 18%); border-radius: 50%; }
-.feed-profile-initials { display: grid; place-items: center; color: var(--color-text); font-size: 0.8rem; font-weight: 700; background: rgb(255 255 255 / 10%); }
 
 .feed-online-users { padding: 1.25rem; background: rgb(7 9 14 / 78%); border-color: rgb(255 255 255 / 10%); border-radius: 1.75rem; }
 .feed-online-users__heading { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.9rem; }
@@ -128,7 +127,6 @@
 .feed-online-users__button:hover { opacity: 0.8; transform: translateX(2px); }
 .feed-online-users__avatar-wrap { position: relative; flex: 0 0 auto; width: 2.75rem; height: 2.75rem; }
 .feed-online-users__avatar { display: grid; width: 100%; height: 100%; object-fit: cover; border: 1px solid rgb(255 255 255 / 15%); border-radius: 50%; }
-.feed-online-users__avatar--initials { place-items: center; color: var(--color-text); font-size: 0.75rem; font-weight: 700; background: linear-gradient(145deg, rgb(76 124 240 / 70%), rgb(106 74 197 / 70%)); }
 .feed-online-users__status { position: absolute; right: -0.05rem; bottom: -0.05rem; width: 0.68rem; height: 0.68rem; background: #42d88d; border: 2px solid var(--color-bg); border-radius: 50%; box-shadow: 0 0 0 1px rgb(66 216 141 / 30%); }
 .feed-online-users__copy { display: grid; min-width: 0; gap: 0.08rem; }
 .feed-online-users__copy strong { overflow: hidden; font-size: 0.92rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }

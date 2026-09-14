@@ -34,7 +34,6 @@
 .chat-preview { display: grid; grid-template-columns: 2.7rem minmax(0, 1fr) auto; align-items: center; width: 100%; gap: 0.7rem; padding: 0.75rem 1rem; color: inherit; text-align: left; background: transparent; border: 0; }
 .chat-preview:hover, .chat-preview--active { background: rgb(76 124 240 / 13%); }
 .chat-avatar { display: grid; flex: 0 0 auto; width: 2.7rem; height: 2.7rem; object-fit: cover; border: 1px solid rgb(255 255 255 / 14%); border-radius: 50%; }
-.chat-avatar--initials { place-items: center; font-size: 0.76rem; font-weight: 700; background: linear-gradient(145deg, #4c7cf0, #7548bc); }
 .chat-preview__copy { display: grid; min-width: 0; gap: 0.18rem; }
 .chat-preview strong, .chat-request strong { overflow: hidden; font-size: 0.9rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .chat-preview small, .chat-preview time { overflow: hidden; color: var(--color-text-muted); font-size: 0.74rem; text-overflow: ellipsis; white-space: nowrap; }
