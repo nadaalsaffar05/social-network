@@ -14,21 +14,21 @@ export default function NotificationsPage() {
       </div>
 
       <div className="notifications-container">
-        <header className="notifications-header-card">
-          <div className="notifications-header-left">
-            <button
-              type="button"
-              className="notifications-back-btn"
-              aria-label="Go back"
-              onClick={() => navigate(-1)}
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <h1 className="notifications-title">
-              Notifications
-            </h1>
-          </div>
-        </header>
+        {/*<header className="notifications-header-card">*/}
+        {/*  <div className="notifications-header-left">*/}
+        {/*    <button*/}
+        {/*      type="button"*/}
+        {/*      className="notifications-back-btn"*/}
+        {/*      aria-label="Go back"*/}
+        {/*      onClick={() => navigate(-1)}*/}
+        {/*    >*/}
+        {/*      <ArrowLeft size={20} />*/}
+        {/*    </button>*/}
+        {/*    <h1 className="notifications-title">*/}
+        {/*      Notifications*/}
+        {/*    </h1>*/}
+        {/*  </div>*/}
+        {/*</header>*/}
 
         <main className="notifications-content">
           <div className="notifications-empty">
