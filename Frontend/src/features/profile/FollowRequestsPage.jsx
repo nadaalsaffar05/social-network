@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, X, UserPlus } from '@phosphor-icons/react'
-import { getFollowRequests, respondToFollowRequest } from '../../../api/profile.js'
-import Avatar from '../../../shared/components/avatar/Avatar.jsx'
-import GradientWaves from '../../../features/feed/components/GradientWaves.jsx'
-import { GRADIENT_WAVE_PROPS } from '../../../features/feed/constants.js'
-import { formatLocalDate } from '../../../shared/utils/dateTime.js'
+import { getFollowRequests, respondToFollowRequest } from '../../api/profile.js'
+import Avatar from '../../shared/components/avatar/Avatar.jsx'
+import GradientWaves from '../feed/components/GradientWaves.jsx'
+import { GRADIENT_WAVE_PROPS } from '../feed/constants.js'
+import { formatLocalDate } from '../../shared/utils/dateTime.js'
 import './FollowRequestsPage.css'
 
 const followRequestDateOptions = {
