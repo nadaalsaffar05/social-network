@@ -6,9 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "server": "cd ../backend && go run ./cmd/main.go",
+    "server": "cd ../backend && go run ./cmd",
     "lint": "eslint .",
     "preview": "vite preview"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "proxy": "http://localhost:8080",
   "dependencies": {

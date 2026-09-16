@@ -7,7 +7,7 @@ import PostPage from "../../features/feed/PostPage";
 import ProfilePage from "../../features/profile/ProfilePage";
 import ChatPage from "../../features/chat/ChatPage";
 import MessageRequestsPage from "../../features/chat/MessageRequestsPage";
-import FollowRequestsPage from "../../app/pages/profile/FollowRequestsPage";
+import FollowRequestsPage from "../../features/profile/FollowRequestsPage";
 import NotificationsPage from "../../features/notifications/NotificationsPage";
 import ProtectedRoute from "./ProtectedRoute";
 
