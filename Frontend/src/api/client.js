@@ -1,47 +1,51 @@
-import { buildApiUrl } from '../config/api'
+import { buildApiUrl } from "../config/api";
 
 export async function request(pathSegments, options = {}) {
   const {
-    method = 'GET',
+    method = "GET",
     queryParams = {},
     body,
     headers,
     ...fetchOptions
-  } = options
+  } = options;
 
-  const isFormData = body instanceof FormData
-  const hasBody = body != null
+  const isFormData = body instanceof FormData;
+  const hasBody = body != null;
 
   const response = await fetch(buildApiUrl(pathSegments, queryParams), {
     ...fetchOptions,
     method,
-    credentials: 'include',
+    credentials: "include",
     headers: {
-      ...(hasBody && !isFormData
-        ? { 'Content-Type': 'application/json' }
-        : {}),
+      ...(hasBody && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...headers,
     },
     body: hasBody && !isFormData ? JSON.stringify(body) : body,
-  })
+  });
 
-  const responseText = await response.text()
-  const isJSON = response.headers.get('content-type')?.includes('application/json')
-  let data = null
+  const responseText = await response.text();
+  const isJSON = response.headers
+    .get("content-type")
+    ?.includes("application/json");
+  let data = null;
 
   if (responseText && isJSON) {
     try {
-      data = JSON.parse(responseText)
+      data = JSON.parse(responseText);
     } catch {
-      throw new Error('Invalid JSON response received from server')
+      throw new Error("Invalid JSON response received from server");
     }
   }
 
   if (!response.ok) {
     throw new Error(
-      data?.error || data?.message || responseText || response.statusText || 'Something went wrong',
-    )
+      data?.error ||
+        data?.message ||
+        responseText ||
+        response.statusText ||
+        "Request failed",
+    );
   }
 
-  return data
+  return data;
 }

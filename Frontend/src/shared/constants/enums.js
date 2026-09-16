@@ -1,13 +1,14 @@
 export const PROFILE_PRIVACY = Object.freeze({
   PUBLIC: 1000,
   PRIVATE: 1010,
-})
+});
 
 export const POST_PRIVACY = Object.freeze({
   PUBLIC: 1000,
   FOLLOWERS: 1010,
   SELECTED: 1020,
-})
+  GROUP: 1030,
+});
 
 export const NOTIFICATION_TYPE = Object.freeze({
   FOLLOW_REQUEST: 1000,
@@ -21,4 +22,4 @@ export const NOTIFICATION_TYPE = Object.freeze({
   NEW_FOLLOWER: 1080,
   BIRTHDAY: 1090,
   EVENT_REMINDER: 1100,
-})
+});

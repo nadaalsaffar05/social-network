@@ -1,37 +1,41 @@
-import { parseAPITimestamp } from '../../../shared/utils/dateTime'
-
-export { getMediaUrl } from '../../../shared/utils/media'
+import { parseAPITimestamp } from "../../../shared/utils/dateTime";
 
 export function getPostDisplayName(post) {
   return (
     post.author_nickname ||
-    [post.author_first_name, post.author_last_name].filter(Boolean).join(' ') ||
-    'User'
-  )
+    [post.author_first_name, post.author_last_name].filter(Boolean).join(" ") ||
+    "User"
+  );
 }
 
 export function formatPostTime(value, { detailed = false } = {}) {
-  const date = parseAPITimestamp(value)
-  if (!date) return value
+  const date = parseAPITimestamp(value);
+  if (!date) return value;
 
   if (detailed) {
     return new Intl.DateTimeFormat(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    }).format(date)
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
   }
 
-  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
-  if (elapsedSeconds < 60) return `${elapsedSeconds}s ago`
+  const elapsedSeconds = Math.max(
+    0,
+    Math.floor((Date.now() - date.getTime()) / 1000),
+  );
+  if (elapsedSeconds < 60) return `${elapsedSeconds}s ago`;
 
-  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
-  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
 
-  const elapsedHours = Math.floor(elapsedMinutes / 60)
-  if (elapsedHours <= 23) return `${elapsedHours}h ago`
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours <= 23) return `${elapsedHours}h ago`;
 
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date)
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
