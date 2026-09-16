@@ -1,35 +1,43 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import LoginPage from "../../features/auth/LoginPage";
-import RegisterPage from "../../features/auth/RegisterPage";
-import FeedPage from "../../features/feed/FeedPage";
-import PostPage from "../../features/feed/PostPage";
-import ProfilePage from "../../features/profile/ProfilePage";
-import ChatPage from "../../features/chat/ChatPage";
-import MessageRequestsPage from "../../features/chat/MessageRequestsPage";
-import FollowRequestsPage from "../../features/profile/FollowRequestsPage";
-import NotificationsPage from "../../features/notifications/NotificationsPage";
 import ProtectedRoute from "./ProtectedRoute";
+
+const LoginPage = lazy(() => import("../../features/auth/LoginPage"));
+const RegisterPage = lazy(() => import("../../features/auth/RegisterPage"));
+const FeedPage = lazy(() => import("../../features/feed/FeedPage"));
+const PostPage = lazy(() => import("../../features/feed/PostPage"));
+const ProfilePage = lazy(() => import("../../features/profile/ProfilePage"));
+const ChatPage = lazy(() => import("../../features/chat/ChatPage"));
+const MessageRequestsPage = lazy(
+  () => import("../../features/chat/MessageRequestsPage"),
+);
+const FollowRequestsPage = lazy(
+  () => import("../../features/profile/FollowRequestsPage"),
+);
+const NotificationsPage = lazy(
+  () => import("../../features/notifications/NotificationsPage"),
+);
 
 export default function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route element={<ProtectedRoute />}>
-        <Route path="/home" element={<FeedPage />} />
-        <Route path="/posts/:postId" element={<PostPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/profile/:id" element={<ProfilePage />} />
-        <Route path="/follow-requests" element={<FollowRequestsPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/messages" element={<ChatPage />} />
-        <Route path="/messages/:userId" element={<ChatPage />} />
-        <Route path="/message-requests" element={<MessageRequestsPage />} />
-      </Route>
-
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+    <Suspense fallback={null}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/home" element={<FeedPage />} />
+          <Route path="/posts/:postId" element={<PostPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/:id" element={<ProfilePage />} />
+          <Route path="/follow-requests" element={<FollowRequestsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/messages" element={<ChatPage />} />
+          <Route path="/messages/:userId" element={<ChatPage />} />
+          <Route path="/message-requests" element={<MessageRequestsPage />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }

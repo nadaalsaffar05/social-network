@@ -1,31 +1,36 @@
-import './FeedPage.css'
-import '../../shared/styles/components/PostComposer.css'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { MagnifyingGlass } from '@phosphor-icons/react'
-import { followUser, getFollowers, getFollowing, getProfile, searchUsers, unfollowUser } from '../../api/profile.js'
-import { togglePostReaction } from '../../api/feed.js'
-import FeedNavigation from './components/FeedNavigation.jsx'
-import GradientWaves from './components/GradientWaves.jsx'
-import PostComposer from './components/PostComposer.jsx'
-import PostCard from './components/PostCard.jsx'
-import { GRADIENT_WAVE_PROPS } from './constants.js'
-import { useFeed } from './hooks/useFeed.js'
-import { useChatRealtime } from '../chat/realtime/useChatRealtime.js'
-import Avatar from '../../shared/components/avatar/Avatar.jsx'
-
-function getProfileName(profile) {
-  return (
-    profile?.nickname ||
-    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
-    'Your profile'
-  )
-}
+import "./FeedPage.css";
+import "../../shared/styles/components/PostComposer.css";
+import { useEffect, useState } from "react";
+import { MagnifyingGlass } from "@phosphor-icons/react";
+import {
+  cancelFollowRequest,
+  followUser,
+  getFollowers,
+  getFollowing,
+  getProfile,
+  searchUsers,
+  unfollowUser,
+} from "../../api/profile.js";
+import { togglePostReaction } from "../../api/feed.js";
+import FeedNavigation from "./components/FeedNavigation.jsx";
+import GradientWaves from "./components/GradientWaves.jsx";
+import PostComposer from "./components/PostComposer.jsx";
+import PostCard from "./components/PostCard.jsx";
+import { GRADIENT_WAVE_PROPS } from "./constants.js";
+import { useFeed } from "./hooks/useFeed.js";
+import { useChatRealtime } from "../chat/realtime/useChatRealtime.js";
+import Avatar from "../../shared/components/avatar/Avatar.jsx";
+import { getUserDisplayName } from "../../shared/utils/user.js";
+import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
 
 function OnlineFriend({ user, onOpen }) {
   return (
     <li className="feed-online-users__item">
-      <button type="button" className="feed-online-users__button" onClick={onOpen}>
+      <button
+        type="button"
+        className="feed-online-users__button"
+        onClick={onOpen}
+      >
         <span className="feed-online-users__avatar-wrap">
           <Avatar
             avatarPath={user.avatar_path}
@@ -35,149 +40,188 @@ function OnlineFriend({ user, onOpen }) {
           <span className="feed-online-users__status" aria-label="Online" />
         </span>
         <span className="feed-online-users__copy">
-          <strong>{getProfileName(user)}</strong>
+          <strong>{getUserDisplayName(user, "Your profile")}</strong>
           <small>Online</small>
         </span>
       </button>
     </li>
-  )
+  );
 }
 
 export default function FeedPage() {
-  const navigate = useNavigate()
-  const { posts, status, error, hasMore, refresh, loadMore, removePost, updatePost } = useFeed()
-  const [currentUserID, setCurrentUserID] = useState('')
-  const [currentUser, setCurrentUser] = useState(null)
-  const [deletingPostID, setDeletingPostID] = useState('')
-  const [operationError, setOperationError] = useState('')
-  const [reactingPostID, setReactingPostID] = useState('')
-  const [friendIDs, setFriendIDs] = useState(new Set())
-  const [followingIDs, setFollowingIDs] = useState(new Set())
-  const [requestedIDs, setRequestedIDs] = useState(new Set())
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const { onlineUsers } = useChatRealtime()
+  const navigateTo = usePageNavigate();
+  const {
+    posts,
+    status,
+    error,
+    hasMore,
+    refresh,
+    loadMore,
+    removePost,
+    updatePost,
+  } = useFeed();
+  const [currentUserID, setCurrentUserID] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [deletingPostID, setDeletingPostID] = useState("");
+  const [operationError, setOperationError] = useState("");
+  const [reactingPostID, setReactingPostID] = useState("");
+  const [friendIDs, setFriendIDs] = useState(new Set());
+  const [followingIDs, setFollowingIDs] = useState(new Set());
+  const [requestedIDs, setRequestedIDs] = useState(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const { onlineUsers } = useChatRealtime();
 
   useEffect(() => {
     getProfile({ includePosts: false })
       .then((profile) => {
-        setCurrentUser(profile)
-        setCurrentUserID(profile.id)
+        setCurrentUser(profile);
+        setCurrentUserID(profile.id);
       })
       .catch(() => {
-        setCurrentUser(null)
-        setCurrentUserID('')
-      })
-  }, [])
+        setCurrentUser(null);
+        setCurrentUserID("");
+      });
+  }, []);
 
   useEffect(() => {
-    let active = true
+    let active = true;
 
     Promise.all([getFollowers(), getFollowing()])
       .then(([followers, followingUsers]) => {
-        if (!active) return
-        const followerIDs = new Set(followers.map((user) => user.id))
-        const nextFollowingIDs = new Set(followingUsers.map((user) => user.id))
-        setFollowingIDs(nextFollowingIDs)
-        setFriendIDs(new Set([...nextFollowingIDs].filter((userID) => followerIDs.has(userID))))
+        if (!active) return;
+        const followerIDs = new Set(followers.map((user) => user.id));
+        const nextFollowingIDs = new Set(followingUsers.map((user) => user.id));
+        setFollowingIDs(nextFollowingIDs);
+        setFriendIDs(
+          new Set(
+            [...nextFollowingIDs].filter((userID) => followerIDs.has(userID)),
+          ),
+        );
       })
       .catch(() => {
-        if (active) setFriendIDs(new Set())
-        if (active) setFollowingIDs(new Set())
-      })
+        if (active) setFriendIDs(new Set());
+        if (active) setFollowingIDs(new Set());
+      });
 
-    return () => { active = false }
-  }, [])
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const visibleOnlineUsers = onlineUsers.filter((user) => user.id !== currentUserID && friendIDs.has(user.id))
+  const visibleOnlineUsers = onlineUsers.filter(
+    (user) => user.id !== currentUserID && friendIDs.has(user.id),
+  );
 
   useEffect(() => {
-    const query = searchQuery.trim()
+    const query = searchQuery.trim();
     if (query.length < 2) {
-      return
+      return;
     }
 
     const timer = window.setTimeout(() => {
       searchUsers(query)
         .then((response) => setSearchResults(response.users ?? []))
-        .catch(() => setSearchResults([]))
-    }, 250)
-    return () => window.clearTimeout(timer)
-  }, [searchQuery])
+        .catch(() => setSearchResults([]));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
-  const visibleSearchResults = searchQuery.trim().length >= 2 ? searchResults : []
+  const visibleSearchResults =
+    searchQuery.trim().length >= 2 ? searchResults : [];
 
   async function handleDelete(postID) {
-    if (!window.confirm('Delete this post?')) return
+    if (!window.confirm("Delete this post?")) return;
 
-    setDeletingPostID(postID)
-    setOperationError('')
+    setDeletingPostID(postID);
+    setOperationError("");
 
     try {
-      await removePost(postID)
+      await removePost(postID);
     } catch (requestError) {
-      setOperationError(requestError.message || 'Failed to delete the post')
+      setOperationError(requestError.message || "Failed to delete the post");
     } finally {
-      setDeletingPostID('')
+      setDeletingPostID("");
     }
   }
 
   async function handlePostReaction(postID, reactionType) {
-    setReactingPostID(postID)
-    setOperationError('')
+    setReactingPostID(postID);
+    setOperationError("");
 
     try {
-      const response = await togglePostReaction(postID, reactionType)
+      const response = await togglePostReaction(postID, reactionType);
       updatePost(postID, {
         viewer_reaction: response.reaction_type,
         like_count: response.counts.LIKE,
         dislike_count: response.counts.DISLIKE,
-      })
+      });
     } catch (requestError) {
-      setOperationError(requestError.message || 'Failed to update reaction')
+      setOperationError(requestError.message || "Failed to update reaction");
     } finally {
-      setReactingPostID('')
+      setReactingPostID("");
     }
   }
 
   async function handleFollowUser(userID) {
     try {
-      const response = await followUser(userID)
-      if (response.status === 'following') {
-        setFollowingIDs((current) => new Set(current).add(userID))
-      } else if (response.status === 'pending') {
-        setRequestedIDs((current) => new Set(current).add(userID))
+      const response = await followUser(userID);
+      if (response.status === "following") {
+        setFollowingIDs((current) => new Set(current).add(userID));
+      } else if (response.status === "pending") {
+        setRequestedIDs((current) => new Set(current).add(userID));
       }
     } catch (requestError) {
-      setOperationError(requestError.message || 'Failed to follow this user')
+      setOperationError(requestError.message || "Failed to follow this user");
     }
   }
 
   async function handleUnfollowUser(userID) {
     try {
-      await unfollowUser(userID)
+      await unfollowUser(userID);
       setFollowingIDs((current) => {
-        const next = new Set(current)
-        next.delete(userID)
-        return next
-      })
+        const next = new Set(current);
+        next.delete(userID);
+        return next;
+      });
       setFriendIDs((current) => {
-        const next = new Set(current)
-        next.delete(userID)
-        return next
-      })
+        const next = new Set(current);
+        next.delete(userID);
+        return next;
+      });
     } catch (requestError) {
-      setOperationError(requestError.message || 'Failed to unfollow this user')
+      setOperationError(requestError.message || "Failed to unfollow this user");
+    }
+  }
+
+  async function handleCancelFollowRequest(userID) {
+    try {
+      await cancelFollowRequest(userID);
+      setRequestedIDs((current) => {
+        const next = new Set(current);
+        next.delete(userID);
+        return next;
+      });
+    } catch (requestError) {
+      setOperationError(
+        requestError.message || "Failed to cancel follow request",
+      );
     }
   }
 
   return (
     <main className="feed-page">
-      <div className="feed-waves"><GradientWaves {...GRADIENT_WAVE_PROPS} /></div>
+      <div className="feed-waves">
+        <GradientWaves {...GRADIENT_WAVE_PROPS} />
+      </div>
       <header className="feed-topbar">
         <div className="feed-topbar__inner">
           <div className="feed-title">
-            <button className="feed-title__brand" type="button" onClick={() => navigate('/home')}>
+            <button
+              className="feed-title__brand"
+              type="button"
+              onClick={() => navigateTo("/home")}
+            >
               <img src="/loop-logo.png" alt="" />
               <span>loop</span>
             </button>
@@ -185,14 +229,23 @@ export default function FeedPage() {
           <div className="feed-search-wrap">
             <label className="feed-search">
               <MagnifyingGlass size={19} weight="bold" aria-hidden="true" />
-              <input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search users" aria-label="Search users" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search users"
+                aria-label="Search users"
+              />
             </label>
             {visibleSearchResults.length > 0 && (
               <ul className="feed-search-results" aria-label="Search results">
                 {visibleSearchResults.map((user) => (
                   <li key={user.id}>
-                    <button type="button" onClick={() => navigate(`/profile/${user.id}`)}>
-                      <span>{getProfileName(user)}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigateTo(`/profile/${user.id}`)}
+                    >
+                      <span>{getUserDisplayName(user, "Your profile")}</span>
                       {user.nickname && <small>@{user.nickname}</small>}
                     </button>
                   </li>
@@ -212,11 +265,11 @@ export default function FeedPage() {
           <PostComposer onCreated={refresh} />
 
           <section className="feed-posts" aria-label="Feed posts">
-            {status === 'loading' && (
+            {status === "loading" && (
               <p className="feed-message">Loading posts…</p>
             )}
 
-            {status === 'error' && (
+            {status === "error" && (
               <div className="feed-message feed-error" role="alert">
                 <p>Couldn’t load the feed: {error}</p>
                 <button type="button" onClick={refresh}>
@@ -225,7 +278,7 @@ export default function FeedPage() {
               </div>
             )}
 
-            {status !== 'loading' && !error && posts.length === 0 && (
+            {status !== "loading" && !error && posts.length === 0 && (
               <p className="feed-message">No posts to show yet</p>
             )}
 
@@ -242,14 +295,25 @@ export default function FeedPage() {
                 currentUserID={currentUserID}
                 isReacting={reactingPostID === post.id}
                 isDeleting={deletingPostID === post.id}
-                onLike={() => handlePostReaction(post.id, 'LIKE')}
-                onComment={() => navigate(`/posts/${post.id}`)}
+                onLike={() => handlePostReaction(post.id, "LIKE")}
+                onComment={() => navigateTo(`/posts/${post.id}`)}
                 onDelete={() => handleDelete(post.id)}
-                onOpen={() => navigate(`/posts/${post.id}`)}
-                onAuthorOpen={() => navigate(`/profile/${post.author_id}`)}
-                onFollow={followingIDs.has(post.author_id) ? () => handleUnfollowUser(post.author_id) : () => handleFollowUser(post.author_id)}
-                followLabel={followingIDs.has(post.author_id) ? 'Unfollow' : (requestedIDs.has(post.author_id) ? 'Requested' : 'Follow')}
-                followDisabled={requestedIDs.has(post.author_id)}
+                onOpen={() => navigateTo(`/posts/${post.id}`)}
+                onAuthorOpen={() => navigateTo(`/profile/${post.author_id}`)}
+                onFollow={
+                  followingIDs.has(post.author_id)
+                    ? () => handleUnfollowUser(post.author_id)
+                    : requestedIDs.has(post.author_id)
+                      ? () => handleCancelFollowRequest(post.author_id)
+                      : () => handleFollowUser(post.author_id)
+                }
+                followLabel={
+                  followingIDs.has(post.author_id)
+                    ? "Unfollow"
+                    : requestedIDs.has(post.author_id)
+                      ? "Cancel request"
+                      : "Follow"
+                }
               />
             ))}
 
@@ -258,9 +322,9 @@ export default function FeedPage() {
                 className="feed-load-more"
                 type="button"
                 onClick={loadMore}
-                disabled={status === 'loading-more'}
+                disabled={status === "loading-more"}
               >
-                {status === 'loading-more' ? 'Loading…' : 'Load more'}
+                {status === "loading-more" ? "Loading…" : "Load more"}
               </button>
             )}
           </section>
@@ -270,7 +334,7 @@ export default function FeedPage() {
           <button
             className="feed-sidebar-card feed-profile-card"
             type="button"
-            onClick={() => navigate('/profile')}
+            onClick={() => navigateTo("/profile")}
           >
             <Avatar
               avatarPath={currentUser?.avatar_path}
@@ -279,7 +343,7 @@ export default function FeedPage() {
             />
             <span>
               <span className="feed-sidebar-label">Profile</span>
-              <strong>{getProfileName(currentUser)}</strong>
+              <strong>{getUserDisplayName(currentUser, "Your profile")}</strong>
             </span>
           </button>
 
@@ -289,7 +353,10 @@ export default function FeedPage() {
             <p>Posts from people you follow will appear here as they share</p>
           </section>
 
-          <section className="feed-sidebar-panel feed-online-users" aria-label="Online friends">
+          <section
+            className="feed-sidebar-panel feed-online-users"
+            aria-label="Online friends"
+          >
             <div className="feed-online-users__heading">
               <h2>Active friends</h2>
               <span>{visibleOnlineUsers.length}</span>
@@ -302,7 +369,7 @@ export default function FeedPage() {
                   <OnlineFriend
                     key={user.id}
                     user={user}
-                    onOpen={() => navigate(`/messages/${user.id}`)}
+                    onOpen={() => navigateTo(`/messages/${user.id}`)}
                   />
                 ))}
               </ul>
@@ -311,5 +378,5 @@ export default function FeedPage() {
         </aside>
       </div>
     </main>
-  )
+  );
 }
