@@ -1,12 +1,9 @@
 import { ChatCircle, DotsThree, Trash } from "@phosphor-icons/react";
 
 import Avatar from "../../../shared/components/avatar/Avatar.jsx";
+import { getMediaUrl } from "../../../shared/utils/media.js";
 import LikeButton from "./LikeButton.jsx";
-import {
-  formatPostTime,
-  getMediaUrl,
-  getPostDisplayName,
-} from "../utils/post.js";
+import { formatPostTime, getPostDisplayName } from "../utils/post.js";
 import "./PostCard.css";
 
 export default function PostCard({
@@ -84,7 +81,14 @@ export default function PostCard({
           </details>
         )}
         {!isOwner && onFollow && (
-          <button className="post-card__follow" type="button" onClick={onFollow} disabled={followDisabled}>{followLabel}</button>
+          <button
+            className="post-card__follow"
+            type="button"
+            onClick={onFollow}
+            disabled={followDisabled}
+          >
+            {followLabel}
+          </button>
         )}
       </header>
 

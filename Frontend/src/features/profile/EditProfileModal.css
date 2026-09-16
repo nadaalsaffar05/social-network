@@ -28,7 +28,9 @@
   background: #161b26;
   border: 1px solid rgb(255 255 255 / 15%);
   border-radius: 16px;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 24px 60px rgb(0 0 0 / 60%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 10%),
+    0 24px 60px rgb(0 0 0 / 60%);
   animation: editProfileSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -199,7 +201,9 @@
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 8px;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .edit-profile-field input:focus,
@@ -324,8 +328,33 @@
 }
 
 @media (max-width: 560px) {
+  .edit-profile-modal-backdrop {
+    align-items: flex-start;
+    padding: 0.75rem;
+    overflow-y: auto;
+  }
+
+  .edit-profile-modal-card {
+    max-height: none;
+    margin: auto 0;
+  }
+
+  .edit-profile-modal-header,
+  .edit-profile-form {
+    padding: 1rem;
+  }
+
   .edit-profile-row,
   .edit-profile-privacy-options {
     grid-template-columns: 1fr;
+  }
+
+  .edit-profile-actions {
+    gap: 0.75rem;
+  }
+
+  .edit-profile-btn {
+    flex: 1;
+    padding-inline: 0.75rem;
   }
 }

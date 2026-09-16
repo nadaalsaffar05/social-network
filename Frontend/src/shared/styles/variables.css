@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Corben:wght@400&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Corben:wght@400&display=swap");
 
 :root {
   --color-bg: #0a0c12;
@@ -17,12 +17,12 @@
   --radius-md: 18px;
   --radius-lg: 26px;
   --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.4);
-  --font-display: 'Corben', Georgia, serif;
-  --font-body: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: "Corben", Georgia, serif;
+  --font-body: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --transition-fast: 150ms ease;
 }
 
-html[data-theme='light'] {
+html[data-theme="light"] {
   --color-bg: #eef0f4;
   --color-bg-soft: #f7f8fa;
   --color-surface: #fff;

@@ -147,7 +147,9 @@ export default function PostComposer({
         const post = await createPost({
           content: content.trim(),
           privacy,
-          ...(privacy === POST_PRIVACY.SELECTED ? { selected_user_ids: selectedUserIDs } : {}),
+          ...(privacy === POST_PRIVACY.SELECTED
+            ? { selected_user_ids: selectedUserIDs }
+            : {}),
         });
         await uploadFiles(files, (file, position) =>
           uploadPostMedia(post.id, file, position),

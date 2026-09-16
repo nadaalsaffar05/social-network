@@ -19,29 +19,6 @@
   margin: 0 auto;
 }
 
-.post-detail-topbar {
-  display: flex;
-  align-items: center;
-  gap: 1.7rem;
-  height: 3.45rem;
-  margin-bottom: 1rem;
-  padding: 0 0.25rem;
-}
-
-.post-detail-topbar button {
-  display: grid;
-  place-items: center;
-  padding: 0;
-  color: inherit;
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-}
-
-.post-detail-topbar h1 {
-  font-size: 1.25rem;
-}
-
 .post-detail-feed-card {
   margin-bottom: 1rem;
 }
@@ -180,10 +157,6 @@
 @media (max-width: 700px) {
   .post-detail-page {
     padding: 1rem 0;
-  }
-
-  .post-detail-topbar {
-    padding: 0 1rem;
   }
 
   .post-detail-feed-card {

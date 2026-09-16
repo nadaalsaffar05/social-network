@@ -1,11 +1,15 @@
-import { useEffect, useRef } from 'react';
-import { Renderer, Program, Mesh, Triangle } from 'ogl';
-import './WebThreads.css';
+import { useEffect, useRef } from "react";
+import { Renderer, Program, Mesh, Triangle } from "ogl";
+import "./WebThreads.css";
 
-const hexToRgb = hex => {
+const hexToRgb = (hex) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return [1, 1, 1];
-  return [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255];
+  return [
+    parseInt(result[1], 16) / 255,
+    parseInt(result[2], 16) / 255,
+    parseInt(result[3], 16) / 255,
+  ];
 };
 
 const FAN_MODE = { center: 0, left: 1, right: 2 };
@@ -136,16 +140,16 @@ void main() {
 const ctxMap = new WeakMap();
 
 const WebThreads = ({
-  color1 = '#5227FF',
-  color2 = '#FF9FFC',
-  color3 = '#FFFFFF',
+  color1 = "#5227FF",
+  color2 = "#FF9FFC",
+  color3 = "#FFFFFF",
   speed = 0.2,
   threadCount = 6,
   frequency = 5.0,
   spread = 0.18,
   taper = 1.0,
   position = 0.5,
-  fanMode = 'center',
+  fanMode = "center",
   glow = 0.02,
   falloff = 0.6,
   thickness = 1.1,
@@ -157,9 +161,9 @@ const WebThreads = ({
   grainIntensity = 0.05,
   mouseInteraction = true,
   mouseStrength = 0.3,
-  backgroundColor = '#FFFFFF',
+  backgroundColor = "#FFFFFF",
   lightMode = false,
-  className = ''
+  className = "",
 }) => {
   const containerRef = useRef(null);
   const mouseRef = useRef({ enabled: true, strength: 0.3 });
@@ -173,15 +177,15 @@ const WebThreads = ({
       alpha: true,
       premultipliedAlpha: true,
       antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2)
+      dpr: Math.min(window.devicePixelRatio || 1, 2),
     });
 
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
     const canvas = gl.canvas;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.display = 'block';
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.display = "block";
     container.appendChild(canvas);
 
     const geometry = new Triangle(gl);
@@ -215,8 +219,8 @@ const WebThreads = ({
         uMouse: { value: new Float32Array([0.5, 0.5]) },
         uMouseStrength: { value: 0.3 },
         uEnableMouse: { value: 1.0 },
-        uMouseActive: { value: 0 }
-      }
+        uMouseActive: { value: 0 },
+      },
     });
 
     const mesh = new Mesh(gl, { geometry, program });
@@ -242,7 +246,7 @@ const WebThreads = ({
     let currentActive = 0;
     let targetActive = 0;
 
-    const onMouseMove = e => {
+    const onMouseMove = (e) => {
       const rect = canvas.getBoundingClientRect();
       targetMouse[0] = (e.clientX - rect.left) / rect.width;
       targetMouse[1] = 1.0 - (e.clientY - rect.top) / rect.height;
@@ -254,16 +258,16 @@ const WebThreads = ({
     const onMouseLeave = () => {
       targetActive = 0;
     };
-    canvas.addEventListener('mousemove', onMouseMove);
-    canvas.addEventListener('mouseenter', onMouseEnter);
-    canvas.addEventListener('mouseleave', onMouseLeave);
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("mouseenter", onMouseEnter);
+    canvas.addEventListener("mouseleave", onMouseLeave);
 
     let raf = 0;
     let isVisible = true;
     let isPageVisible = !document.hidden;
     const t0 = performance.now();
 
-    const loop = t => {
+    const loop = (t) => {
       program.uniforms.iTime.value = (t - t0) * 0.001;
       currentMouse[0] += 0.05 * (targetMouse[0] - currentMouse[0]);
       currentMouse[1] += 0.05 * (targetMouse[1] - currentMouse[1]);
@@ -271,14 +275,17 @@ const WebThreads = ({
       program.uniforms.uMouse.value[0] = currentMouse[0];
       program.uniforms.uMouse.value[1] = currentMouse[1];
       program.uniforms.uMouseActive.value = currentActive;
-      program.uniforms.uEnableMouse.value = mouseRef.current.enabled ? 1.0 : 0.0;
+      program.uniforms.uEnableMouse.value = mouseRef.current.enabled
+        ? 1.0
+        : 0.0;
       program.uniforms.uMouseStrength.value = mouseRef.current.strength;
       renderer.render({ scene: mesh });
       raf = requestAnimationFrame(loop);
     };
 
     const tryStart = () => {
-      if (isVisible && isPageVisible && raf === 0) raf = requestAnimationFrame(loop);
+      if (isVisible && isPageVisible && raf === 0)
+        raf = requestAnimationFrame(loop);
     };
     const tryStop = () => {
       if (raf !== 0) {
@@ -292,7 +299,7 @@ const WebThreads = ({
         isVisible = entry.isIntersecting;
         isVisible ? tryStart() : tryStop();
       },
-      { threshold: 0 }
+      { threshold: 0 },
     );
     io.observe(container);
 
@@ -300,7 +307,7 @@ const WebThreads = ({
       isPageVisible = !document.hidden;
       isPageVisible ? tryStart() : tryStop();
     };
-    document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener("visibilitychange", onVisibility);
 
     tryStart();
 
@@ -308,17 +315,17 @@ const WebThreads = ({
       tryStop();
       ro.disconnect();
       io.disconnect();
-      document.removeEventListener('visibilitychange', onVisibility);
-      canvas.removeEventListener('mousemove', onMouseMove);
-      canvas.removeEventListener('mouseenter', onMouseEnter);
-      canvas.removeEventListener('mouseleave', onMouseLeave);
+      document.removeEventListener("visibilitychange", onVisibility);
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("mouseenter", onMouseEnter);
+      canvas.removeEventListener("mouseleave", onMouseLeave);
       ctxMap.delete(container);
       try {
         container.removeChild(canvas);
       } catch {
         // The canvas may already have been removed during teardown.
       }
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
   }, []);
 
@@ -393,10 +400,15 @@ const WebThreads = ({
     mouseInteraction,
     mouseStrength,
     backgroundColor,
-    lightMode
+    lightMode,
   ]);
 
-  return <div ref={containerRef} className={`web-threads-container ${className}`.trim()} />;
+  return (
+    <div
+      ref={containerRef}
+      className={`web-threads-container ${className}`.trim()}
+    />
+  );
 };
 
 export default WebThreads;

@@ -16,32 +16,6 @@
   margin: 0 auto;
 }
 
-.profile-page-topbar {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  height: 3.45rem;
-  margin-bottom: 1.75rem;
-  padding: 0 0.25rem;
-}
-
-.profile-page-topbar button {
-  display: grid;
-  place-items: center;
-  padding: 0;
-  color: inherit;
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-}
-
-.profile-page-topbar h1 {
-  margin: 0;
-  font-size: 1.25rem;
-}
-
 .profile-waves {
   position: fixed;
   z-index: 0;
@@ -69,7 +43,9 @@
   background: rgb(255 255 255 / 4%);
   border: 1px solid rgb(255 255 255 / 13%);
   border-radius: var(--radius-md);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 9%), 0 18px 45px rgb(0 0 0 / 12%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 9%),
+    0 18px 45px rgb(0 0 0 / 12%);
   backdrop-filter: blur(14px);
 }
 
@@ -111,7 +87,9 @@
   object-fit: cover;
   border: 1px solid rgb(255 255 255 / 18%);
   box-shadow: 0 8px 28px rgb(0 0 0 / 45%);
-  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .profile-avatar-wrapper.editable:hover .profile-avatar-img {
@@ -153,7 +131,10 @@
   border-radius: 50%;
   box-shadow: 0 4px 14px rgb(0 0 0 / 60%);
   cursor: pointer;
-  transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .profile-status-badge:hover {
@@ -229,7 +210,10 @@
   background: #21262d;
   border: 1px solid rgb(240 246 252 / 10%);
   border-radius: 6px;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .profile-edit-profile-btn:hover {
@@ -655,9 +639,14 @@
   background: rgb(255 255 255 / 4%);
   border: 1px solid rgb(255 255 255 / 13%);
   border-radius: var(--radius-md);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 9%), 0 4px 20px rgb(0 0 0 / 12%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 9%),
+    0 4px 20px rgb(0 0 0 / 12%);
   backdrop-filter: blur(14px);
-  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .profile-user-item:hover {
@@ -776,7 +765,6 @@
   cursor: not-allowed;
 }
 
-/* Responsive breakpoint */
 @media (max-width: 860px) {
   .profile-layout-grid {
     grid-template-columns: 1fr;
@@ -791,5 +779,64 @@
   .profile-names-section,
   .profile-bio {
     text-align: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .profile-layout-container {
+    padding: 1rem 1rem 2rem;
+  }
+
+  .profile-avatar-container {
+    width: min(270px, calc(100vw - 3rem));
+    height: min(270px, calc(100vw - 3rem));
+  }
+
+  .profile-secondary-actions {
+    flex-wrap: wrap;
+  }
+
+  .profile-secondary-btn {
+    min-width: 0;
+  }
+
+  .profile-stats-card {
+    justify-content: space-between;
+    padding: 0.75rem 0.4rem;
+  }
+
+  .profile-stat-box {
+    min-width: 0;
+    padding: 0.5rem 0.25rem;
+  }
+
+  .profile-stat-label {
+    font-size: 0.68rem;
+  }
+
+  .profile-tabs-header {
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  .profile-tab-btn {
+    gap: 0.25rem;
+    padding: 0.65rem 0.3rem;
+    font-size: 0.78rem;
+  }
+
+  .profile-tab-badge {
+    padding: 0.12rem 0.35rem;
+  }
+
+  .profile-user-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .user-item-actions {
+    width: 100%;
   }
 }

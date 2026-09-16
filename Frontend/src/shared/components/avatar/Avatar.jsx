@@ -1,43 +1,52 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { getMediaUrl } from '../../utils/media.js'
+import { getMediaUrl } from "../../utils/media.js";
 
 const fallbackAvatarPaths = [
-  'tmp/doof.jpg',
-  'tmp/download (1).jpg',
-  'tmp/download.jpg',
-  'tmp/chinchillamaru.jpg',
-]
+  "tmp/doof.jpg",
+  "tmp/download (1).jpg",
+  "tmp/download.jpg",
+  "tmp/chinchillamaru.jpg",
+];
 
 function getFallbackAvatarUrl(seed) {
-  const value = String(seed ?? '')
-  const index = [...value].reduce(
-    (total, character) => (total * 31 + character.charCodeAt(0)) >>> 0,
-    0,
-  ) % fallbackAvatarPaths.length
+  const value = String(seed ?? "");
+  const index =
+    [...value].reduce(
+      (total, character) => (total * 31 + character.charCodeAt(0)) >>> 0,
+      0,
+    ) % fallbackAvatarPaths.length;
 
-  return getMediaUrl(fallbackAvatarPaths[index])
+  return getMediaUrl(fallbackAvatarPaths[index]);
 }
 
 export default function Avatar({
   avatarPath,
   seed,
   className,
-  alt = '',
+  alt = "",
   onError,
   ...props
 }) {
-  const fallbackUrl = getFallbackAvatarUrl(seed)
-  const sourceUrl = getMediaUrl(avatarPath) ?? fallbackUrl
-  const [failedSourceUrl, setFailedSourceUrl] = useState('')
-  const src = failedSourceUrl === sourceUrl ? fallbackUrl : sourceUrl
+  const fallbackUrl = getFallbackAvatarUrl(seed);
+  const sourceUrl = getMediaUrl(avatarPath) ?? fallbackUrl;
+  const [failedSourceUrl, setFailedSourceUrl] = useState("");
+  const src = failedSourceUrl === sourceUrl ? fallbackUrl : sourceUrl;
 
   function handleError(event) {
     if (event.currentTarget.src !== fallbackUrl) {
-      setFailedSourceUrl(sourceUrl)
+      setFailedSourceUrl(sourceUrl);
     }
-    onError?.(event)
+    onError?.(event);
   }
 
-  return <img {...props} className={className} src={src} alt={alt} onError={handleError} />
+  return (
+    <img
+      {...props}
+      className={className}
+      src={src}
+      alt={alt}
+      onError={handleError}
+    />
+  );
 }

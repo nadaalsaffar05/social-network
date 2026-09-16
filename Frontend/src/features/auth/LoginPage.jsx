@@ -1,28 +1,28 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-import { loginUser } from '../../api/auth.js'
-import { useToast } from '../../shared/components/toast/useToast.js'
-import AuthBackground from './components/AuthBackground.jsx'
+import { loginUser } from "../../api/auth.js";
+import { useToast } from "../../shared/components/toast/useToast.js";
+import AuthBackground from "./components/AuthBackground.jsx";
 
 export default function LoginPage() {
-  const navigate = useNavigate()
-  const { error: showError } = useToast()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate();
+  const { error: showError } = useToast();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event) {
-    event.preventDefault()
-    setIsSubmitting(true)
+    event.preventDefault();
+    setIsSubmitting(true);
 
     try {
-      await loginUser({ email, password })
-      navigate('/home', { replace: true })
+      await loginUser({ email, password });
+      navigate("/home", { replace: true });
     } catch (requestError) {
-      showError('Failed to log in', requestError.message || 'Please try again')
+      showError("Failed to log in", requestError.message || "Please try again");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -33,7 +33,9 @@ export default function LoginPage() {
       <section className="auth-card" aria-labelledby="login-title">
         <p className="auth-eyebrow">Welcome back</p>
         <h1 id="login-title">Log in to loop</h1>
-        <p className="auth-description">Connect with your communities and friends</p>
+        <p className="auth-description">
+          Connect with your communities and friends
+        </p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
@@ -59,8 +61,12 @@ export default function LoginPage() {
             />
           </label>
 
-          <button className="primary-button" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Logging in…' : 'Log in'}
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Logging in…" : "Log in"}
           </button>
         </form>
 
@@ -69,5 +75,5 @@ export default function LoginPage() {
         </p>
       </section>
     </main>
-  )
+  );
 }

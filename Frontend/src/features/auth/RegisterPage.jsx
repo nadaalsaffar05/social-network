@@ -1,55 +1,58 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-import { registerUser } from '../../api/auth.js'
-import { useToast } from '../../shared/components/toast/useToast.js'
-import AuthBackground from './components/AuthBackground.jsx'
+import { registerUser } from "../../api/auth.js";
+import { useToast } from "../../shared/components/toast/useToast.js";
+import AuthBackground from "./components/AuthBackground.jsx";
 
 const initialForm = {
-  email: '',
-  password: '',
-  first_name: '',
-  last_name: '',
-  date_of_birth: '',
-  nickname: '',
-  about_me: '',
-}
+  email: "",
+  password: "",
+  first_name: "",
+  last_name: "",
+  date_of_birth: "",
+  nickname: "",
+  about_me: "",
+};
 
 export default function RegisterPage() {
-  const navigate = useNavigate()
-  const { error: showError } = useToast()
-  const [form, setForm] = useState(initialForm)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate();
+  const { error: showError } = useToast();
+  const [form, setForm] = useState(initialForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const passwordChecks = [
-    ['At least 6 characters', form.password.length >= 6],
-    ['An uppercase letter', /[A-Z]/.test(form.password)],
-    ['A lowercase letter', /[a-z]/.test(form.password)],
-    ['A number', /\d/.test(form.password)],
-    ['A special character', /[^a-zA-Z\d]/.test(form.password)],
-  ]
+    ["At least 6 characters", form.password.length >= 6],
+    ["An uppercase letter", /[A-Z]/.test(form.password)],
+    ["A lowercase letter", /[a-z]/.test(form.password)],
+    ["A number", /\d/.test(form.password)],
+    ["A special character", /[^a-zA-Z\d]/.test(form.password)],
+  ];
 
   function updateField(event) {
-    const { name, value } = event.target
-    setForm((currentForm) => ({ ...currentForm, [name]: value }))
+    const { name, value } = event.target;
+    setForm((currentForm) => ({ ...currentForm, [name]: value }));
   }
 
   async function handleSubmit(event) {
-    event.preventDefault()
-    setIsSubmitting(true)
+    event.preventDefault();
+    setIsSubmitting(true);
 
     const user = {
       ...form,
       nickname: form.nickname || null,
       about_me: form.about_me || null,
-    }
+    };
 
     try {
-      await registerUser(user)
-      navigate('/home', { replace: true })
+      await registerUser(user);
+      navigate("/home", { replace: true });
     } catch (requestError) {
-      showError('Failed to create your account', requestError.message || 'Please check your details and try again')
+      showError(
+        "Failed to create your account",
+        requestError.message || "Please check your details and try again",
+      );
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -114,8 +117,16 @@ export default function RegisterPage() {
               required
             />
           </label>
-          <ul className="password-requirements" aria-label="Password requirements">
-            {passwordChecks.map(([label, met]) => <li key={label} className={met ? 'is-met' : ''}><span aria-hidden="true">{met ? '✓' : '•'}</span>{label}</li>)}
+          <ul
+            className="password-requirements"
+            aria-label="Password requirements"
+          >
+            {passwordChecks.map(([label, met]) => (
+              <li key={label} className={met ? "is-met" : ""}>
+                <span aria-hidden="true">{met ? "✓" : "•"}</span>
+                {label}
+              </li>
+            ))}
           </ul>
 
           <label>
@@ -141,11 +152,20 @@ export default function RegisterPage() {
 
           <label>
             About me <span>(optional)</span>
-            <textarea name="about_me" value={form.about_me} onChange={updateField} rows="3" />
+            <textarea
+              name="about_me"
+              value={form.about_me}
+              onChange={updateField}
+              rows="3"
+            />
           </label>
 
-          <button className="primary-button" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Creating account…' : 'Create account'}
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating account…" : "Create account"}
           </button>
         </form>
 
@@ -154,5 +174,5 @@ export default function RegisterPage() {
         </p>
       </section>
     </main>
-  )
+  );
 }

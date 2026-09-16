@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap");
 
 .glass-surface {
   position: relative;
@@ -12,7 +12,7 @@
 
 .post-launcher,
 .post-composer {
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
 }
 
 .post-launcher-glass {
@@ -41,7 +41,9 @@
   cursor: pointer;
   padding: 1rem 1.1rem;
   text-align: left;
-  transition: background 180ms ease, transform 180ms ease;
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
 }
 
 .post-launcher:hover {

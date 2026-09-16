@@ -13,7 +13,7 @@
   border-radius: var(--radius-sm, 8px);
 }
 
-html[data-theme='light'] .skeleton {
+html[data-theme="light"] .skeleton {
   background: linear-gradient(
     90deg,
     rgba(0, 0, 0, 0.06) 25%,

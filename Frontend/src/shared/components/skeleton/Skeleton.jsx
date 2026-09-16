@@ -1,4 +1,4 @@
-import './Skeleton.css'
+import "./Skeleton.css";
 
 /**
  * Reusable CSS Skeleton Loading Component
@@ -13,23 +13,29 @@ import './Skeleton.css'
  * @param {Object} [props.style] - Additional inline styles
  */
 export default function Skeleton({
-  variant = 'rectangular',
+  variant = "rectangular",
   width,
   height,
   radius,
   count = 1,
-  className = '',
+  className = "",
   style = {},
   ...rest
 }) {
   const customStyle = {
-    ...(width !== undefined && { width: typeof width === 'number' ? `${width}px` : width }),
-    ...(height !== undefined && { height: typeof height === 'number' ? `${height}px` : height }),
-    ...(radius !== undefined && { borderRadius: typeof radius === 'number' ? `${radius}px` : radius }),
+    ...(width !== undefined && {
+      width: typeof width === "number" ? `${width}px` : width,
+    }),
+    ...(height !== undefined && {
+      height: typeof height === "number" ? `${height}px` : height,
+    }),
+    ...(radius !== undefined && {
+      borderRadius: typeof radius === "number" ? `${radius}px` : radius,
+    }),
     ...style,
-  }
+  };
 
-  const classes = `skeleton skeleton--${variant} ${className}`.trim()
+  const classes = `skeleton skeleton--${variant} ${className}`.trim();
 
   if (count > 1) {
     return (
@@ -38,8 +44,8 @@ export default function Skeleton({
           <span key={index} className={classes} style={customStyle} {...rest} />
         ))}
       </>
-    )
+    );
   }
 
-  return <span className={classes} style={customStyle} {...rest} />
+  return <span className={classes} style={customStyle} {...rest} />;
 }

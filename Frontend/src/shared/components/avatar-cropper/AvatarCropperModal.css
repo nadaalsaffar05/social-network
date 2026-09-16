@@ -29,9 +29,12 @@
   border-radius: 16px;
   width: 100%;
   max-width: 480px;
+  max-height: calc(100dvh - 2rem);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.5),
+    0 8px 10px -6px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   color: #f8fafc;
 }
@@ -137,4 +140,24 @@
 .cropper-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .cropper-container-wrapper {
+    height: min(320px, 48dvh);
+  }
+
+  .cropper-controls,
+  .cropper-modal-header {
+    padding: 1rem;
+  }
+
+  .cropper-action-buttons {
+    justify-content: stretch;
+  }
+
+  .cropper-btn {
+    flex: 1;
+    padding-inline: 0.75rem;
+  }
 }

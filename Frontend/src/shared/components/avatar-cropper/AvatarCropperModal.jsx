@@ -1,38 +1,50 @@
-import { useState, useCallback } from 'react'
-import Cropper from 'react-easy-crop'
-import { X, MagnifyingGlassMinus, MagnifyingGlassPlus, Check } from '@phosphor-icons/react'
-import { getCroppedImg } from '../../utils/cropImage'
-import './AvatarCropperModal.css'
+import { useState, useCallback } from "react";
+import Cropper from "react-easy-crop";
+import {
+  X,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
+  Check,
+} from "@phosphor-icons/react";
+import { getCroppedImg } from "../../utils/cropImage";
+import "./AvatarCropperModal.css";
 
 export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
-  const [crop, setCrop] = useState({ x: 0, y: 0 })
-  const [zoom, setZoom] = useState(1)
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
-  const [isSaving, setIsSaving] = useState(false)
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels)
-  }, [])
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
 
   const handleSave = async () => {
-    if (!croppedAreaPixels) return
+    if (!croppedAreaPixels) return;
     try {
-      setIsSaving(true)
-      const croppedFile = await getCroppedImg(imageSrc, croppedAreaPixels)
-      await onCropSave(croppedFile)
-    } catch (error) {
-      console.error('Error cropping avatar:', error)
+      setIsSaving(true);
+      setError("");
+      const croppedFile = await getCroppedImg(imageSrc, croppedAreaPixels);
+      await onCropSave(croppedFile);
+    } catch (cropError) {
+      setError(cropError.message || "Failed to crop avatar");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <div className="cropper-modal-backdrop" onClick={onClose}>
       <div className="cropper-modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="cropper-modal-header">
           <h3 className="cropper-modal-title">Crop Profile Picture</h3>
-          <button type="button" className="cropper-close-btn" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="cropper-close-btn"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <X size={20} weight="bold" />
           </button>
         </div>
@@ -67,6 +79,8 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
             <MagnifyingGlassPlus size={20} weight="bold" />
           </div>
 
+          {error && <p className="form-error">{error}</p>}
+
           <div className="cropper-action-buttons">
             <button
               type="button"
@@ -81,15 +95,18 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
               className="cropper-btn primary"
               onClick={handleSave}
               disabled={isSaving}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
             >
               <Check size={18} weight="bold" />
-              {isSaving ? 'Saving' : 'Save Avatar'}
+              {isSaving ? "Saving" : "Save Avatar"}
             </button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
-

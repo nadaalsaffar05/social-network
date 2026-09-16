@@ -1,7 +1,8 @@
 import EmojiPicker from "emoji-picker-react";
 import { Smiley } from "@phosphor-icons/react";
 
-const APPLE_EMOJI_CDN = "https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/64/";
+const APPLE_EMOJI_CDN =
+  "https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/64/";
 const QUICK_REACTIONS = [
   { emoji: "👍", unified: "1f44d" },
   { emoji: "❤️", unified: "2764-fe0f" },
@@ -12,7 +13,9 @@ const QUICK_REACTIONS = [
 ];
 
 function emojiUnified(emoji) {
-  return Array.from(emoji).map((character) => character.codePointAt(0).toString(16)).join("-");
+  return Array.from(emoji)
+    .map((character) => character.codePointAt(0).toString(16))
+    .join("-");
 }
 
 function emojiSource(unified) {
@@ -39,22 +42,37 @@ export default function MessageReactions({
           onClick={() => onReact(messageID, reaction.emoji)}
           aria-label={`Remove ${reaction.emoji} reaction`}
         >
-          <img src={emojiSource(emojiUnified(reaction.emoji))} alt={reaction.emoji} />
+          <img
+            src={emojiSource(emojiUnified(reaction.emoji))}
+            alt={reaction.emoji}
+          />
         </button>
       ))}
 
-      <button type="button" onClick={() => onToggleQuickPicker(messageID)} aria-label="React to message">
+      <button
+        type="button"
+        onClick={() => onToggleQuickPicker(messageID)}
+        aria-label="React to message"
+      >
         <Smiley size={15} />
       </button>
 
       {isQuickPickerOpen && (
         <div className="chat-message__quick-reactions">
           {QUICK_REACTIONS.map(({ emoji, unified }) => (
-            <button key={emoji} type="button" onClick={() => onReact(messageID, emoji)}>
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => onReact(messageID, emoji)}
+            >
               <img src={emojiSource(unified)} alt={emoji} />
             </button>
           ))}
-          <button type="button" className="chat-message__quick-plus" onClick={() => onTogglePicker(messageID)}>
+          <button
+            type="button"
+            className="chat-message__quick-plus"
+            onClick={() => onTogglePicker(messageID)}
+          >
             +
           </button>
         </div>
