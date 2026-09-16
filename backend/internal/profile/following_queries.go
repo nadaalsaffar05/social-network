@@ -132,18 +132,6 @@ func getProfilePrivacy(db *sql.DB, userID string) (enums.ProfilePrivacy, error) 
 	return privacy, err
 }
 
-func hasFollow(db *sql.DB, followerID, followingID string) (bool, error) {
-	var exists bool
-	err := db.QueryRow(`
-		SELECT EXISTS(
-			SELECT 1
-			FROM follows
-			WHERE follower_id = ? AND following_id = ?
-		)
-	`, followerID, followingID).Scan(&exists)
-	return exists, err
-}
-
 func getPendingFollowRequestID(db *sql.DB, senderID, recipientID string) (string, bool, error) {
 	var requestID string
 	err := db.QueryRow(`

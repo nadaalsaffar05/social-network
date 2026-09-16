@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"social-network/internal/auth"
+	"social-network/internal/chat"
 	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
@@ -92,7 +93,7 @@ func GetFollowRequests(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func FollowUser(db *sql.DB) http.HandlerFunc {
+func FollowUser(db *sql.DB, hub *chat.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -129,7 +130,7 @@ func FollowUser(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		following, err := hasFollow(db, currentUser.ID, targetID)
+		following, err := helpers.IsFollowing(db, currentUser.ID, targetID)
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to check follow status")
 			return
@@ -195,6 +196,7 @@ func FollowUser(db *sql.DB) http.HandlerFunc {
 			helpers.WriteError(w, http.StatusInternalServerError, operationError)
 			return
 		}
+		notifications.SendRealtimeEvent(hub, targetID, "follow-request:new")
 
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{
 			"message":           "follow request sent",
@@ -204,7 +206,7 @@ func FollowUser(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func RespondToFollowRequest(db *sql.DB) http.HandlerFunc {
+func RespondToFollowRequest(db *sql.DB, hub *chat.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -296,7 +298,54 @@ func RespondToFollowRequest(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		notifications.SendRealtimeEvent(hub, currentUser.ID, "follow-request:resolved")
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{"message": message, "status": responseStatus})
+	}
+}
+
+func CancelFollowRequest(db *sql.DB, hub *chat.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			helpers.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		currentUser := auth.CurrentUser(r)
+		if currentUser == nil {
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		targetID, err := followTargetID(r)
+		if err != nil {
+			helpers.WriteError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		if targetID == "" {
+			helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
+			return
+		}
+
+		result, err := db.Exec(`
+			DELETE FROM follow_requests
+			WHERE sender_id = ? AND recipient_id = ? AND status = ?
+		`, currentUser.ID, targetID, enums.FollowRequestStatusPending)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to cancel follow request")
+			return
+		}
+		updated, err := result.RowsAffected()
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to confirm follow request cancellation")
+			return
+		}
+		if updated == 0 {
+			helpers.WriteError(w, http.StatusNotFound, "pending follow request not found")
+			return
+		}
+
+		notifications.SendRealtimeEvent(hub, targetID, "notification:resolved")
+		helpers.WriteJSON(w, http.StatusOK, map[string]string{"message": "follow request cancelled"})
 	}
 }
 
@@ -329,7 +378,7 @@ func followStatusHandler(db *sql.DB, field string, relation func(string, string)
 			return
 		}
 		followerID, followingID := relation(currentUser.ID, targetID)
-		exists, err := hasFollow(db, followerID, followingID)
+		exists, err := helpers.IsFollowing(db, followerID, followingID)
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to check follow status")
 			return

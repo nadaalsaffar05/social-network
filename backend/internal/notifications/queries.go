@@ -14,6 +14,17 @@ type Execer interface {
 	Exec(query string, args ...any) (sql.Result, error)
 }
 
+type RealtimeSender interface {
+	SendTo(userID string, event models.SocketEvent)
+}
+
+func SendRealtimeEvent(sender RealtimeSender, recipientID, eventType string) {
+	if sender == nil {
+		return
+	}
+	sender.SendTo(recipientID, models.SocketEvent{Type: eventType})
+}
+
 type CreateInput struct {
 	RecipientID        string
 	ActorID            string
@@ -96,6 +107,12 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 		LEFT JOIN group_events event ON event.id = n.group_event_id
 		LEFT JOIN groups group_record ON group_record.id = COALESCE(invitation.group_id, join_request.group_id, event.group_id)
 		WHERE n.recipient_id = ?
+			AND (
+				n.type NOT IN (?, ?, ?)
+				OR (n.type = ? AND follow_request.status = ?)
+				OR (n.type = ? AND invitation.status = ?)
+				OR (n.type = ? AND join_request.status = ?)
+			)
 		ORDER BY n.created_at DESC, n.id DESC
 		LIMIT 100
 	`,
@@ -106,6 +123,15 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 		enums.NotificationTypeGroupJoinRequest,
 		enums.GroupJoinRequestStatusPending,
 		recipientID,
+		enums.NotificationTypeFollowRequest,
+		enums.NotificationTypeGroupInvitation,
+		enums.NotificationTypeGroupJoinRequest,
+		enums.NotificationTypeFollowRequest,
+		enums.FollowRequestStatusPending,
+		enums.NotificationTypeGroupInvitation,
+		enums.GroupInvitationStatusPending,
+		enums.NotificationTypeGroupJoinRequest,
+		enums.GroupJoinRequestStatusPending,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -162,9 +188,30 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 	var unreadCount int
 	if err := db.QueryRow(`
 		SELECT COUNT(*)
-		FROM notifications
-		WHERE recipient_id = ? AND is_read = 0
-	`, recipientID).Scan(&unreadCount); err != nil {
+		FROM notifications n
+		LEFT JOIN follow_requests follow_request ON follow_request.id = n.follow_request_id
+		LEFT JOIN group_invitations invitation ON invitation.id = n.group_invitation_id
+		LEFT JOIN group_join_requests join_request ON join_request.id = n.group_join_request_id
+		WHERE n.recipient_id = ?
+			AND n.is_read = 0
+			AND (
+				n.type NOT IN (?, ?, ?)
+				OR (n.type = ? AND follow_request.status = ?)
+				OR (n.type = ? AND invitation.status = ?)
+				OR (n.type = ? AND join_request.status = ?)
+			)
+	`,
+		recipientID,
+		enums.NotificationTypeFollowRequest,
+		enums.NotificationTypeGroupInvitation,
+		enums.NotificationTypeGroupJoinRequest,
+		enums.NotificationTypeFollowRequest,
+		enums.FollowRequestStatusPending,
+		enums.NotificationTypeGroupInvitation,
+		enums.GroupInvitationStatusPending,
+		enums.NotificationTypeGroupJoinRequest,
+		enums.GroupJoinRequestStatusPending,
+	).Scan(&unreadCount); err != nil {
 		return nil, 0, err
 	}
 

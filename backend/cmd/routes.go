@@ -40,16 +40,16 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/followers", protected(profile.GetFollowers(db)))
 	mux.Handle("/api/following", protected(profile.GetFollowing(db)))
 	mux.Handle("/api/follow-requests", protected(profile.GetFollowRequests(db)))
-	mux.Handle("/api/follow", protected(profile.FollowUser(db)))
+	mux.Handle("/api/follow", protected(profile.FollowUser(db, chatHub)))
 	mux.Handle("/api/unfollow", protected(profile.UnfollowUser(db)))
 	mux.Handle("/api/is-follower", protected(profile.IsFollower(db)))
 	mux.Handle("/api/is-following", protected(profile.IsFollowing(db)))
-	mux.Handle("/api/follow-request/respond", protected(profile.RespondToFollowRequest(db)))
+	mux.Handle("/api/follow-request/respond", protected(profile.RespondToFollowRequest(db, chatHub)))
+	mux.Handle("/api/follow-request/cancel", protected(profile.CancelFollowRequest(db, chatHub)))
 	mux.Handle("/api/notifications", protected(notificationHandler.Notifications))
 	mux.Handle("/api/notifications/read-all", protected(notificationHandler.MarkAllRead))
 	mux.Handle("/api/notifications/{notification_id}/read", protected(notificationHandler.MarkRead))
 
-	// Feed routes remain grouped and use the same authentication wrapper.
 	mux.Handle("/api/posts", protected(feedHandler.CreatePost))
 	mux.Handle("/api/posts/{post_id}", protected(feedHandler.Post))
 	mux.Handle("/api/posts/{post_id}/media", protected(feedHandler.UploadPostMedia))
@@ -60,7 +60,6 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/posts/{post_id}/comments/{comment_id}/reaction", protected(feedHandler.ToggleCommentReaction))
 	mux.Handle("/api/feed", protected(feedHandler.GetFeed))
 
-	// Private-message REST API. Real-time WebSocket support is registered later.
 	mux.Handle("/api/users/{user_id}/messages", protected(chatHandler.Messages))
 	mux.Handle("/api/users/{user_id}/messages/{public_id}", protected(chatHandler.Message))
 	mux.Handle("/api/users/{user_id}/messages/{public_id}/reaction", protected(chatHandler.MessageReaction))
@@ -70,7 +69,6 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/users/online", protected(chatHandler.OnlineUsers))
 	mux.Handle("/ws", protected(chatHandler.WebSocket))
 
-	// group routes
 	mux.Handle("/api/groups", protected(groupHandler.Groups))
 	mux.Handle("/api/groups/{group_id}", protected(groupHandler.GetGroupByID))
 	mux.Handle("/api/groups/{group_id}/members", protected(groupHandler.GetGroupMembers))

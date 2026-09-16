@@ -85,6 +85,7 @@ func (h *Handler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
+	notifications.SendRealtimeEvent(h.Hub, group.CreatorID, "notification:new")
 
 	helpers.WriteJSON(w, http.StatusCreated, map[string]string{"message": "Join request created successfully"})
 }
@@ -255,6 +256,7 @@ func (h *Handler) RespondToJoinRequest(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to respond to join request")
 		return
 	}
+	notifications.SendRealtimeEvent(h.Hub, currentUser.ID, "notification:resolved")
 	helpers.WriteJSON(w, http.StatusOK, map[string]string{"message": "Successfully responded to join request", "new_status": string(req.Action)})
 }
 

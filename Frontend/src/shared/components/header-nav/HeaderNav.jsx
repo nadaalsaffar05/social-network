@@ -1,63 +1,57 @@
-import { useNavigate } from 'react-router-dom'
-import { UserPlus, Bell } from '@phosphor-icons/react'
-import './HeaderNav.css'
+import { Fragment } from "react";
+import { Bell, UserPlus } from "@phosphor-icons/react";
+import { usePageNavigate } from "../back-button/usePageBack.js";
+import { useChatRealtime } from "../../../features/chat/realtime/useChatRealtime.js";
+import "./HeaderNav.css";
 
-export default function HeaderNav({
-  followRequestCount = 0,
-  notificationCount = 0,
-  onNotificationsClick,
-}) {
-  const navigate = useNavigate()
+export default function HeaderNav() {
+  const navigateTo = usePageNavigate();
+  const { attentionCounts } = useChatRealtime();
 
-  function handleFollowRequests() {
-    navigate('/follow-requests')
-  }
-
-  function handleNotifications() {
-    if (onNotificationsClick) {
-      onNotificationsClick()
-    } else {
-      navigate('/notifications')
-    }
-  }
+  const items = [
+    {
+      id: "follow-requests",
+      label: "Follow requests",
+      Icon: UserPlus,
+      count: attentionCounts.followRequests,
+      path: "/follow-requests",
+    },
+    {
+      id: "notifications",
+      label: "Notifications",
+      Icon: Bell,
+      count: attentionCounts.notifications,
+      path: "/notifications",
+    },
+  ];
 
   return (
     <div className="header-nav" role="toolbar" aria-label="Header navigation">
-
-      <button
-        type="button"
-        id="header-nav-follow-requests"
-        className="header-nav__btn"
-        onClick={handleFollowRequests}
-        aria-label="Follow requests"
-        title="Follow requests"
-      >
-        <UserPlus size={22} weight="regular" />
-        {followRequestCount > 0 && (
-          <span className="header-nav__badge" aria-label={`${followRequestCount} follow requests`}>
-            {followRequestCount > 99 ? '99+' : followRequestCount}
-          </span>
-        )}
-      </button>
-
-      <div className="header-nav__divider" aria-hidden="true" />
-
-
-      <button
-        type="button"
-        id="header-nav-notifications"
-        className="header-nav__btn"
-        onClick={handleNotifications}
-        aria-label="Notifications"
-        title="Notifications"
-      >
-        <Bell size={22} weight="regular" />
-        {notificationCount > 0 && (
-          <span className="header-nav__badge" aria-label={`${notificationCount} notifications`}>
-            {notificationCount > 99 ? '99+' : notificationCount}
-          </span>
-        )}
-      </button>
+      {items.map(({ Icon, count, id, label, path }, index) => (
+        <Fragment key={id}>
+          {index > 0 && (
+            <div className="header-nav__divider" aria-hidden="true" />
+          )}
+          <button
+            type="button"
+            id={`header-nav-${id}`}
+            className="header-nav__btn"
+            onClick={() => navigateTo(path)}
+            aria-label={label}
+            title={label}
+          >
+            <Icon size={22} weight="regular" />
+            {count > 0 && (
+              <span
+                className="header-nav__badge"
+                aria-label={`${count} ${label}`}
+              >
+                {count > 99 ? "99+" : count}
+              </span>
+            )}
+          </button>
+        </Fragment>
+      ))}
     </div>
-  )
+  );
 }

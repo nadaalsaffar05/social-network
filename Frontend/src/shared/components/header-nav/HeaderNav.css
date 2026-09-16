@@ -7,8 +7,6 @@
   display: inline-flex;
   align-items: center;
   overflow: hidden;
-
-  /* glassmorphism container */
   background: rgb(255 255 255 / 5%);
   border: 1px solid rgb(255 255 255 / 13%);
   border-radius: 14px;
@@ -17,7 +15,6 @@
     inset 0 1px 0 rgb(255 255 255 / 9%),
     0 8px 24px rgb(0 0 0 / 18%);
 }
-
 
 .header-nav__divider {
   width: 1px;
@@ -37,8 +34,6 @@
   background: transparent;
   border: none;
   cursor: pointer;
-
-  /* smooth transitions */
   transition:
     color 0.18s ease,
     background 0.18s ease;
@@ -53,14 +48,12 @@
   background: rgb(255 255 255 / 12%);
 }
 
-/* focus ring for keyboard nav */
 .header-nav__btn:focus-visible {
   outline: 2px solid var(--color-primary, #6366f1);
   outline-offset: -2px;
   border-radius: 13px;
 }
 
-/* icon scale on hover */
 .header-nav__btn svg {
   display: block;
   transition: transform 0.18s ease;
@@ -69,7 +62,6 @@
 .header-nav__btn:hover svg {
   transform: scale(1.12);
 }
-
 
 .header-nav__badge {
   position: absolute;
@@ -92,8 +84,6 @@
   background: var(--color-primary, #6366f1);
   border-radius: 999px;
   border: 2px solid var(--color-bg, #0b0f19);
-
-  /* subtle pulse so it grabs attention */
   animation: badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 

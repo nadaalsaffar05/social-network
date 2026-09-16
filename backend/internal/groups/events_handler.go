@@ -106,6 +106,7 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	startsAtUTC := startsAt.UTC().Format(time.RFC3339)
 
 	eventID := uuid.New().String()
+	notifiedMemberIDs := make([]string, 0)
 	operationError := "Failed to start event"
 	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
 		operationError = "Failed to create event"
@@ -124,6 +125,7 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 			if memberID == currentUser.ID {
 				continue
 			}
+			notifiedMemberIDs = append(notifiedMemberIDs, memberID)
 			if err := notifications.Create(tx, notifications.CreateInput{
 				RecipientID:  memberID,
 				ActorID:      currentUser.ID,
@@ -139,6 +141,9 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
+	}
+	for _, memberID := range notifiedMemberIDs {
+		notifications.SendRealtimeEvent(h.Hub, memberID, "notification:new")
 	}
 
 	event, err := getEventByID(h.DB, groupID, eventID)

@@ -126,6 +126,7 @@ func (h *Handler) InviteUser(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
 	}
+	notifications.SendRealtimeEvent(h.Hub, invitedUser.ID, "notification:new")
 
 	helpers.WriteJSON(w, http.StatusCreated, map[string]string{"message": "Successfully invited user", "invitedUser": string(invitedUser.ID)})
 }
@@ -198,6 +199,7 @@ func (h *Handler) RespondToInvite(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to respond to invite")
 		return
 	}
+	notifications.SendRealtimeEvent(h.Hub, currentUser.ID, "notification:resolved")
 
 	helpers.WriteJSON(w, http.StatusOK, map[string]string{"message": "Invite response updated"})
 }
