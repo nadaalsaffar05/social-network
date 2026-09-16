@@ -3,11 +3,9 @@ package profile
 import (
 	"database/sql"
 	"errors"
-	"io"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"social-network/internal/auth"
 	"social-network/internal/enums"
@@ -162,7 +160,7 @@ func UpdateProfile(db *sql.DB) http.HandlerFunc {
 		}
 
 		dateOfBirth := strings.TrimSpace(req.DateOfBirth)
-		if _, err := time.Parse("2006-01-02", dateOfBirth); err != nil {
+		if err := helpers.ParseDateOnly(dateOfBirth); err != nil {
 			helpers.WriteError(w, http.StatusBadRequest, "invalid date of birth format (YYYY-MM-DD expected)")
 			return
 		}
@@ -253,40 +251,33 @@ func UpdateAvatar(db *sql.DB) http.HandlerFunc {
 		}
 		defer file.Close()
 
-		mimeType := enums.MediaMIMEType(header.Header.Get("Content-Type"))
-		if mimeType != enums.MediaMIMETypeJPEG && mimeType != enums.MediaMIMETypePNG && mimeType != enums.MediaMIMETypeGIF {
+		mimeType, err := helpers.DetectMediaMIMEType(file)
+		if err != nil {
 			helpers.WriteError(w, http.StatusBadRequest, "only JPEG, PNG, and GIF images are allowed")
 			return
 		}
-		extension := avatarExtension(mimeType)
 		mediaUUID, err := uuid.NewV4()
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to generate media id")
 			return
 		}
 		mediaID := mediaUUID.String()
-		uploadDir := "uploads/avatars"
-		if err := os.MkdirAll(uploadDir, 0o755); err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to create upload directory")
-			return
-		}
-		relativePath := uploadDir + "/" + mediaID + extension
+		relativePath := ""
 		keepFile := false
 		defer func() {
-			if !keepFile {
+			if !keepFile && relativePath != "" {
 				_ = os.Remove(relativePath)
 			}
 		}()
 
-		destination, err := os.Create(relativePath)
-		if err != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to save avatar file")
+		fileSize := int64(0)
+		relativePath, fileSize, err = helpers.SaveMediaFile(file, "uploads/avatars", mediaID, mimeType)
+		if errors.Is(err, helpers.ErrEmptyMediaFile) {
+			helpers.WriteError(w, http.StatusBadRequest, "avatar file cannot be empty")
 			return
 		}
-		fileSize, copyErr := io.Copy(destination, file)
-		closeErr := destination.Close()
-		if copyErr != nil || closeErr != nil {
-			helpers.WriteError(w, http.StatusInternalServerError, "failed to write avatar file")
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to save avatar file")
 			return
 		}
 
@@ -370,15 +361,4 @@ func validateAboutMe(value *string) (*string, error) {
 		return nil, errors.New("about me must not exceed 2000 characters")
 	}
 	return &aboutMe, nil
-}
-
-func avatarExtension(mimeType enums.MediaMIMEType) string {
-	switch mimeType {
-	case enums.MediaMIMETypePNG:
-		return ".png"
-	case enums.MediaMIMETypeGIF:
-		return ".gif"
-	default:
-		return ".jpg"
-	}
 }

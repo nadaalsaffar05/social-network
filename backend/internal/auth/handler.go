@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
-	"time"
 
 	"social-network/internal/helpers"
 	"social-network/internal/models"
@@ -87,7 +86,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := time.Parse("2006-01-02", request.DateOfBirth); err != nil {
+	if err := helpers.ParseDateOnly(request.DateOfBirth); err != nil {
 		helpers.WriteError(
 			w,
 			http.StatusBadRequest,

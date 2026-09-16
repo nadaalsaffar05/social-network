@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"strings"
 
 	"social-network/internal/auth"
 	"social-network/internal/helpers"
@@ -47,10 +46,9 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.ReactionType = strings.ToUpper(strings.TrimSpace(req.ReactionType))
-
-	if req.ReactionType != "LIKE" && req.ReactionType != "DISLIKE" {
-		helpers.WriteError(w, http.StatusBadRequest, "reaction_type must be LIKE or DISLIKE")
+	normalizedReactionType, err := NormalizePostCommentReaction(req.ReactionType)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -72,7 +70,7 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err == nil {
-			if existingReaction == req.ReactionType {
+			if existingReaction == normalizedReactionType {
 				operationError = "could not remove reaction"
 				if _, err := tx.Exec(`
 					DELETE FROM post_reactions
@@ -87,10 +85,10 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 					UPDATE post_reactions
 					SET reaction_type = ?
 					WHERE post_id = ? AND user_id = ?
-				`, req.ReactionType, postID, currentUser.ID); err != nil {
+				`, normalizedReactionType, postID, currentUser.ID); err != nil {
 					return err
 				}
-				reactionType = &req.ReactionType
+				reactionType = &normalizedReactionType
 			}
 		} else {
 			operationError = "could not add reaction"
@@ -101,10 +99,10 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 					reaction_type
 				)
 				VALUES (?, ?, ?)
-			`, postID, currentUser.ID, req.ReactionType); err != nil {
+			`, postID, currentUser.ID, normalizedReactionType); err != nil {
 				return err
 			}
-			reactionType = &req.ReactionType
+			reactionType = &normalizedReactionType
 		}
 
 		operationError = "could not get reaction counts"
@@ -179,10 +177,9 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	req.ReactionType = strings.ToUpper(strings.TrimSpace(req.ReactionType))
-
-	if req.ReactionType != "LIKE" && req.ReactionType != "DISLIKE" {
-		helpers.WriteError(w, http.StatusBadRequest, "reaction_type must be LIKE or DISLIKE")
+	normalizedReactionType, err := NormalizePostCommentReaction(req.ReactionType)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -204,7 +201,7 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if err == nil {
-			if existingReaction == req.ReactionType {
+			if existingReaction == normalizedReactionType {
 				operationError = "could not remove reaction"
 				if _, err := tx.Exec(`
 					DELETE FROM comment_reactions
@@ -219,10 +216,10 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 					UPDATE comment_reactions
 					SET reaction_type = ?
 					WHERE comment_id = ? AND user_id = ?
-				`, req.ReactionType, commentID, currentUser.ID); err != nil {
+				`, normalizedReactionType, commentID, currentUser.ID); err != nil {
 					return err
 				}
-				reactionType = &req.ReactionType
+				reactionType = &normalizedReactionType
 			}
 		} else {
 			operationError = "could not add reaction"
@@ -233,10 +230,10 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 					reaction_type
 				)
 				VALUES (?, ?, ?)
-			`, commentID, currentUser.ID, req.ReactionType); err != nil {
+			`, commentID, currentUser.ID, normalizedReactionType); err != nil {
 				return err
 			}
-			reactionType = &req.ReactionType
+			reactionType = &normalizedReactionType
 		}
 
 		operationError = "could not get reaction counts"

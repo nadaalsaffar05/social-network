@@ -1,14 +1,15 @@
 package feed
 
 import (
+	"errors"
 	"fmt"
-	"io"
-	"mime/multipart"
-	"net/http"
 	"strconv"
+	"strings"
 
 	"social-network/internal/enums"
 )
+
+const maxPostContentLength = 10000
 
 func FeedLimit(value string) (int, error) {
 	if value == "" {
@@ -23,36 +24,23 @@ func FeedLimit(value string) (int, error) {
 	return limit, nil
 }
 
-func mediaExtension(mimeType enums.MediaMIMEType) string {
-	switch mimeType {
-	case enums.MediaMIMETypePNG:
-		return ".png"
-	case enums.MediaMIMETypeGIF:
-		return ".gif"
-	default:
-		return ".jpg"
+func NormalizePostContent(content string) (string, error) {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return "", errors.New("content is required")
 	}
+	if len([]rune(content)) > maxPostContentLength {
+		return "", fmt.Errorf("content must be at most %d characters", maxPostContentLength)
+	}
+	return content, nil
 }
 
-func detectMediaMIMEType(file multipart.File) (enums.MediaMIMEType, error) {
-	buffer := make([]byte, 512)
-	n, err := file.Read(buffer)
-	if err != nil && err != io.EOF {
-		return "", err
+func NormalizePostCommentReaction(reactionType string) (string, error) {
+	reactionType = strings.ToUpper(strings.TrimSpace(reactionType))
+	if reactionType != string(enums.PostCommentReactionTypeLike) && reactionType != string(enums.PostCommentReactionTypeDislike) {
+		return "", errors.New("reaction_type must be LIKE or DISLIKE")
 	}
-
-	mimeType := enums.MediaMIMEType(http.DetectContentType(buffer[:n]))
-	if mimeType != enums.MediaMIMETypeJPEG &&
-		mimeType != enums.MediaMIMETypePNG &&
-		mimeType != enums.MediaMIMETypeGIF {
-		return "", fmt.Errorf("unsupported media type")
-	}
-
-	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return "", err
-	}
-
-	return mimeType, nil
+	return reactionType, nil
 }
 
 func isValidPrivacy(privacy enums.PostPrivacy) bool {

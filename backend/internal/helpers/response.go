@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -20,6 +21,11 @@ func WriteError(w http.ResponseWriter, status int, message string) {
 
 func ParseJSON(body io.Reader, data any) error {
 	return json.NewDecoder(body).Decode(data)
+}
+
+func ParseDateOnly(value string) error {
+	_, err := time.Parse(time.DateOnly, value)
+	return err
 }
 
 func normalizeErrorMessage(message string) string {

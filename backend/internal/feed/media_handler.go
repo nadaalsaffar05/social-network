@@ -3,7 +3,6 @@ package feed
 import (
 	"database/sql"
 	"errors"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -73,7 +72,7 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	mimeType, err := detectMediaMIMEType(file)
+	mimeType, err := helpers.DetectMediaMIMEType(file)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "only JPEG, PNG, and GIF are allowed")
 		return
@@ -86,29 +85,13 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mediaID := uuid.New().String()
-	uploadDir := "uploads/posts"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not create upload directory")
+	relativePath, fileSize, err := helpers.SaveMediaFile(file, "uploads/posts", mediaID, mimeType)
+	if errors.Is(err, helpers.ErrEmptyMediaFile) {
+		helpers.WriteError(w, http.StatusBadRequest, "file cannot be empty")
 		return
 	}
-
-	relativePath := uploadDir + "/" + mediaID + mediaExtension(mimeType)
-	destination, err := os.Create(relativePath)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not save media")
-		return
-	}
-
-	fileSize, copyErr := io.Copy(destination, file)
-	closeErr := destination.Close()
-	if copyErr != nil || closeErr != nil {
-		_ = os.Remove(relativePath)
-		helpers.WriteError(w, http.StatusInternalServerError, "could not write media")
-		return
-	}
-	if fileSize == 0 {
-		_ = os.Remove(relativePath)
-		helpers.WriteError(w, http.StatusBadRequest, "file cannot be empty")
 		return
 	}
 
@@ -200,7 +183,7 @@ func (h *Handler) UploadCommentMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	mimeType, err := detectMediaMIMEType(file)
+	mimeType, err := helpers.DetectMediaMIMEType(file)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "only JPEG, PNG, and GIF are allowed")
 		return
@@ -214,33 +197,13 @@ func (h *Handler) UploadCommentMedia(w http.ResponseWriter, r *http.Request) {
 
 	mediaID := uuid.New().String()
 
-	uploadDir := "uploads/comments"
-
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not create upload directory")
+	relativePath, fileSize, err := helpers.SaveMediaFile(file, "uploads/comments", mediaID, mimeType)
+	if errors.Is(err, helpers.ErrEmptyMediaFile) {
+		helpers.WriteError(w, http.StatusBadRequest, "file cannot be empty")
 		return
 	}
-
-	relativePath := uploadDir + "/" + mediaID + mediaExtension(mimeType)
-
-	destination, err := os.Create(relativePath)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not save media")
-		return
-	}
-
-	fileSize, copyErr := io.Copy(destination, file)
-	closeErr := destination.Close()
-
-	if copyErr != nil || closeErr != nil {
-		_ = os.Remove(relativePath)
-		helpers.WriteError(w, http.StatusInternalServerError, "could not write media")
-		return
-	}
-
-	if fileSize == 0 {
-		_ = os.Remove(relativePath)
-		helpers.WriteError(w, http.StatusBadRequest, "file cannot be empty")
 		return
 	}
 

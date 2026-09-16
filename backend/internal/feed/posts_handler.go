@@ -32,17 +32,12 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Content = strings.TrimSpace(req.Content)
-
-	if req.Content == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "content is required")
+	content, err := NormalizePostContent(req.Content)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	if len([]rune(req.Content)) > 10000 {
-		helpers.WriteError(w, http.StatusBadRequest, "content must be at most 10000 characters")
-		return
-	}
+	req.Content = content
 
 	if !isValidPrivacy(req.Privacy) {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid privacy")

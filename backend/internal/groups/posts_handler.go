@@ -125,16 +125,12 @@ func (h *Handler) CreateGroupPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Content = strings.TrimSpace(req.Content)
-	if req.Content == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "Content is required")
+	content, err := feed.NormalizePostContent(req.Content)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	if len([]rune(req.Content)) > 10000 {
-		helpers.WriteError(w, http.StatusBadRequest, "Content must be at most 10000 characters")
-		return
-	}
+	req.Content = content
 
 	postID := uuid.New().String()
 	err = createGroupPost(h.DB, postID, currentUser.ID, groupID, req.Content)

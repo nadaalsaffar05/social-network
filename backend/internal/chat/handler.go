@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -102,7 +103,6 @@ func (h *Handler) Conversations(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not load conversations")
 		return
 	}
-
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{"conversations": conversations})
 }
 
@@ -191,7 +191,10 @@ func (h *Handler) WebSocket(w http.ResponseWriter, r *http.Request) {
 			if h.groupSocketDisconnectHandler != nil {
 				h.groupSocketDisconnectHandler(currentUser.ID)
 			}
-			lastSeenAt, _ := updateLastSeen(h.DB, currentUser.ID)
+			lastSeenAt, err := updateLastSeen(h.DB, currentUser.ID)
+			if err != nil {
+				log.Printf("failed to update last seen for user %s: %v", currentUser.ID, err)
+			}
 			h.sendPresenceUpdate(models.UserPresence{UserID: currentUser.ID, IsOnline: false, LastSeenAt: lastSeenAt})
 		}
 	}()
