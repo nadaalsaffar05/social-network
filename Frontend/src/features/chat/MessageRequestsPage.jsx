@@ -7,6 +7,7 @@ import {
 import { useToast } from "../../shared/components/toast/useToast.js";
 import PageHeader from "../../shared/components/back-button/PageHeader.jsx";
 import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
+import { getUserDisplayName } from "../../shared/utils/user.js";
 
 export default function MessageRequestsPage() {
   const navigateTo = usePageNavigate();
@@ -51,11 +52,7 @@ export default function MessageRequestsPage() {
       <PageHeader title="Message requests" fallback="/messages" />
       {requests.map((request) => (
         <article key={request.conversation_id}>
-          <p>
-            {request.requester?.nickname ||
-              request.requester?.first_name ||
-              request.requester_id}
-          </p>
+          <p>{getUserDisplayName(request.requester, request.requester_id)}</p>
           <p>{request.message?.content}</p>
           <button type="button" onClick={() => respond(request, "accept")}>
             Accept

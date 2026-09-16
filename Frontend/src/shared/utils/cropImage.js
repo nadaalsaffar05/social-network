@@ -1,4 +1,4 @@
-export const createImage = (url) =>
+const createImage = (url) =>
   new Promise((resolve, reject) => {
     const image = new Image();
     image.addEventListener("load", () => resolve(image));

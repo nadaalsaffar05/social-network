@@ -1,26 +1,33 @@
-import { parseAPITimestamp } from "../../../shared/utils/dateTime";
+import {
+  formatLocalDateTime,
+  parseAPITimestamp,
+} from "../../../shared/utils/dateTime";
+import { getUserDisplayName } from "../../../shared/utils/user";
 
 export function getPostDisplayName(post) {
-  return (
-    post.author_nickname ||
-    [post.author_first_name, post.author_last_name].filter(Boolean).join(" ") ||
-    "User"
+  return getUserDisplayName(
+    {
+      nickname: post.author_nickname,
+      first_name: post.author_first_name,
+      last_name: post.author_last_name,
+    },
+    "User",
   );
 }
 
 export function formatPostTime(value, { detailed = false } = {}) {
-  const date = parseAPITimestamp(value);
-  if (!date) return value;
-
   if (detailed) {
-    return new Intl.DateTimeFormat(undefined, {
+    return formatLocalDateTime(value, {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
-    }).format(date);
+    });
   }
+
+  const date = parseAPITimestamp(value);
+  if (!date) return value;
 
   const elapsedSeconds = Math.max(
     0,

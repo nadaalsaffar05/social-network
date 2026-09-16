@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { useToast } from "../../../shared/components/toast/useToast.js";
 import { getOnlineUsers } from "../../../api/chat.js";
@@ -8,14 +8,16 @@ import { getNotifications } from "../../../api/notifications.js";
 import { createChatSocket } from "./chatSocket.js";
 import { ChatRealtimeContext } from "./chatRealtimeContext.js";
 import { getUserDisplayName } from "../../../shared/utils/user.js";
+import { usePageNavigate } from "../../../shared/components/back-button/usePageBack.js";
 
 export function ChatRealtimeProvider({ children }) {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigateTo = usePageNavigate();
   const { showToast } = useToast();
   const socketRef = useRef(null);
   const typingTimersRef = useRef(new Map());
   const locationPathRef = useRef(location.pathname);
+  const navigateToRef = useRef(navigateTo);
   const [status, setStatus] = useState("disconnected");
   const [onlineUserIDs, setOnlineUserIDs] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -61,14 +63,17 @@ export function ChatRealtimeProvider({ children }) {
   }, [location.pathname]);
 
   useEffect(() => {
+    navigateToRef.current = navigateTo;
+  }, [navigateTo]);
+
+  useEffect(() => {
     const typingTimers = typingTimersRef.current;
 
     function showRealtimeToast({ title, description, path }) {
       showToast({
         title,
         description,
-        onClick: () =>
-          navigate(path, { state: { from: locationPathRef.current } }),
+        onClick: () => navigateToRef.current(path),
       });
     }
 
@@ -171,7 +176,7 @@ export function ChatRealtimeProvider({ children }) {
       typingTimers.forEach((timer) => window.clearTimeout(timer));
       socket.close();
     };
-  }, [navigate, refreshAttentionCounts, showToast]);
+  }, [refreshAttentionCounts, showToast]);
 
   const value = useMemo(
     () => ({

@@ -18,6 +18,7 @@ import AnimatedContent from "./AnimatedContent.jsx";
 import ClickSpark from "./ClickSpark.jsx";
 import GlassSurface from "./GlassSurface.jsx";
 import { POST_PRIVACY } from "../../../shared/constants/enums.js";
+import { getUserDisplayName } from "../../../shared/utils/user.js";
 import "../../../shared/styles/components/PostComposer.css";
 
 const privacyOptions = [
@@ -335,9 +336,7 @@ export default function PostComposer({
                                 onChange={() => toggleSelectedUser(follower.id)}
                                 disabled={isSubmitting}
                               />
-                              {follower.nickname ||
-                                follower.first_name ||
-                                follower.email}
+                              {getUserDisplayName(follower, follower.email)}
                             </label>
                           ))
                         )}
