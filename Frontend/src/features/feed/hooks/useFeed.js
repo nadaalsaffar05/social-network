@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { deletePost, getFeed } from '../../../api/feed.js'
+import { deletePost, getFeed } from '../../../api/feed'
 
 const INITIAL_CURSOR = ''
 const STATUS = {
@@ -68,7 +68,6 @@ export function useFeed() {
     }
 
     void loadInitialFeed()
-
   }, [refresh])
 
   return {

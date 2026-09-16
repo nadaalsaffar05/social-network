@@ -3,12 +3,12 @@ package main
 import (
 	"database/sql"
 	"net/http"
-	"social-network/internal/api"
 	"social-network/internal/auth"
 	"social-network/internal/chat"
 	"social-network/internal/feed"
 	"social-network/internal/groups"
 	"social-network/internal/notifications"
+	"social-network/internal/profile"
 )
 
 func newRouter(db *sql.DB) *http.ServeMux {
@@ -32,19 +32,19 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("/api/register", authHandler.Register)
 	mux.HandleFunc("/api/login", authHandler.Login)
 	mux.HandleFunc("/api/logout", authHandler.Logout)
-	mux.Handle("/api/profile", protected(api.GetProfile(db)))
-	mux.Handle("/api/profile/update", protected(api.UpdateProfile(db)))
-	mux.Handle("/api/profile/avatar", protected(api.UpdateAvatar(db)))
-	mux.Handle("/api/users/search", protected(api.SearchUsers(db)))
-	mux.Handle("/api/users/{user_id}/profile", protected(api.GetPublicProfile(db)))
-	mux.Handle("/api/followers", protected(api.GetFollowers(db)))
-	mux.Handle("/api/following", protected(api.GetFollowing(db)))
-	mux.Handle("/api/follow-requests", protected(api.GetFollowRequests(db)))
-	mux.Handle("/api/follow", protected(api.FollowUser(db)))
-	mux.Handle("/api/unfollow", protected(api.UnfollowUser(db)))
-	mux.Handle("/api/is-follower", protected(api.IsFollower(db)))
-	mux.Handle("/api/is-following", protected(api.IsFollowing(db)))
-	mux.Handle("/api/follow-request/respond", protected(api.RespondToFollowRequest(db)))
+	mux.Handle("/api/profile", protected(profile.GetProfile(db)))
+	mux.Handle("/api/profile/update", protected(profile.UpdateProfile(db)))
+	mux.Handle("/api/profile/avatar", protected(profile.UpdateAvatar(db)))
+	mux.Handle("/api/users/search", protected(profile.SearchUsers(db)))
+	mux.Handle("/api/users/{user_id}/profile", protected(profile.GetPublicProfile(db)))
+	mux.Handle("/api/followers", protected(profile.GetFollowers(db)))
+	mux.Handle("/api/following", protected(profile.GetFollowing(db)))
+	mux.Handle("/api/follow-requests", protected(profile.GetFollowRequests(db)))
+	mux.Handle("/api/follow", protected(profile.FollowUser(db)))
+	mux.Handle("/api/unfollow", protected(profile.UnfollowUser(db)))
+	mux.Handle("/api/is-follower", protected(profile.IsFollower(db)))
+	mux.Handle("/api/is-following", protected(profile.IsFollowing(db)))
+	mux.Handle("/api/follow-request/respond", protected(profile.RespondToFollowRequest(db)))
 	mux.Handle("/api/notifications", protected(notificationHandler.Notifications))
 	mux.Handle("/api/notifications/read-all", protected(notificationHandler.MarkAllRead))
 	mux.Handle("/api/notifications/{notification_id}/read", protected(notificationHandler.MarkRead))

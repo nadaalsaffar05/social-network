@@ -9,7 +9,6 @@ export const POST_PRIVACY = Object.freeze({
   SELECTED: 1020,
 })
 
-// Values returned by the backend notifications API.
 export const NOTIFICATION_TYPE = Object.freeze({
   FOLLOW_REQUEST: 1000,
   GROUP_INVITATION: 1010,

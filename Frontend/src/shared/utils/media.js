@@ -1,4 +1,4 @@
-import { BASE_API } from '../../config/api.js'
+import { BASE_API } from '../../config/api'
 
 export function getMediaUrl(path) {
   if (!path) return null

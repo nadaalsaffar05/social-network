@@ -1,4 +1,4 @@
-import { buildApiUrl } from '../config/api.js'
+import { buildApiUrl } from '../config/api'
 
 export async function request(pathSegments, options = {}) {
   const {
@@ -10,7 +10,7 @@ export async function request(pathSegments, options = {}) {
   } = options
 
   const isFormData = body instanceof FormData
-  const hasBody = body !== undefined && body !== null
+  const hasBody = body != null
 
   const response = await fetch(buildApiUrl(pathSegments, queryParams), {
     ...fetchOptions,

@@ -24,8 +24,6 @@ export function isSameLocalDay(first, second) {
     && first.getDate() === second.getDate()
 }
 
-// Date-only values such as birthdays are calendar dates, not instants. Build a
-// local Date from its parts so formatting cannot shift the displayed day.
 export function formatDateOnly(value, options) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '')
   if (!match) return value

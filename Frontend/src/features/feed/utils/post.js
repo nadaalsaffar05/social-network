@@ -1,6 +1,6 @@
-import { parseAPITimestamp } from '../../../shared/utils/dateTime.js'
+import { parseAPITimestamp } from '../../../shared/utils/dateTime'
 
-export { getMediaUrl } from '../../../shared/utils/media.js'
+export { getMediaUrl } from '../../../shared/utils/media'
 
 export function getPostDisplayName(post) {
   return (
