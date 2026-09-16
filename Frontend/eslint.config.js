@@ -18,11 +18,7 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: {
-      "react/prop-types": 0,
-      "no-missing-context-display-name":0,
-      "no-missing-key":0,
-      "no-unnecessary-use-prefix":0,
-      "no-namespace":0
+      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' }],
     }
   },
 ])
