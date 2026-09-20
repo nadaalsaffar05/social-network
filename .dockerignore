@@ -1,0 +1,39 @@
+# Dependencies and build output
+**/node_modules/
+**/dist/
+**/out/
+.tmp/
+.cache/
+
+# Go build artifacts & temp databases
+backend/bin/
+backend/*.db
+backend/*.db-journal
+backend/*.db-shm
+backend/*.db-wal
+!backend/tmp/.gitkeep
+
+# Vite, Webpack, and React artifacts
+.vite/
+.eslintcache
+.npm/
+coverage/
+
+# Environment and log files
+*.env*
+!.env.production
+*.log
+
+# Editor and system files
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker configuration files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+docker-compose*.yaml
