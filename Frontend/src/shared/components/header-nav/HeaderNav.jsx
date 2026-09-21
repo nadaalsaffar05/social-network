@@ -9,6 +9,7 @@ export default function HeaderNav() {
   const { attentionCounts } = useChatRealtime();
 
   const items = [
+    /*
     {
       id: "follow-requests",
       label: "Follow requests",
@@ -16,6 +17,7 @@ export default function HeaderNav() {
       count: attentionCounts.followRequests,
       path: "/follow-requests",
     },
+    */
     {
       id: "notifications",
       label: "Notifications",
@@ -40,15 +42,18 @@ export default function HeaderNav() {
             aria-label={label}
             title={label}
           >
-            <Icon size={22} weight="regular" />
-            {count > 0 && (
-              <span
-                className="header-nav__badge"
-                aria-label={`${count} ${label}`}
-              >
-                {count > 99 ? "99+" : count}
-              </span>
-            )}
+            <span className="header-nav__icon-wrap">
+              <Icon size={22} weight="regular" />
+              {count > 0 && (
+                <span
+                  className="header-nav__badge"
+                  aria-label={`${count} ${label}`}
+                >
+                  {count > 99 ? "99+" : count}
+                </span>
+              )}
+            </span>
+            <span className="header-nav__label">{label}</span>
           </button>
         </Fragment>
       ))}
