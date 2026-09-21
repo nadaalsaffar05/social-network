@@ -9,6 +9,7 @@ one thing to note from the  docker is that it will 'compile' the FE/BE in parall
 https://www.freecodecamp.org/news/how-to-dockerize-a-react-application/
 https://www.docker.com/blog/how-to-dockerize-react-app/
 https://dev.to/arcadebuilds/docker-setup-for-go-apis-2lbk
+https://www.devopstraininginstitute.com/blog/10-most-used-docker-compose-files-explained
 
 ### Using Docker Compose
 Start all services (foreground mode):
