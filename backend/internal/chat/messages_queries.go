@@ -268,7 +268,7 @@ func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, 
 			ON other_participant.conversation_id = conversation.id
 			AND other_participant.user_id != ?
 		JOIN users other_user ON other_user.id = other_participant.user_id
-		JOIN profiles other_profile ON other_profile.user_id = other_user.id
+		LEFT JOIN profiles other_profile ON other_profile.user_id = other_user.id
 		LEFT JOIN profile_avatars avatar ON avatar.user_id = other_user.id
 		LEFT JOIN media avatar_media ON avatar_media.id = avatar.media_id
 		JOIN private_messages last_message ON last_message.id = (
@@ -606,7 +606,7 @@ func getMessageRequests(db *sql.DB, recipientID string) ([]models.MessageRequest
 			receipt.read_at
 		FROM private_message_requests request
 		JOIN users requester ON requester.id = request.requester_id
-		JOIN profiles requester_profile ON requester_profile.user_id = requester.id
+		LEFT JOIN profiles requester_profile ON requester_profile.user_id = requester.id
 		LEFT JOIN profile_avatars requester_avatar ON requester_avatar.user_id = requester.id
 		LEFT JOIN media requester_avatar_media ON requester_avatar_media.id = requester_avatar.media_id
 		JOIN private_messages message ON message.id = (

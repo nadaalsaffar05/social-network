@@ -206,6 +206,13 @@ export default function ProfilePage() {
     try {
       const response = await followUser(id);
       setIsFollowingProfile(response.status === "following");
+      if (response.status === "following") {
+        setProfile((current) =>
+          current
+            ? { ...current, followers_count: (current.followers_count ?? 0) + 1 }
+            : current,
+        );
+      }
     } catch (requestError) {
       showError(
         "Failed to follow user",
@@ -218,6 +225,14 @@ export default function ProfilePage() {
     try {
       await unfollowUser(id);
       setIsFollowingProfile(false);
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              followers_count: Math.max(0, (current.followers_count ?? 0) - 1),
+            }
+          : current,
+      );
     } catch (requestError) {
       showError(
         "Failed to unfollow user",

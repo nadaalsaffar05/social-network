@@ -72,6 +72,18 @@
     0 18px 45px rgb(0 0 0 / 12%);
   backdrop-filter: blur(18px);
 }
+.notifications-section {
+  display: grid;
+  gap: 0.55rem;
+}
+.notifications-section > h2 {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 .notification-card {
   position: relative;
   display: grid;
@@ -123,6 +135,23 @@
   margin-top: 0.2rem;
   color: var(--color-text-muted);
   font-size: 0.76rem;
+}
+.notification-card__status {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.5rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 999px;
+}
+.notification-card__status--accepted {
+  color: #b8f4d4;
+  background: rgb(50 204 128 / 14%);
+}
+.notification-card__status--declined {
+  color: #ffc3ca;
+  background: rgb(247 98 114 / 12%);
 }
 .notification-card__unread {
   width: 0.5rem;

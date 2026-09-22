@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeft,
   Globe,
   ImageSquare,
   LockKey,
@@ -14,11 +15,10 @@ import {
   uploadPostMedia,
 } from "../../../api/feed.js";
 import { getFollowers } from "../../../api/profile.js";
-import AnimatedContent from "./AnimatedContent.jsx";
-import ClickSpark from "./ClickSpark.jsx";
-import GlassSurface from "./GlassSurface.jsx";
 import { POST_PRIVACY } from "../../../shared/constants/enums.js";
 import { getUserDisplayName } from "../../../shared/utils/user.js";
+import AnimatedContent from "./AnimatedContent.jsx";
+import ClickSpark from "./ClickSpark.jsx";
 import "../../../shared/styles/components/PostComposer.css";
 
 const privacyOptions = [
@@ -54,26 +54,31 @@ export default function PostComposer({
   onOpenChange,
 }) {
   const fileInputRef = useRef(null);
-  const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(false);
   const [content, setContent] = useState("");
   const [privacy, setPrivacy] = useState(POST_PRIVACY.PUBLIC);
   const [files, setFiles] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [selectedUserIDs, setSelectedUserIDs] = useState([]);
+  const [step, setStep] = useState(1);
+  const [isDraggingMedia, setIsDraggingMedia] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isCommentComposer = Boolean(postId);
-  const isControlled = open !== undefined;
-  const isOpen = isControlled ? open : uncontrolledIsOpen;
-  const selectedPrivacy = privacyOptions.find(
-    (option) => option.value === privacy,
+  const isOpen = Boolean(open);
+  const previews = useMemo(
+    () => files.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [files],
   );
 
   function setIsOpen(nextOpen) {
-    if (!isControlled) setUncontrolledIsOpen(nextOpen);
-    onOpenChange?.(nextOpen);
+    onOpenChange(nextOpen);
   }
+
+  useEffect(
+    () => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)),
+    [previews],
+  );
 
   useEffect(() => {
     if (
@@ -81,8 +86,9 @@ export default function PostComposer({
       !isOpen ||
       privacy !== POST_PRIVACY.SELECTED ||
       followers.length > 0
-    )
+    ) {
       return;
+    }
 
     getFollowers()
       .then(setFollowers)
@@ -95,11 +101,19 @@ export default function PostComposer({
     setPrivacy(POST_PRIVACY.PUBLIC);
     setFiles([]);
     setSelectedUserIDs([]);
+    setStep(1);
     setError("");
   }
 
   function closeComposer() {
     if (!isSubmitting) resetComposer();
+  }
+
+  function addFiles(nextFiles) {
+    const receivedFiles = Array.from(nextFiles ?? []);
+    if (receivedFiles.length > 0) {
+      setFiles((currentFiles) => [...currentFiles, ...receivedFiles]);
+    }
   }
 
   function toggleSelectedUser(userID) {
@@ -110,9 +124,13 @@ export default function PostComposer({
     );
   }
 
-  function selectFiles(event) {
-    setFiles(Array.from(event.target.files ?? []));
-    event.target.value = "";
+  function continueToPrivacy() {
+    if (!content.trim()) {
+      setError("Write something before posting");
+      return;
+    }
+    setError("");
+    setStep(2);
   }
 
   async function handleSubmit(event) {
@@ -123,7 +141,6 @@ export default function PostComposer({
       setError("Write something before posting");
       return;
     }
-
     if (
       !isCommentComposer &&
       privacy === POST_PRIVACY.SELECTED &&
@@ -134,7 +151,6 @@ export default function PostComposer({
     }
 
     setIsSubmitting(true);
-
     try {
       if (isCommentComposer) {
         const comment = await createComment(postId, {
@@ -156,7 +172,6 @@ export default function PostComposer({
           uploadPostMedia(post.id, file, position),
         );
       }
-
       await onCreated();
       resetComposer();
     } catch (requestError) {
@@ -168,27 +183,6 @@ export default function PostComposer({
 
   return (
     <>
-      {!isCommentComposer && (
-        <GlassSurface
-          className="post-launcher-glass"
-          width="100%"
-          height="auto"
-          borderRadius={19}
-        >
-          <button
-            type="button"
-            className="post-launcher"
-            onClick={() => setIsOpen(true)}
-          >
-            <span className="post-launcher__plus">+</span>
-            <span className="post-launcher__copy">
-              <strong>Create a post</strong>
-              <small>Share an update, image, or GIF</small>
-            </span>
-          </button>
-        </GlassSurface>
-      )}
-
       {isOpen && (
         <div
           className="post-composer-overlay"
@@ -206,11 +200,7 @@ export default function PostComposer({
             animateOpacity
           >
             <div className="post-composer-surface">
-              <form
-                className="post-composer"
-                onSubmit={handleSubmit}
-                aria-label="Create post"
-              >
+              <form className="post-composer" onSubmit={handleSubmit}>
                 <header className="post-composer__header">
                   <h2>
                     {isCommentComposer
@@ -230,69 +220,111 @@ export default function PostComposer({
                   </button>
                 </header>
 
-                <textarea
-                  className="post-composer__textarea"
-                  value={content}
-                  onChange={(event) => setContent(event.target.value)}
-                  placeholder="What’s on your mind?"
-                  maxLength={10000}
-                  autoFocus
-                />
-
-                <div className="post-composer__attachment-row">
-                  <label className="post-composer__attachment-button">
-                    <ImageSquare size={21} weight="bold" />
-                    <span>
-                      <strong>Add image or GIF</strong>
-                      <small>JPEG, PNG, or GIF</small>
-                    </span>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/gif"
-                      multiple
-                      onChange={selectFiles}
-                      disabled={isSubmitting}
-                      hidden
-                    />
-                  </label>
-
-                  {files.length > 0 && (
-                    <div
-                      className="post-composer__files"
-                      aria-label="Selected media"
-                    >
-                      {files.map((file) => (
-                        <span key={`${file.name}-${file.lastModified}`}>
-                          {file.name}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFiles((currentFiles) =>
-                                currentFiles.filter(
-                                  (currentFile) => currentFile !== file,
-                                ),
-                              )
-                            }
-                            disabled={isSubmitting}
-                            aria-label={`Remove ${file.name}`}
-                          >
-                            <X size={15} weight="bold" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {!isCommentComposer && (
+                  <ol className="post-composer__steps" aria-label="Post steps">
+                    <li
+                      className={`post-composer__step${
+                        step === 2
+                          ? " post-composer__step--complete"
+                          : " post-composer__step--active"
+                      }`}
+                    >
+                      <span>{step === 2 ? "✓" : "1"}</span>
+                    </li>
+                    <li
+                      className={`post-composer__step${step === 2 ? " post-composer__step--active" : ""}`}
+                    >
+                      <span>2</span>
+                    </li>
+                  </ol>
+                )}
+
+                {(isCommentComposer || step === 1) && (
+                  <>
+                    <div className="post-composer__attachment-row">
+                      <label
+                        className={`post-composer__attachment-button${
+                          isDraggingMedia
+                            ? " post-composer__attachment-button--dragging"
+                            : ""
+                        }`}
+                        onDragEnter={() => setIsDraggingMedia(true)}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDragLeave={() => setIsDraggingMedia(false)}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          setIsDraggingMedia(false);
+                          addFiles(event.dataTransfer.files);
+                        }}
+                      >
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif"
+                          multiple
+                          onChange={(event) => {
+                            addFiles(event.target.files);
+                            event.target.value = "";
+                          }}
+                          disabled={isSubmitting}
+                          hidden
+                        />
+                        <ImageSquare size={21} weight="bold" />
+                        <span>
+                          <strong>Drop image or GIF</strong>
+                          <small>or choose a JPEG, PNG, or GIF</small>
+                        </span>
+                      </label>
+                      {previews.length > 0 && (
+                        <div
+                          className="post-composer__previews"
+                          aria-label="Selected media"
+                        >
+                          {previews.map(({ file, url }) => (
+                            <figure key={`${file.name}-${file.lastModified}`}>
+                              <img src={url} alt={`Preview of ${file.name}`} />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setFiles((currentFiles) =>
+                                    currentFiles.filter(
+                                      (currentFile) => currentFile !== file,
+                                    ),
+                                  )
+                                }
+                                disabled={isSubmitting}
+                                aria-label={`Remove ${file.name}`}
+                              >
+                                <X size={15} weight="bold" />
+                              </button>
+                            </figure>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <textarea
+                      id="post-content"
+                      className="post-composer__textarea"
+                      value={content}
+                      onChange={(event) => setContent(event.target.value)}
+                      placeholder={
+                        isCommentComposer
+                          ? "Write a comment…"
+                          : "What’s on your mind?"
+                      }
+                      maxLength={10000}
+                      autoFocus
+                    />
+                  </>
+                )}
+
+                {!isCommentComposer && step === 2 && (
                   <section className="post-composer__privacy-section">
                     <h3>Who can see this?</h3>
                     <div className="post-composer__privacy-grid">
                       {privacyOptions.map((option) => {
                         const Icon = option.icon;
                         const isActive = privacy === option.value;
-
                         return (
                           <button
                             key={option.value}
@@ -318,7 +350,6 @@ export default function PostComposer({
                         );
                       })}
                     </div>
-
                     {privacy === POST_PRIVACY.SELECTED && (
                       <fieldset className="post-composer__followers">
                         <legend>Select followers</legend>
@@ -352,16 +383,20 @@ export default function PostComposer({
                 )}
 
                 <footer className="post-composer__footer">
-                  <span>
-                    {isCommentComposer ? (
-                      "Replying to this post"
-                    ) : (
-                      <>
-                        Sharing with <strong>{selectedPrivacy.title}</strong>
-                      </>
-                    )}
-                  </span>
-                  <div className="post-composer__spark">
+                  {!isCommentComposer && step === 2 ? (
+                    <button
+                      type="button"
+                      className="post-composer__back"
+                      onClick={() => setStep(1)}
+                    >
+                      <ArrowLeft size={16} /> Previous
+                    </button>
+                  ) : (
+                    <span>
+                      {isCommentComposer ? "Replying to this post" : ""}
+                    </span>
+                  )}
+                  {isCommentComposer ? (
                     <ClickSpark
                       sparkColor="#ffffff"
                       sparkSize={10}
@@ -374,14 +409,34 @@ export default function PostComposer({
                         className="post-composer__submit"
                         disabled={isSubmitting}
                       >
-                        {isSubmitting
-                          ? "Posting…"
-                          : isCommentComposer
-                            ? "Post comment"
-                            : "Share post"}
+                        {isSubmitting ? "Posting…" : "Post comment"}
                       </button>
                     </ClickSpark>
-                  </div>
+                  ) : step === 1 ? (
+                    <button
+                      type="button"
+                      className="post-composer__submit"
+                      onClick={continueToPrivacy}
+                    >
+                      Next
+                    </button>
+                  ) : (
+                    <ClickSpark
+                      sparkColor="#ffffff"
+                      sparkSize={10}
+                      sparkRadius={25}
+                      sparkCount={8}
+                      duration={420}
+                    >
+                      <button
+                        type="submit"
+                        className="post-composer__submit"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Posting…" : "Share post"}
+                      </button>
+                    </ClickSpark>
+                  )}
                 </footer>
               </form>
             </div>

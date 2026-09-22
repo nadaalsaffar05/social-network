@@ -30,7 +30,7 @@ export default function PostCard({
 
   return (
     <article
-      className={`post-card${onOpen ? " post-card--clickable" : ""}`}
+      className={`post-card border-glow${onOpen ? " post-card--clickable" : ""}`}
       onClick={handleCardClick}
       onKeyDown={(event) => {
         if (onOpen && (event.key === "Enter" || event.key === " ")) {

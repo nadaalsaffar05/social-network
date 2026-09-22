@@ -37,6 +37,10 @@ select {
   font: inherit;
 }
 
+textarea {
+  resize: none;
+}
+
 button {
   cursor: pointer;
 }
@@ -252,6 +256,51 @@ h4 {
 }
 .page-header__action {
   margin-left: auto;
+}
+
+@property --border-glow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.border-glow {
+  position: relative;
+  isolation: isolate;
+}
+.border-glow::after {
+  position: absolute;
+  z-index: 2;
+  inset: -1px;
+  padding: 1px;
+  content: "";
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--border-glow-angle),
+    rgb(102 137 255 / 12%),
+    rgb(148 118 255 / 72%),
+    rgb(111 195 255 / 64%),
+    rgb(102 137 255 / 12%) 42%,
+    rgb(102 137 255 / 12%)
+  );
+  border-radius: inherit;
+  opacity: 0.48;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: border-glow 8s linear infinite;
+  transition: opacity var(--transition-fast);
+}
+.border-glow:hover::after {
+  opacity: 0.95;
+}
+
+@keyframes border-glow {
+  to {
+    --border-glow-angle: 1turn;
+  }
 }
 
 @media (max-width: 640px) {

@@ -200,6 +200,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			&post.AuthorAvatarPath,
 			&post.Content,
 			&post.Privacy,
+			&post.AuthorPrivacy,
 			&post.CreatedAt,
 			&post.LikeCount,
 			&post.DislikeCount,

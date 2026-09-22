@@ -16,6 +16,7 @@ type NotificationResponse struct {
 	GroupID            *string                `json:"group_id,omitempty"`
 	GroupTitle         *string                `json:"group_title,omitempty"`
 	Actionable         bool                   `json:"actionable"`
+	ActionStatus       *int                   `json:"action_status,omitempty"`
 }
 
 type NotificationsResponse struct {

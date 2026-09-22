@@ -213,7 +213,6 @@
 }
 
 .edit-profile-field textarea {
-  resize: vertical;
   min-height: 80px;
 }
 

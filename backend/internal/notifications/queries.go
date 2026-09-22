@@ -95,6 +95,12 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 				WHEN n.type = ? AND invitation.status = ? THEN 1
 				WHEN n.type = ? AND join_request.status = ? THEN 1
 				ELSE 0
+			END,
+			CASE
+				WHEN n.type = ? THEN follow_request.status
+				WHEN n.type = ? THEN invitation.status
+				WHEN n.type = ? THEN join_request.status
+				ELSE NULL
 			END
 		FROM notifications n
 		LEFT JOIN users actor ON actor.id = n.actor_id
@@ -107,12 +113,6 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 		LEFT JOIN group_events event ON event.id = n.group_event_id
 		LEFT JOIN groups group_record ON group_record.id = COALESCE(invitation.group_id, join_request.group_id, event.group_id)
 		WHERE n.recipient_id = ?
-			AND (
-				n.type NOT IN (?, ?, ?)
-				OR (n.type = ? AND follow_request.status = ?)
-				OR (n.type = ? AND invitation.status = ?)
-				OR (n.type = ? AND join_request.status = ?)
-			)
 		ORDER BY n.created_at DESC, n.id DESC
 		LIMIT 100
 	`,
@@ -122,16 +122,10 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 		enums.GroupInvitationStatusPending,
 		enums.NotificationTypeGroupJoinRequest,
 		enums.GroupJoinRequestStatusPending,
+		enums.NotificationTypeFollowRequest,
+		enums.NotificationTypeGroupInvitation,
+		enums.NotificationTypeGroupJoinRequest,
 		recipientID,
-		enums.NotificationTypeFollowRequest,
-		enums.NotificationTypeGroupInvitation,
-		enums.NotificationTypeGroupJoinRequest,
-		enums.NotificationTypeFollowRequest,
-		enums.FollowRequestStatusPending,
-		enums.NotificationTypeGroupInvitation,
-		enums.GroupInvitationStatusPending,
-		enums.NotificationTypeGroupJoinRequest,
-		enums.GroupJoinRequestStatusPending,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -160,6 +154,7 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 			&notification.GroupID,
 			&notification.GroupTitle,
 			&actionable,
+			&notification.ActionStatus,
 		); err != nil {
 			return nil, 0, err
 		}
@@ -189,29 +184,9 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 	if err := db.QueryRow(`
 		SELECT COUNT(*)
 		FROM notifications n
-		LEFT JOIN follow_requests follow_request ON follow_request.id = n.follow_request_id
-		LEFT JOIN group_invitations invitation ON invitation.id = n.group_invitation_id
-		LEFT JOIN group_join_requests join_request ON join_request.id = n.group_join_request_id
 		WHERE n.recipient_id = ?
 			AND n.is_read = 0
-			AND (
-				n.type NOT IN (?, ?, ?)
-				OR (n.type = ? AND follow_request.status = ?)
-				OR (n.type = ? AND invitation.status = ?)
-				OR (n.type = ? AND join_request.status = ?)
-			)
-	`,
-		recipientID,
-		enums.NotificationTypeFollowRequest,
-		enums.NotificationTypeGroupInvitation,
-		enums.NotificationTypeGroupJoinRequest,
-		enums.NotificationTypeFollowRequest,
-		enums.FollowRequestStatusPending,
-		enums.NotificationTypeGroupInvitation,
-		enums.GroupInvitationStatusPending,
-		enums.NotificationTypeGroupJoinRequest,
-		enums.GroupJoinRequestStatusPending,
-	).Scan(&unreadCount); err != nil {
+	`, recipientID).Scan(&unreadCount); err != nil {
 		return nil, 0, err
 	}
 

@@ -5,7 +5,6 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 import {
   cancelFollowRequest,
   followUser,
-  getFollowers,
   getFollowing,
   getProfile,
   searchUsers,
@@ -18,35 +17,11 @@ import PostComposer from "./components/PostComposer.jsx";
 import PostCard from "./components/PostCard.jsx";
 import { GRADIENT_WAVE_PROPS } from "./constants.js";
 import { useFeed } from "./hooks/useFeed.js";
-import { useChatRealtime } from "../chat/realtime/useChatRealtime.js";
 import Avatar from "../../shared/components/avatar/Avatar.jsx";
+import { useChatRealtime } from "../chat/realtime/useChatRealtime.js";
 import { getUserDisplayName } from "../../shared/utils/user.js";
 import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
-
-function OnlineFriend({ user, onOpen }) {
-  return (
-    <li className="feed-online-users__item">
-      <button
-        type="button"
-        className="feed-online-users__button"
-        onClick={onOpen}
-      >
-        <span className="feed-online-users__avatar-wrap">
-          <Avatar
-            avatarPath={user.avatar_path}
-            seed={user.id}
-            className="feed-online-users__avatar"
-          />
-          <span className="feed-online-users__status" aria-label="Online" />
-        </span>
-        <span className="feed-online-users__copy">
-          <strong>{getUserDisplayName(user, "Your profile")}</strong>
-          <small>Online</small>
-        </span>
-      </button>
-    </li>
-  );
-}
+import { PROFILE_PRIVACY } from "../../shared/constants/enums.js";
 
 export default function FeedPage() {
   const navigateTo = usePageNavigate();
@@ -61,57 +36,47 @@ export default function FeedPage() {
     updatePost,
   } = useFeed();
   const [currentUserID, setCurrentUserID] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentProfile, setCurrentProfile] = useState(null);
   const [deletingPostID, setDeletingPostID] = useState("");
   const [operationError, setOperationError] = useState("");
   const [reactingPostID, setReactingPostID] = useState("");
-  const [friendIDs, setFriendIDs] = useState(new Set());
   const [followingIDs, setFollowingIDs] = useState(new Set());
   const [requestedIDs, setRequestedIDs] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const { onlineUsers } = useChatRealtime();
 
   useEffect(() => {
     getProfile({ includePosts: false })
       .then((profile) => {
-        setCurrentUser(profile);
         setCurrentUserID(profile.id);
+        setCurrentProfile(profile);
       })
       .catch(() => {
-        setCurrentUser(null);
         setCurrentUserID("");
+        setCurrentProfile(null);
       });
   }, []);
 
   useEffect(() => {
     let active = true;
 
-    Promise.all([getFollowers(), getFollowing()])
-      .then(([followers, followingUsers]) => {
+    getFollowing()
+      .then((followingUsers) => {
         if (!active) return;
-        const followerIDs = new Set(followers.map((user) => user.id));
         const nextFollowingIDs = new Set(followingUsers.map((user) => user.id));
         setFollowingIDs(nextFollowingIDs);
-        setFriendIDs(
-          new Set(
-            [...nextFollowingIDs].filter((userID) => followerIDs.has(userID)),
-          ),
-        );
       })
       .catch(() => {
-        if (active) setFriendIDs(new Set());
-        if (active) setFollowingIDs(new Set());
+        if (!active) return;
+        setFollowingIDs(new Set());
       });
 
     return () => {
       active = false;
     };
   }, []);
-
-  const visibleOnlineUsers = onlineUsers.filter(
-    (user) => user.id !== currentUserID && friendIDs.has(user.id),
-  );
 
   useEffect(() => {
     const query = searchQuery.trim();
@@ -184,11 +149,6 @@ export default function FeedPage() {
         next.delete(userID);
         return next;
       });
-      setFriendIDs((current) => {
-        const next = new Set(current);
-        next.delete(userID);
-        return next;
-      });
     } catch (requestError) {
       setOperationError(requestError.message || "Failed to unfollow this user");
     }
@@ -257,13 +217,11 @@ export default function FeedPage() {
       </header>
 
       <aside className="feed-left-sidebar">
-        <FeedNavigation />
+        <FeedNavigation onCreatePost={() => setIsComposerOpen(true)} />
       </aside>
 
       <div className="feed-layout">
         <section className="feed-main">
-          <PostComposer onCreated={refresh} />
-
           <section className="feed-posts" aria-label="Feed posts">
             {status === "loading" && (
               <p className="feed-message">Loading posts…</p>
@@ -279,7 +237,15 @@ export default function FeedPage() {
             )}
 
             {status !== "loading" && !error && posts.length === 0 && (
-              <p className="feed-message">No posts to show yet</p>
+              <div className="feed-empty" role="status">
+                <span className="feed-empty__orbit" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                <h2>Your feed is quiet</h2>
+                <p>Posts from your circle will show up here when they share.</p>
+              </div>
             )}
 
             {operationError && (
@@ -301,11 +267,13 @@ export default function FeedPage() {
                 onOpen={() => navigateTo(`/posts/${post.id}`)}
                 onAuthorOpen={() => navigateTo(`/profile/${post.author_id}`)}
                 onFollow={
-                  followingIDs.has(post.author_id)
-                    ? () => handleUnfollowUser(post.author_id)
-                    : requestedIDs.has(post.author_id)
-                      ? () => handleCancelFollowRequest(post.author_id)
-                      : () => handleFollowUser(post.author_id)
+                  post.author_privacy === PROFILE_PRIVACY.PUBLIC
+                    ? followingIDs.has(post.author_id)
+                      ? () => handleUnfollowUser(post.author_id)
+                      : requestedIDs.has(post.author_id)
+                        ? () => handleCancelFollowRequest(post.author_id)
+                        : () => handleFollowUser(post.author_id)
+                    : undefined
                 }
                 followLabel={
                   followingIDs.has(post.author_id)
@@ -330,53 +298,61 @@ export default function FeedPage() {
           </section>
         </section>
 
-        <aside className="feed-right-sidebar">
-          <button
-            className="feed-sidebar-card feed-profile-card"
-            type="button"
-            onClick={() => navigateTo("/profile")}
-          >
-            <Avatar
-              avatarPath={currentUser?.avatar_path}
-              seed={currentUser?.id}
-              className="feed-profile-avatar"
-            />
-            <span>
-              <span className="feed-sidebar-label">Profile</span>
-              <strong>{getUserDisplayName(currentUser, "Your profile")}</strong>
-            </span>
-          </button>
-
-          <section className="feed-sidebar-panel">
-            <span className="feed-sidebar-label">Your feed</span>
-            <h2>Catch up with your circle</h2>
-            <p>Posts from people you follow will appear here as they share</p>
-          </section>
+        <aside className="feed-right-sidebar" aria-label="Your feed sidebar">
+          {currentProfile && (
+            <button
+              className="feed-profile-link"
+              type="button"
+              onClick={() => navigateTo("/profile")}
+            >
+              <Avatar
+                className="feed-profile-link__avatar"
+                avatarPath={currentProfile.avatar_path}
+                seed={currentProfile.id}
+                alt=""
+              />
+              <span>{getUserDisplayName(currentProfile, "Your profile")}</span>
+            </button>
+          )}
 
           <section
-            className="feed-sidebar-panel feed-online-users"
-            aria-label="Online friends"
+            className="feed-active-friends border-glow"
+            aria-label="Active friends"
           >
-            <div className="feed-online-users__heading">
+            <div className="feed-active-friends__heading">
               <h2>Active friends</h2>
-              <span>{visibleOnlineUsers.length}</span>
+              <span>{onlineUsers.length}</span>
             </div>
-            {visibleOnlineUsers.length === 0 ? (
-              <p className="feed-online-users__empty">No friends are online</p>
-            ) : (
-              <ul className="feed-online-users__list">
-                {visibleOnlineUsers.map((user) => (
-                  <OnlineFriend
-                    key={user.id}
-                    user={user}
-                    onOpen={() => navigateTo(`/messages/${user.id}`)}
-                  />
+            {onlineUsers.length > 0 ? (
+              <ul>
+                {onlineUsers.slice(0, 4).map((user) => (
+                  <li key={user.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigateTo(`/profile/${user.id}`)}
+                    >
+                      <Avatar
+                        avatarPath={user.avatar_path}
+                        seed={user.id}
+                        alt=""
+                      />
+                      <span>{getUserDisplayName(user, "Friend")}</span>
+                    </button>
+                  </li>
                 ))}
               </ul>
+            ) : (
+              <p>No friends are online</p>
             )}
           </section>
         </aside>
+
       </div>
+      <PostComposer
+        open={isComposerOpen}
+        onOpenChange={setIsComposerOpen}
+        onCreated={refresh}
+      />
     </main>
   );
 }

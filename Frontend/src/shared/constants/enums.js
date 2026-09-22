@@ -10,6 +10,12 @@ export const POST_PRIVACY = Object.freeze({
   GROUP: 1030,
 });
 
+export const REQUEST_STATUS = Object.freeze({
+  PENDING: 1000,
+  ACCEPTED: 1010,
+  DECLINED: 1020,
+});
+
 export const NOTIFICATION_TYPE = Object.freeze({
   FOLLOW_REQUEST: 1000,
   GROUP_INVITATION: 1010,

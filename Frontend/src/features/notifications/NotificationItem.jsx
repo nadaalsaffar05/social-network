@@ -11,7 +11,10 @@ import {
 } from "@phosphor-icons/react";
 
 import Avatar from "../../shared/components/avatar/Avatar.jsx";
-import { NOTIFICATION_TYPE } from "../../shared/constants/enums";
+import {
+  NOTIFICATION_TYPE,
+  REQUEST_STATUS,
+} from "../../shared/constants/enums";
 import { formatLocalDateTime } from "../../shared/utils/dateTime";
 import { getUserDisplayName } from "../../shared/utils/user";
 
@@ -25,15 +28,30 @@ const dateOptions = {
 const details = {
   [NOTIFICATION_TYPE.FOLLOW_REQUEST]: {
     Icon: UserPlusIcon,
-    message: (actor) => `${actor} requested to follow you`,
+    message: (actor, _, status) =>
+      status === REQUEST_STATUS.ACCEPTED
+        ? `You accepted ${actor}'s follow request`
+        : status === REQUEST_STATUS.DECLINED
+          ? `You declined ${actor}'s follow request`
+          : `${actor} requested to follow you`,
   },
   [NOTIFICATION_TYPE.GROUP_INVITATION]: {
     Icon: UsersThreeIcon,
-    message: (actor, group) => `${actor} invited you to join ${group}`,
+    message: (actor, group, status) =>
+      status === REQUEST_STATUS.ACCEPTED
+        ? `You joined ${group}`
+        : status === REQUEST_STATUS.DECLINED
+          ? `You declined ${actor}'s invitation to join ${group}`
+          : `${actor} invited you to join ${group}`,
   },
   [NOTIFICATION_TYPE.GROUP_JOIN_REQUEST]: {
     Icon: UsersThreeIcon,
-    message: (actor, group) => `${actor} requested to join ${group}`,
+    message: (actor, group, status) =>
+      status === REQUEST_STATUS.ACCEPTED
+        ? `${actor} joined ${group}`
+        : status === REQUEST_STATUS.DECLINED
+          ? `You declined ${actor}'s request to join ${group}`
+          : `${actor} requested to join ${group}`,
   },
   [NOTIFICATION_TYPE.EVENT_CREATED]: {
     Icon: CalendarDotsIcon,
@@ -81,6 +99,12 @@ export default function NotificationItem({
     Icon: BellIcon,
     message: () => "You have a new notification",
   };
+  const responseLabel =
+    notification.action_status === REQUEST_STATUS.ACCEPTED
+      ? "Accepted"
+      : notification.action_status === REQUEST_STATUS.DECLINED
+        ? "Declined"
+        : "";
 
   return (
     <article
@@ -98,10 +122,17 @@ export default function NotificationItem({
         />
       )}
       <div className="notification-card__content">
-        <p>{message(actor, group)}</p>
+        <p>{message(actor, group, notification.action_status)}</p>
         <time dateTime={notification.created_at}>
           {formatLocalDateTime(notification.created_at, dateOptions)}
         </time>
+        {responseLabel && (
+          <span
+            className={`notification-card__status notification-card__status--${responseLabel.toLowerCase()}`}
+          >
+            {responseLabel}
+          </span>
+        )}
         {notification.actionable && (
           <div
             className="notification-card__actions"

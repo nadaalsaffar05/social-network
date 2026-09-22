@@ -87,20 +87,29 @@ func deactivateComment(db *sql.DB, commentID, postID, authorID string) (bool, er
 
 func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit int) (*sql.Rows, error) {
 	return db.Query(`
-        SELECT p.id, p.author_id, COALESCE(pr.nickname, ''), u.first_name, u.last_name, am.file_path, p.content, p.privacy, p.created_at,
+        SELECT p.id, p.author_id, COALESCE(pr.nickname, ''), u.first_name, u.last_name, am.file_path, p.content, p.privacy, pr.privacy, p.created_at,
           COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
 		  COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
 		  (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
 		  (SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
         FROM posts p
         JOIN users u ON u.id = p.author_id
-        LEFT JOIN profiles pr ON pr.user_id = p.author_id
+        JOIN profiles pr ON pr.user_id = p.author_id
 		LEFT JOIN profile_avatars pa ON pa.user_id = p.author_id
 		LEFT JOIN media am ON am.id = pa.media_id
         WHERE p.is_active = 1
           AND (
 			(
 				p.group_id IS NULL
+				AND (
+					p.author_id = ?
+					OR pr.privacy = ?
+					OR EXISTS (
+						SELECT 1 FROM follows account_follow
+						WHERE account_follow.follower_id = ?
+							AND account_follow.following_id = p.author_id
+					)
+				)
 				AND (
 					p.privacy = ?
 					OR p.author_id = ?
@@ -140,7 +149,10 @@ func getFeedPosts(db *sql.DB, viewerID, cursorID, cursorCreatedAt string, limit 
 		  )
         ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ?
-	    `,
+	`,
+		viewerID,
+		viewerID,
+		enums.ProfilePrivacyPublic,
 		viewerID,
 		enums.PostPrivacyPublic,
 		viewerID,
@@ -167,14 +179,14 @@ func GetPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 
 	var post models.PostResponse
 	err = db.QueryRow(`
-		SELECT p.id, p.author_id, COALESCE(pr.nickname, ''), u.first_name, u.last_name, am.file_path, p.content, p.privacy, p.created_at,
+		SELECT p.id, p.author_id, COALESCE(pr.nickname, ''), u.first_name, u.last_name, am.file_path, p.content, p.privacy, pr.privacy, p.created_at,
 			COALESCE((SELECT SUM(reaction_type = 'LIKE') FROM post_reactions WHERE post_id = p.id), 0),
 			COALESCE((SELECT SUM(reaction_type = 'DISLIKE') FROM post_reactions WHERE post_id = p.id), 0),
 			(SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
 			(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
-		LEFT JOIN profiles pr ON pr.user_id = p.author_id
+		JOIN profiles pr ON pr.user_id = p.author_id
 		LEFT JOIN profile_avatars pa ON pa.user_id = p.author_id
 		LEFT JOIN media am ON am.id = pa.media_id
 		WHERE p.id = ?
@@ -188,6 +200,7 @@ func GetPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 		&post.AuthorAvatarPath,
 		&post.Content,
 		&post.Privacy,
+		&post.AuthorPrivacy,
 		&post.CreatedAt,
 		&post.LikeCount,
 		&post.DislikeCount,
@@ -221,11 +234,21 @@ func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]mod
 			(SELECT COUNT(*) FROM comments WHERE post_id = p.id AND is_active = 1),
 			(SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = ?)
 		FROM posts p
+		JOIN profiles pr ON pr.user_id = p.author_id
 		WHERE p.author_id = ?
 			AND p.is_active = 1
 			AND (
 				(
 					p.group_id IS NULL
+					AND (
+						p.author_id = ?
+						OR pr.privacy = ?
+						OR EXISTS (
+							SELECT 1 FROM follows account_follow
+							WHERE account_follow.follower_id = ?
+								AND account_follow.following_id = p.author_id
+						)
+					)
 					AND (
 						p.author_id = ?
 						OR p.privacy = ?
@@ -262,6 +285,9 @@ func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]mod
 	`,
 		viewerID,
 		profileUserID,
+		viewerID,
+		enums.ProfilePrivacyPublic,
+		viewerID,
 		viewerID,
 		enums.PostPrivacyPublic,
 		enums.PostPrivacyFollowers,
@@ -319,7 +345,16 @@ func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]mod
 func canViewPost(db *sql.DB, postID, viewerID string) (bool, error) {
 	var allowed int
 	err := db.QueryRow(`
-		SELECT CASE WHEN p.group_id IS NULL AND (
+		SELECT CASE WHEN p.group_id IS NULL
+			AND (
+				p.author_id = ?
+				OR pr.privacy = ?
+				OR EXISTS (
+					SELECT 1 FROM follows account_follow
+					WHERE account_follow.follower_id = ? AND account_follow.following_id = p.author_id
+				)
+			)
+			AND (
 			p.privacy = ?
 			OR p.author_id = ?
 			OR (
@@ -348,8 +383,9 @@ func canViewPost(db *sql.DB, postID, viewerID string) (bool, error) {
 				)
 		THEN 1 ELSE 0 END
 		FROM posts p
+		JOIN profiles pr ON pr.user_id = p.author_id
 		WHERE p.id = ? AND p.is_active = 1
-	`, enums.PostPrivacyPublic, viewerID, enums.PostPrivacyFollowers, viewerID, enums.PostPrivacySelected, viewerID, viewerID, enums.GroupMembershipStatusActive, postID).Scan(&allowed)
+	`, viewerID, enums.ProfilePrivacyPublic, viewerID, enums.PostPrivacyPublic, viewerID, enums.PostPrivacyFollowers, viewerID, enums.PostPrivacySelected, viewerID, viewerID, enums.GroupMembershipStatusActive, postID).Scan(&allowed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
