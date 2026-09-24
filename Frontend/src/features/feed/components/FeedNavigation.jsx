@@ -14,11 +14,7 @@ import {
   User,
   UsersThree,
 } from "@phosphor-icons/react";
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { logoutUser } from "../../../api/auth.js";
@@ -39,18 +35,22 @@ function DockItem({
 }) {
   const ref = useRef(null);
   const isHovered = useMotionValue(0);
+
   const mouseDistance = useTransform(mouseY, (value) => {
     const rect = ref.current?.getBoundingClientRect() ?? {
       top: 0,
       height: baseItemSize,
     };
+
     return value - rect.top - baseItemSize / 2;
   });
+
   const targetSize = useTransform(
     mouseDistance,
     [-distance, 0, distance],
     [baseItemSize, magnification, baseItemSize],
   );
+
   const size = useSpring(targetSize, spring);
 
   return (
@@ -107,7 +107,13 @@ function DockIcon({ children }) {
 export default function FeedNavigation({ onCreatePost, profile }) {
   const navigate = useNavigate();
   const navigateTo = usePageNavigate();
-  const spring = { mass: 0.1, stiffness: 150, damping: 12 };
+
+  const spring = {
+    mass: 0.1,
+    stiffness: 150,
+    damping: 12,
+  };
+
   const magnification = 66;
   const baseItemSize = 58;
   const distance = 130;
@@ -138,7 +144,11 @@ export default function FeedNavigation({ onCreatePost, profile }) {
       label: "Profile",
       onClick: () => navigateTo("/profile"),
     },
-    { icon: <UsersThree size={20} />, label: "Groups", disabled: true },
+    {
+      icon: <UsersThree size={20} />,
+      label: "Groups",
+      onClick: () => navigateTo("/groups"),
+    },
     {
       icon: <ChatCircle size={20} />,
       label: "Messages",
@@ -194,6 +204,7 @@ export default function FeedNavigation({ onCreatePost, profile }) {
             magnification={magnification}
             baseItemSize={baseItemSize}
           />
+
           {profile && (
             <button
               type="button"

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"social-network/internal/auth"
+	"social-network/internal/feed"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
 	"strings"
@@ -61,6 +62,25 @@ func (h *Handler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	exists, err := groupTitleExists(h.DB, req.Title)
+	if err != nil {
+		helpers.WriteError(
+			w,
+			http.StatusInternalServerError,
+			"Failed to check group title",
+		)
+		return
+	}
+
+	if exists {
+		helpers.WriteError(
+			w,
+			http.StatusConflict,
+			"A group with this title already exists",
+		)
+		return
+	}
+
 	groupID := uuid.New().String()
 
 	groupResponse, err := createGroup(h.DB, groupID, currentUser.ID, req.Title, req.Description)
@@ -79,13 +99,36 @@ func (h *Handler) GetGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groups, err := getAllGroups(h.DB)
+	filter := strings.TrimSpace(r.URL.Query().Get("filter"))
+	if filter == "" {
+		filter = "discover"
+	}
+
+	if filter != "discover" && filter != "mine" {
+		helpers.WriteError(w, http.StatusBadRequest, "Filter must be discover or mine")
+		return
+	}
+
+	limit, err := feed.FeedLimit(r.URL.Query().Get("limit"))
 	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
+		return
+	}
+
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+
+	groups, nextCursor, err := getAllGroups(h.DB, currentUser.ID, filter, cursor, limit)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")
+			return
+		}
+
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch groups")
 		return
 	}
 
-	helpers.WriteJSON(w, http.StatusOK, groups)
+	helpers.WriteJSON(w, http.StatusOK, models.GroupsPageResponse{Groups: groups, NextCursor: nextCursor})
 }
 
 func (h *Handler) GetGroupByID(w http.ResponseWriter, r *http.Request) {
@@ -157,11 +200,28 @@ func (h *Handler) GetGroupMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	members, err := getGroupMembers(h.DB, groupID)
+	limit, err := feed.FeedLimit(r.URL.Query().Get("limit"))
 	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
+		return
+	}
+
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+
+	members, nextCursor, err := getGroupMembers(h.DB, groupID, cursor, limit)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")
+			return
+		}
+
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group members")
 		return
 	}
 
-	helpers.WriteJSON(w, http.StatusOK, members)
+	helpers.WriteJSON(
+		w,
+		http.StatusOK,
+		models.GroupMembersPageResponse{Members: members, NextCursor: nextCursor},
+	)
 }

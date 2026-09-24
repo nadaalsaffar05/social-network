@@ -80,7 +80,9 @@ export default function MessageReactions({
 
       {isPickerOpen && (
         <div className="chat-message__picker">
-          <ChatEmojiPicker onEmojiSelect={(emoji) => onReact(messageID, emoji)} />
+          <ChatEmojiPicker
+            onEmojiSelect={(emoji) => onReact(messageID, emoji)}
+          />
         </div>
       )}
     </span>

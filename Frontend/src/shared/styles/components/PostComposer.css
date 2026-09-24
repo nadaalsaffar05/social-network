@@ -1,13 +1,3 @@
-.glass-surface {
-  position: relative;
-  display: flex;
-  overflow: hidden;
-}
-
-.glass-surface__content {
-  width: 100%;
-}
-
 .post-composer {
   font-family: var(--font-ui);
 }

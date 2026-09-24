@@ -6,8 +6,11 @@ import (
 	"net/http"
 	"social-network/internal/auth"
 	"social-network/internal/enums"
+	"social-network/internal/feed"
 	"social-network/internal/helpers"
+	"social-network/internal/models"
 	"social-network/internal/notifications"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -153,6 +156,7 @@ func (h *Handler) GetJoinRequests(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
+
 	currentUser := auth.CurrentUser(r)
 	if currentUser == nil {
 		helpers.WriteError(w, http.StatusUnauthorized, "Unauthorized")
@@ -171,6 +175,7 @@ func (h *Handler) GetJoinRequests(w http.ResponseWriter, r *http.Request) {
 			helpers.WriteError(w, http.StatusNotFound, "Group not found")
 			return
 		}
+
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group")
 		return
 	}
@@ -180,12 +185,26 @@ func (h *Handler) GetJoinRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	joinRequests, err := getJoinRequests(h.DB, groupID)
+	limit, err := feed.FeedLimit(r.URL.Query().Get("limit"))
 	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
+		return
+	}
+
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+
+	joinRequests, nextCursor, total, err := getJoinRequests(h.DB, groupID, cursor, limit)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")
+			return
+		}
+
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch join requests")
 		return
 	}
-	helpers.WriteJSON(w, http.StatusOK, joinRequests)
+
+	helpers.WriteJSON(w, http.StatusOK, models.GroupJoinRequestsPageResponse{Requests: joinRequests, NextCursor: nextCursor, Total: total})
 }
 
 func (h *Handler) RespondToJoinRequest(w http.ResponseWriter, r *http.Request) {

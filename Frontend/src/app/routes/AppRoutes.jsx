@@ -18,6 +18,8 @@ const FollowRequestsPage = lazy(
 const NotificationsPage = lazy(
   () => import("../../features/notifications/NotificationsPage"),
 );
+const GroupsPage = lazy(() => import("../../features/groups/GroupsPage"));
+const GroupPage = lazy(() => import("../../features/groups/GroupPage"));
 
 export default function AppRoutes() {
   return (
@@ -35,6 +37,8 @@ export default function AppRoutes() {
           <Route path="/messages" element={<ChatPage />} />
           <Route path="/messages/:userId" element={<ChatPage />} />
           <Route path="/message-requests" element={<MessageRequestsPage />} />
+          <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/groups/:groupId" element={<GroupPage />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Route>
       </Routes>
