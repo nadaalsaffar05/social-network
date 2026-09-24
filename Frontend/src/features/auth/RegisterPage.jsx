@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ImageSquare } from "@phosphor-icons/react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { registerUser } from "../../api/auth.js";
@@ -6,6 +7,7 @@ import { uploadAvatar } from "../../api/Profile.js";
 import AvatarCropperModal from "../../shared/components/avatar-cropper/AvatarCropperModal.jsx";
 import { useToast } from "../../shared/components/toast/useToast.js";
 import AuthBackground from "./components/AuthBackground.jsx";
+import "../../shared/styles/components/PostComposer.css";
 
 const initialForm = {
   email: "",
@@ -35,6 +37,8 @@ export default function RegisterPage() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
   const [selectedImageSrc, setSelectedImageSrc] = useState("");
+  const avatarInputRef = useRef(null);
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -55,16 +59,25 @@ export default function RegisterPage() {
     setForm((currentForm) => ({ ...currentForm, [name]: value }));
   }
 
-  function handleFileSelect(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
+  function openAvatarCropper(file) {
+    if (!file || isSubmitting || selectedImageSrc) return;
+
+    if (!["image/jpeg", "image/png", "image/gif"].includes(file.type)) {
+      showError("Unsupported image", "Please choose a JPEG, PNG, or GIF.");
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => setSelectedImageSrc(reader.result);
     reader.onerror = () =>
       showError("Cannot open image", "Please choose another image.");
     reader.readAsDataURL(file);
+  }
+
+  function handleFileSelect(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    openAvatarCropper(file);
   }
 
   function handleCropSave(croppedFile) {
@@ -202,27 +215,71 @@ export default function RegisterPage() {
                   required
                 />
               </label>
-
             </>
           )}
 
           {step === 2 && (
             <>
-              <label>
-                Profile photo <span>(optional)</span>
+              <div>
+                <label htmlFor="register-avatar">
+                  Profile photo <span>(optional)</span>
+                </label>
+
                 <input
+                  id="register-avatar"
+                  ref={avatarInputRef}
                   type="file"
                   accept="image/jpeg,image/png,image/gif"
                   onChange={handleFileSelect}
                   disabled={isSubmitting}
+                  hidden
                 />
-              </label>
+
+                <button
+                  type="button"
+                  aria-label="Choose a profile photo (optional)"
+                  className={`post-composer__attachment-button${
+                    isDraggingAvatar
+                      ? " post-composer__attachment-button--dragging"
+                      : ""
+                  }`}
+                  style={{ width: "100%", marginTop: 6 }}
+                  disabled={isSubmitting}
+                  onClick={() => avatarInputRef.current?.click()}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    if (!isSubmitting) setIsDraggingAvatar(true);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                      setIsDraggingAvatar(false);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDraggingAvatar(false);
+                    openAvatarCropper(event.dataTransfer.files[0]);
+                  }}
+                >
+                  <ImageSquare size={21} weight="bold" />
+                  <span>
+                    <strong>Drop image or GIF</strong>
+                    <small>or choose a JPEG, PNG, or GIF</small>
+                  </span>
+                </button>
+              </div>
 
               {avatarPreview && (
                 <img
                   src={avatarPreview}
                   alt="Selected profile photo"
-                  style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover" }}
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                  }}
                 />
               )}
 
@@ -245,11 +302,16 @@ export default function RegisterPage() {
                   rows="3"
                 />
               </label>
-
             </>
           )}
 
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
             {step === 2 && (
               <button
                 className="primary-button"
@@ -282,7 +344,11 @@ export default function RegisterPage() {
           >
             <span
               aria-current={step === 1 ? "step" : undefined}
-              style={{ ...stepCircleStyle, background: "var(--color-primary)", color: "#fff" }}
+              style={{
+                ...stepCircleStyle,
+                background: "var(--color-primary)",
+                color: "#fff",
+              }}
             >
               {step === 1 ? "1" : "✓"}
             </span>
@@ -291,7 +357,10 @@ export default function RegisterPage() {
               style={{
                 flex: 1,
                 height: 2,
-                background: step === 2 ? "var(--color-primary)" : "var(--color-border)",
+                background:
+                  step === 2
+                    ? "var(--color-primary)"
+                    : "var(--color-border)",
                 transition: "background 250ms",
               }}
             />
@@ -299,7 +368,10 @@ export default function RegisterPage() {
               aria-current={step === 2 ? "step" : undefined}
               style={{
                 ...stepCircleStyle,
-                background: step === 2 ? "var(--color-primary)" : "var(--color-surface)",
+                background:
+                  step === 2
+                    ? "var(--color-primary)"
+                    : "var(--color-surface)",
                 color: "var(--color-text)",
               }}
             >
