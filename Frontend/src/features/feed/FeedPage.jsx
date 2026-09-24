@@ -176,16 +176,6 @@ export default function FeedPage() {
       </div>
       <header className="feed-topbar">
         <div className="feed-topbar__inner">
-          <div className="feed-title">
-            <button
-              className="feed-title__brand"
-              type="button"
-              onClick={() => navigateTo("/home")}
-            >
-              <img src="/loop-logo.png" alt="" />
-              <span>loop</span>
-            </button>
-          </div>
           <div className="feed-search-wrap">
             <label className="feed-search">
               <MagnifyingGlass size={19} weight="bold" aria-hidden="true" />
@@ -217,7 +207,10 @@ export default function FeedPage() {
       </header>
 
       <aside className="feed-left-sidebar">
-        <FeedNavigation onCreatePost={() => setIsComposerOpen(true)} />
+        <FeedNavigation
+          onCreatePost={() => setIsComposerOpen(true)}
+          profile={currentProfile}
+        />
       </aside>
 
       <div className="feed-layout">

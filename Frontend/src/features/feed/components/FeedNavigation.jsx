@@ -15,10 +15,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import {
-  Children,
-  cloneElement,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -26,18 +23,19 @@ import { useNavigate } from "react-router-dom";
 
 import { logoutUser } from "../../../api/auth.js";
 import { usePageNavigate } from "../../../shared/components/back-button/usePageBack.js";
+import Avatar from "../../../shared/components/avatar/Avatar.jsx";
 import "./FeedNavigation.css";
 
 function DockItem({
-  children,
+  icon,
+  label,
   onClick,
+  disabled = false,
   mouseY,
   spring,
   distance,
   magnification,
   baseItemSize,
-  label,
-  disabled = false,
 }) {
   const ref = useRef(null);
   const isHovered = useMotionValue(0);
@@ -55,39 +53,33 @@ function DockItem({
   );
   const size = useSpring(targetSize, spring);
 
-  function handleKeyDown(event) {
-    if (disabled) return;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onClick();
-    }
-  }
-
   return (
-    <motion.div
+    <motion.button
       ref={ref}
+      type="button"
       style={{ width: size, height: size }}
       onHoverStart={() => isHovered.set(1)}
       onHoverEnd={() => isHovered.set(0)}
       onFocus={() => isHovered.set(1)}
       onBlur={() => isHovered.set(0)}
-      onClick={disabled ? undefined : onClick}
+      onClick={onClick}
       className="feed-dock-item"
-      tabIndex={disabled ? -1 : 0}
-      role="button"
       aria-label={label}
-      aria-disabled={disabled}
-      onKeyDown={handleKeyDown}
+      disabled={disabled}
     >
-      {Children.map(children, (child) => cloneElement(child, { isHovered }))}
-    </motion.div>
+      <DockIcon>{icon}</DockIcon>
+      <DockLabel isHovered={isHovered}>{label}</DockLabel>
+    </motion.button>
   );
 }
 
 function DockLabel({ children, isHovered }) {
   const [isVisible, setIsVisible] = useState(false);
 
-  useEffect(() => isHovered.on("change", (value) => setIsVisible(value === 1)), [isHovered]);
+  useEffect(
+    () => isHovered.on("change", (value) => setIsVisible(value === 1)),
+    [isHovered],
+  );
 
   return (
     <AnimatePresence>
@@ -112,24 +104,14 @@ function DockIcon({ children }) {
   return <div className="feed-dock-icon">{children}</div>;
 }
 
-export default function FeedNavigation({ onCreatePost }) {
+export default function FeedNavigation({ onCreatePost, profile }) {
   const navigate = useNavigate();
   const navigateTo = usePageNavigate();
   const spring = { mass: 0.1, stiffness: 150, damping: 12 };
-  const magnification = 80;
-  const baseItemSize = 64;
-  const panelWidth = 100;
-  const distance = 200;
+  const magnification = 66;
+  const baseItemSize = 58;
+  const distance = 130;
   const mouseY = useMotionValue(Infinity);
-  const isHovered = useMotionValue(0);
-  const maxWidth = useMemo(
-    () => Math.max(panelWidth, magnification + magnification / 2 + 4),
-    [magnification],
-  );
-  const width = useSpring(
-    useTransform(isHovered, [0, 1], [panelWidth, maxWidth]),
-    spring,
-  );
 
   async function handleLogout() {
     try {
@@ -140,45 +122,94 @@ export default function FeedNavigation({ onCreatePost }) {
     }
   }
 
-  const items = [
-    { icon: <House size={20} weight="fill" />, label: "Home", onClick: () => navigateTo("/home") },
-    { icon: <PlusCircle size={20} weight="fill" />, label: "Create post", onClick: onCreatePost },
-    { icon: <User size={20} />, label: "Profile", onClick: () => navigateTo("/profile") },
+  const primaryItems = [
+    {
+      icon: <House size={20} weight="fill" />,
+      label: "Home",
+      onClick: () => navigateTo("/home"),
+    },
+    {
+      icon: <PlusCircle size={20} weight="fill" />,
+      label: "Create post",
+      onClick: onCreatePost,
+    },
+    {
+      icon: <User size={20} />,
+      label: "Profile",
+      onClick: () => navigateTo("/profile"),
+    },
     { icon: <UsersThree size={20} />, label: "Groups", disabled: true },
-    { icon: <ChatCircle size={20} />, label: "Messages", onClick: () => navigateTo("/messages") },
-    { icon: <Bell size={20} />, label: "Notifications", onClick: () => navigateTo("/notifications") },
-    { icon: <SignOut size={20} />, label: "Log out", onClick: handleLogout },
+    {
+      icon: <ChatCircle size={20} />,
+      label: "Messages",
+      onClick: () => navigateTo("/messages"),
+    },
+    {
+      icon: <Bell size={20} />,
+      label: "Notifications",
+      onClick: () => navigateTo("/notifications"),
+    },
   ];
 
   return (
-    <motion.nav className="feed-dock" style={{ width }} aria-label="Main navigation">
-      <motion.div
+    <nav className="feed-dock" aria-label="Main navigation">
+      <div
         className="feed-dock-panel border-glow"
-        style={{ width: panelWidth }}
         onMouseMove={({ clientY }) => {
-          isHovered.set(1);
           mouseY.set(clientY);
         }}
-        onMouseLeave={() => {
-          isHovered.set(0);
-          mouseY.set(Infinity);
-        }}
+        onMouseLeave={() => mouseY.set(Infinity)}
       >
-        {items.map((item) => (
+        <button
+          type="button"
+          className="feed-dock-brand"
+          onClick={() => navigateTo("/home")}
+          aria-label="Loop home"
+        >
+          <img src="/loop-wordmark.png" alt="" />
+        </button>
+
+        <div className="feed-dock-items">
+          {primaryItems.map((item) => (
+            <DockItem
+              key={item.label}
+              {...item}
+              mouseY={mouseY}
+              spring={spring}
+              distance={distance}
+              magnification={magnification}
+              baseItemSize={baseItemSize}
+            />
+          ))}
+        </div>
+
+        <div className="feed-dock-footer">
           <DockItem
-            key={item.label}
-            {...item}
+            icon={<SignOut size={20} />}
+            label="Log out"
+            onClick={handleLogout}
             mouseY={mouseY}
             spring={spring}
             distance={distance}
             magnification={magnification}
             baseItemSize={baseItemSize}
-          >
-            <DockIcon>{item.icon}</DockIcon>
-            <DockLabel>{item.label}</DockLabel>
-          </DockItem>
-        ))}
-      </motion.div>
-    </motion.nav>
+          />
+          {profile && (
+            <button
+              type="button"
+              className="feed-dock-profile"
+              onClick={() => navigateTo("/profile")}
+              aria-label="Open your profile"
+            >
+              <Avatar
+                avatarPath={profile.avatar_path}
+                seed={profile.id}
+                alt=""
+              />
+            </button>
+          )}
+        </div>
+      </div>
+    </nav>
   );
 }

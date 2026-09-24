@@ -1,5 +1,5 @@
-import EmojiPicker from "emoji-picker-react";
 import { Smiley } from "@phosphor-icons/react";
+import ChatEmojiPicker from "./ChatEmojiPicker.jsx";
 
 const APPLE_EMOJI_CDN =
   "https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/64/";
@@ -80,15 +80,7 @@ export default function MessageReactions({
 
       {isPickerOpen && (
         <div className="chat-message__picker">
-          <EmojiPicker
-            theme="dark"
-            emojiStyle="apple"
-            width={300}
-            height={320}
-            skinTonesDisabled
-            previewConfig={{ showPreview: false }}
-            onEmojiClick={(emojiData) => onReact(messageID, emojiData.emoji)}
-          />
+          <ChatEmojiPicker onEmojiSelect={(emoji) => onReact(messageID, emoji)} />
         </div>
       )}
     </span>

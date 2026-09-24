@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   MagnifyingGlass,
   PaperPlaneTilt,
+  Smiley,
   Trash,
 } from "@phosphor-icons/react";
 
@@ -28,6 +29,7 @@ import Avatar from "../../shared/components/avatar/Avatar.jsx";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
 import MessageReactions from "./components/MessageReactions.jsx";
+import ChatEmojiPicker from "./components/ChatEmojiPicker.jsx";
 import {
   formatLocalDate,
   formatLocalDateTime,
@@ -83,12 +85,16 @@ export default function ChatPage() {
   const { error: showError, success: showSuccess } = useToast();
   const { events, onlineUserIDs, sendEvent, typingUserIDs } = useChatRealtime();
   const typingTimerRef = useRef(null);
+  const composerInputRef = useRef(null);
+  const composerEmojiRef = useRef(null);
   const [conversations, setConversations] = useState([]);
   const [requests, setRequests] = useState([]);
   const [messages, setMessages] = useState([]);
   const [nextCursor, setNextCursor] = useState("");
   const [lastSeenAt, setLastSeenAt] = useState(null);
   const [content, setContent] = useState("");
+  const [isComposerEmojiPickerOpen, setIsComposerEmojiPickerOpen] =
+    useState(false);
   const [reactionTargetID, setReactionTargetID] = useState("");
   const [quickReactionTargetID, setQuickReactionTargetID] = useState("");
   const [error, setError] = useState("");
@@ -179,6 +185,27 @@ export default function ChatPage() {
   );
 
   useEffect(() => {
+    if (!isComposerEmojiPickerOpen) return undefined;
+
+    function closeOnOutsidePress(event) {
+      if (!composerEmojiRef.current?.contains(event.target)) {
+        setIsComposerEmojiPickerOpen(false);
+      }
+    }
+
+    function closeOnEscape(event) {
+      if (event.key === "Escape") setIsComposerEmojiPickerOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isComposerEmojiPickerOpen]);
+
+  useEffect(() => {
     const event = events.at(-1);
     if (!event) return;
 
@@ -265,8 +292,7 @@ export default function ChatPage() {
     }
   }
 
-  function handleTyping(event) {
-    const nextContent = event.target.value;
+  function updateDraft(nextContent) {
     setContent(nextContent);
     if (!userId) return;
 
@@ -278,6 +304,28 @@ export default function ChatPage() {
         sendEvent("typing", { recipient_id: userId, is_typing: false });
       }, 900);
     }
+  }
+
+  function handleTyping(event) {
+    updateDraft(event.target.value);
+  }
+
+  function handleComposerEmojiSelect(emoji) {
+    const input = composerInputRef.current;
+    const selectionStart = input?.selectionStart ?? content.length;
+    const selectionEnd = input?.selectionEnd ?? content.length;
+    const nextContent = `${content.slice(0, selectionStart)}${emoji}${content.slice(selectionEnd)}`.slice(
+      0,
+      10000,
+    );
+    const nextCaret = Math.min(selectionStart + emoji.length, nextContent.length);
+
+    updateDraft(nextContent);
+    setIsComposerEmojiPickerOpen(false);
+    window.requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(nextCaret, nextCaret);
+    });
   }
 
   function closeReactionPickers() {
@@ -634,13 +682,40 @@ export default function ChatPage() {
                 </div>
                 <form className="chat-composer" onSubmit={handleSubmit}>
                   <input
+                    ref={composerInputRef}
                     value={content}
                     onChange={handleTyping}
                     maxLength="10000"
                     placeholder="Type a message"
                     aria-label="Message"
                   />
+                  <div
+                    ref={composerEmojiRef}
+                    className="chat-composer__emoji-control"
+                  >
+                    <button
+                      className="chat-composer__emoji-button"
+                      type="button"
+                      onClick={() =>
+                        setIsComposerEmojiPickerOpen((current) => !current)
+                      }
+                      aria-label="Choose an emoji"
+                      aria-expanded={isComposerEmojiPickerOpen}
+                    >
+                      <Smiley size={22} weight="regular" />
+                    </button>
+                    {isComposerEmojiPickerOpen && (
+                      <div className="chat-composer__emoji-picker">
+                        <ChatEmojiPicker
+                          width={340}
+                          height={380}
+                          onEmojiSelect={handleComposerEmojiSelect}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <button
+                    className="chat-composer__send"
                     type="submit"
                     disabled={isSending || !content.trim()}
                     aria-label="Send message"
