@@ -31,69 +31,263 @@ func createGroup(db *sql.DB, id string, creatorID string, title string, descript
 	return group, err
 }
 
-func getAllGroups(db *sql.DB) ([]models.GroupResponse, error) {
-	rows, err := db.Query(`
-		SELECT id, creator_id, title, description, created_at
+func groupTitleExists(db *sql.DB, title string) (bool, error) {
+	var exists bool
+	err := db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM groups
+			WHERE LOWER(title) = LOWER(?)
+		)
+	`, title).Scan(&exists)
+
+	return exists, err
+}
+
+func getAllGroups(db *sql.DB, userID string, filter string, cursor string, limit int) ([]models.GroupDetailsResponse, string, error) {
+	cursorCreatedAt := ""
+	if cursor != "" {
+		err := db.QueryRow(`
+		SELECT created_at
 		FROM groups
-		ORDER BY created_at DESC
-	`)
+		WHERE id = ?
+	`, cursor).Scan(&cursorCreatedAt)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	rows, err := db.Query(`
+		SELECT
+			g.id,
+			g.creator_id,
+			g.title,
+			g.description,
+			g.created_at,
+			(
+    			SELECT COUNT(*)
+   				FROM group_members gm
+   				WHERE gm.group_id = g.id
+       				AND gm.status = ?
+			) AS member_count,
+			(
+				SELECT gm.joined_at
+				FROM group_members gm
+				WHERE gm.group_id = g.id
+					AND gm.user_id = ?
+				    AND gm.status = ?
+			) AS joined_at,
+			EXISTS (
+				SELECT 1
+				FROM group_members gm
+				WHERE gm.group_id = g.id
+					AND gm.user_id = ?
+					AND gm.status = ?
+			) AS is_member,
+			EXISTS (
+				SELECT 1
+				FROM group_join_requests gjr
+				WHERE gjr.group_id = g.id
+					AND gjr.user_id = ?
+					AND gjr.status = ?
+			) AS has_pending_request,
+			EXISTS (
+				SELECT 1
+				FROM group_invitations gi
+				WHERE gi.group_id = g.id
+					AND gi.invited_user_id = ?
+					AND gi.status = ?
+			) AS has_pending_invite
+		FROM groups g
+		WHERE
+			(
+				(
+					? = 'mine'
+					AND EXISTS (
+						SELECT 1
+						FROM group_members gm
+						WHERE gm.group_id = g.id
+							AND gm.user_id = ?
+							AND gm.status = ?
+					)
+				)
+				OR
+				(
+					? = 'discover'
+					AND NOT EXISTS (
+						SELECT 1
+						FROM group_members gm
+						WHERE gm.group_id = g.id
+							AND gm.user_id = ?
+							AND gm.status = ?
+					)
+				)
+			)
+			AND (
+				? = ''
+				OR g.created_at < ?
+				OR (g.created_at = ? AND g.id < ?)
+			)
+		ORDER BY g.created_at DESC, g.id DESC
+		LIMIT ?
+	`, enums.GroupMembershipStatusActive, userID, enums.GroupMembershipStatusActive, userID, enums.GroupMembershipStatusActive, userID, enums.GroupJoinRequestStatusPending, userID, enums.GroupInvitationStatusPending,
+		filter, userID, enums.GroupMembershipStatusActive, filter, userID, enums.GroupMembershipStatusActive, cursor, cursorCreatedAt,
+		cursorCreatedAt, cursor, limit+1)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer rows.Close()
 
-	groups := make([]models.GroupResponse, 0)
+	groups := make([]models.GroupDetailsResponse, 0)
 	for rows.Next() {
-		var group models.GroupResponse
-		if err := rows.Scan(&group.ID, &group.CreatorID, &group.Title, &group.Description, &group.CreatedAt); err != nil {
-			return nil, err
+		var group models.GroupDetailsResponse
+		if err := rows.Scan(&group.ID, &group.CreatorID, &group.Title, &group.Description, &group.CreatedAt, &group.MemberCount,
+			&group.JoinedAt, &group.IsMember, &group.HasPendingRequest, &group.HasPendingInvite); err != nil {
+			return nil, "", err
 		}
+
 		groups = append(groups, group)
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return groups, nil
+	nextCursor := ""
+	if len(groups) > limit {
+		groups = groups[:limit]
+		nextCursor = groups[len(groups)-1].ID
+	}
+
+	return groups, nextCursor, nil
 }
 
 func getGroupByID(db *sql.DB, groupID string) (models.GroupDetailsResponse, error) {
 	var group models.GroupDetailsResponse
 	err := db.QueryRow(`
-		SELECT id, creator_id, title, description, created_at
-		FROM groups
-		WHERE id = ?
-	`, groupID).Scan(&group.ID, &group.CreatorID, &group.Title, &group.Description, &group.CreatedAt)
+        SELECT
+            g.id,
+            g.creator_id,
+            g.title,
+            g.description,
+            g.created_at,
+            u.first_name,
+            u.last_name,
+            p.nickname,
+            (
+                SELECT COUNT(*)
+                FROM group_members gm
+                WHERE gm.group_id = g.id
+                    AND gm.status = ?
+            )
+        FROM groups g
+        JOIN users u ON g.creator_id = u.id
+        LEFT JOIN profiles p ON u.id = p.user_id
+        WHERE g.id = ?
+    `, enums.GroupMembershipStatusActive, groupID).Scan(&group.ID, &group.CreatorID, &group.Title, &group.Description, &group.CreatedAt,
+		&group.CreatorFirstName, &group.CreatorLastName, &group.CreatorNickname, &group.MemberCount)
+
 	return group, err
 }
 
-func getGroupMembers(db *sql.DB, groupID string) ([]models.GroupMemberResponse, error) {
-	rows, err := db.Query(`
-		SELECT u.id, u.first_name, u.last_name, p.nickname, gm.role, gm.joined_at
+func getGroupMembers(db *sql.DB, groupID string, cursor string, limit int) ([]models.GroupMemberResponse, string, error) {
+	var cursorJoinedAt string
+	var cursorRole enums.GroupMemberRole
+	if cursor != "" {
+		err := db.QueryRow(`
+			SELECT joined_at, role
+			FROM group_members
+			WHERE group_id = ?
+				AND user_id = ?
+				AND status = ?
+		`, groupID, cursor, enums.GroupMembershipStatusActive).Scan(&cursorJoinedAt, &cursorRole)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	query := `
+		SELECT
+			u.id,
+			u.first_name,
+			u.last_name,
+			p.nickname,
+			avatar_media.file_path,
+			gm.role,
+			gm.joined_at
 		FROM group_members gm
 		JOIN users u ON gm.user_id = u.id
 		LEFT JOIN profiles p ON u.id = p.user_id
+		LEFT JOIN profile_avatars avatar
+			ON avatar.user_id = u.id
+		LEFT JOIN media avatar_media
+			ON avatar_media.id = avatar.media_id
 		WHERE gm.group_id = ?
 			AND gm.status = ?
-	`, groupID, enums.GroupMembershipStatusActive)
+	`
+	args := []any{
+		groupID,
+		enums.GroupMembershipStatusActive,
+	}
+
+	if cursor != "" {
+		query += `
+			AND (
+				CASE WHEN gm.role = ? THEN 0 ELSE 1 END >
+					CASE WHEN ? = ? THEN 0 ELSE 1 END
+				OR (
+					CASE WHEN gm.role = ? THEN 0 ELSE 1 END =
+						CASE WHEN ? = ? THEN 0 ELSE 1 END
+					AND (
+						gm.joined_at < ?
+						OR (
+							gm.joined_at = ?
+							AND gm.user_id < ?
+						)
+					)
+				)
+			)
+		`
+
+		args = append(args, enums.GroupMemberRoleCreator, cursorRole, enums.GroupMemberRoleCreator,
+			enums.GroupMemberRoleCreator, cursorRole, enums.GroupMemberRoleCreator, cursorJoinedAt, cursorJoinedAt, cursor)
+	}
+
+	query += `
+		ORDER BY
+			CASE WHEN gm.role = ? THEN 0 ELSE 1 END,
+			gm.joined_at DESC,
+			gm.user_id DESC
+		LIMIT ?
+	`
+
+	args = append(args, enums.GroupMemberRoleCreator, limit+1)
+
+	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer rows.Close()
 
 	members := make([]models.GroupMemberResponse, 0)
 	for rows.Next() {
 		var member models.GroupMemberResponse
-		if err := rows.Scan(&member.UserID, &member.FirstName, &member.LastName, &member.Nickname, &member.Role, &member.JoinedAt); err != nil {
-			return nil, err
+		if err := rows.Scan(&member.UserID, &member.FirstName, &member.LastName, &member.Nickname, &member.AvatarPath, &member.Role, &member.JoinedAt); err != nil {
+			return nil, "", err
 		}
+
 		members = append(members, member)
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return members, nil
+	nextCursor := ""
+	if len(members) > limit {
+		members = members[:limit]
+		nextCursor = members[len(members)-1].UserID
+	}
+
+	return members, nextCursor, nil
 }
 
 func getGroupUserState(db *sql.DB, groupID string, userID string) (bool, bool, bool, error) {
@@ -154,35 +348,95 @@ func markRemoved(db *sql.DB, groupID string, userID string) (int64, error) {
 	return result.RowsAffected()
 }
 
-func getJoinRequests(db *sql.DB, groupID string) ([]models.GroupJoinRequestResponse, error) {
-	rows, err := db.Query(`
-		SELECT gjr.id, gjr.group_id, gjr.user_id, u.first_name, u.last_name, p.nickname, gjr.status, gjr.created_at
+func getJoinRequests(db *sql.DB, groupID string, cursor string, limit int) ([]models.GroupJoinRequestResponse, string, int, error) {
+	args := []any{
+		groupID,
+		enums.GroupJoinRequestStatusPending,
+	}
+
+	var total int
+
+	err := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM group_join_requests
+		WHERE group_id = ?
+			AND status = ?
+	`,
+		groupID,
+		enums.GroupJoinRequestStatusPending,
+	).Scan(&total)
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	query := `
+		SELECT gjr.id, gjr.group_id, gjr.user_id, u.first_name, u.last_name, p.nickname, avatar_media.file_path, gjr.status, gjr.created_at
 		FROM group_join_requests gjr
-		JOIN users u on gjr.user_id = u.id
-		LEFT JOIN profiles p on u.id = p.user_id
+		JOIN users u ON gjr.user_id = u.id
+		LEFT JOIN profiles p ON u.id = p.user_id
+		LEFT JOIN profile_avatars avatar
+			ON avatar.user_id = u.id
+		LEFT JOIN media avatar_media
+			ON avatar_media.id = avatar.media_id
 		WHERE gjr.group_id = ?
 			AND gjr.status = ?
-	`, groupID, enums.GroupJoinRequestStatusPending)
+	`
+	if cursor != "" {
+		var cursorCreatedAt string
+		err := db.QueryRow(`
+			SELECT created_at
+			FROM group_join_requests
+			WHERE id = ?
+				AND group_id = ?
+				AND status = ?
+		`, cursor, groupID, enums.GroupJoinRequestStatusPending).Scan(&cursorCreatedAt)
+		if err != nil {
+			return nil, "", 0, err
+		}
+
+		query += `
+			AND (
+				gjr.created_at < ?
+				OR (gjr.created_at = ? AND gjr.id < ?)
+			)
+		`
+		args = append(args, cursorCreatedAt, cursorCreatedAt, cursor)
+	}
+
+	query += `
+		ORDER BY gjr.created_at DESC, gjr.id DESC
+		LIMIT ?
+	`
+
+	args = append(args, limit+1)
+	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 	defer rows.Close()
 
 	joinRequests := make([]models.GroupJoinRequestResponse, 0)
 	for rows.Next() {
 		var joinRequest models.GroupJoinRequestResponse
-		if err := rows.Scan(&joinRequest.RequestID, &joinRequest.GroupID, &joinRequest.UserID,
-			&joinRequest.FirstName, &joinRequest.LastName, &joinRequest.Nickname, &joinRequest.Status,
-			&joinRequest.CreatedAt); err != nil {
-			return nil, err
+		if err := rows.Scan(&joinRequest.RequestID, &joinRequest.GroupID, &joinRequest.UserID, &joinRequest.FirstName,
+			&joinRequest.LastName, &joinRequest.Nickname, &joinRequest.AvatarPath, &joinRequest.Status, &joinRequest.CreatedAt); err != nil {
+			return nil, "", 0, err
 		}
+
 		joinRequests = append(joinRequests, joinRequest)
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 
-	return joinRequests, nil
+	nextCursor := ""
+	if len(joinRequests) > limit {
+		joinRequests = joinRequests[:limit]
+		nextCursor = joinRequests[len(joinRequests)-1].RequestID
+	}
+
+	return joinRequests, nextCursor, total, nil
 }
 
 func getPendingJoinRequestByID(db *sql.DB, groupID string, requestID string) (models.GroupJoinRequestResponse, error) {
@@ -511,8 +765,12 @@ func createEvent(db sqlExecer, eventID string, groupID string, creatorID string,
 	return err
 }
 
-func getAllActiveEvents(db *sql.DB, groupID string, userID string) ([]models.GroupEventResponse, error) {
-	rows, err := db.Query(`
+func getAllActiveEvents(db *sql.DB, groupID string, userID string, cursor string, limit int) ([]models.GroupEventResponse, string, error) {
+	args := []any{
+		userID,
+		groupID,
+	}
+	query := `
 		SELECT
 			ge.id,
 			ge.group_id,
@@ -520,6 +778,7 @@ func getAllActiveEvents(db *sql.DB, groupID string, userID string) ([]models.Gro
 			u.first_name,
 			u.last_name,
 			p.nickname,
+			avatar_media.file_path,
 			ge.title,
 			ge.description,
 			strftime('%Y-%m-%dT%H:%M:%fZ', ge.starts_at),
@@ -530,29 +789,59 @@ func getAllActiveEvents(db *sql.DB, groupID string, userID string) ([]models.Gro
 			ON u.id = ge.creator_id
 		LEFT JOIN profiles p
 			ON p.user_id = u.id
+		LEFT JOIN profile_avatars avatar
+			ON avatar.user_id = u.id
+		LEFT JOIN media avatar_media
+			ON avatar_media.id = avatar.media_id
 		LEFT JOIN event_attendees ea
 			ON ea.event_id = ge.id
 			AND ea.user_id = ?
 		WHERE ge.group_id = ?
-		  AND datetime(ge.starts_at) >= datetime('now')
-		ORDER BY datetime(ge.starts_at) ASC
-	`, userID, groupID)
+			AND datetime(ge.starts_at) >= datetime('now')
+	`
+	if cursor != "" {
+		var cursorStartsAt string
 
-	if err != nil {
-		return nil, err
+		err := db.QueryRow(`
+			SELECT strftime('%Y-%m-%dT%H:%M:%fZ', starts_at)
+			FROM group_events
+			WHERE id = ?
+				AND group_id = ?
+		`, cursor, groupID).Scan(&cursorStartsAt)
+		if err != nil {
+			return nil, "", err
+		}
+		query += `
+			AND (
+				datetime(ge.starts_at) > datetime(?)
+				OR (
+					datetime(ge.starts_at) = datetime(?)
+					AND ge.id > ?
+				)
+			)
+		`
+		args = append(args, cursorStartsAt, cursorStartsAt, cursor)
 	}
 
-	defer rows.Close()
+	query += `
+		ORDER BY datetime(ge.starts_at) ASC, ge.id ASC
+		LIMIT ?
+	`
 
+	args = append(args, limit+1)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
 	events := make([]models.GroupEventResponse, 0)
 	for rows.Next() {
 		var event models.GroupEventResponse
 		var response sql.NullInt64
 		err := rows.Scan(&event.ID, &event.GroupID, &event.CreatorID, &event.CreatorFirstName, &event.CreatorLastName,
-			&event.CreatorNickname, &event.Title, &event.Description, &event.StartsAt, &event.CreatedAt, &response)
-
+			&event.CreatorNickname, &event.CreatorAvatarPath, &event.Title, &event.Description, &event.StartsAt, &event.CreatedAt, &response)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		if response.Valid {
@@ -564,10 +853,16 @@ func getAllActiveEvents(db *sql.DB, groupID string, userID string) ([]models.Gro
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return events, nil
+	nextCursor := ""
+	if len(events) > limit {
+		events = events[:limit]
+		nextCursor = events[len(events)-1].ID
+	}
+
+	return events, nextCursor, nil
 }
 
 func getEventByID(db *sql.DB, groupID string, eventID string) (models.GroupEventResponse, error) {
@@ -580,6 +875,7 @@ func getEventByID(db *sql.DB, groupID string, eventID string) (models.GroupEvent
 			u.first_name,
 			u.last_name,
 			p.nickname,
+			avatar_media.file_path,
 			ge.title,
 			ge.description,
 			strftime('%Y-%m-%dT%H:%M:%fZ', ge.starts_at),
@@ -589,11 +885,15 @@ func getEventByID(db *sql.DB, groupID string, eventID string) (models.GroupEvent
 			ON u.id = ge.creator_id
 		LEFT JOIN profiles p
 			ON p.user_id = u.id
+		LEFT JOIN profile_avatars avatar
+			ON avatar.user_id = u.id
+		LEFT JOIN media avatar_media
+			ON avatar_media.id = avatar.media_id
 		WHERE ge.id = ?
 			AND ge.group_id = ?
 	`, eventID, groupID,
 	).Scan(&event.ID, &event.GroupID, &event.CreatorID, &event.CreatorFirstName, &event.CreatorLastName,
-		&event.CreatorNickname, &event.Title, &event.Description, &event.StartsAt, &event.CreatedAt)
+		&event.CreatorNickname, &event.CreatorAvatarPath, &event.Title, &event.Description, &event.StartsAt, &event.CreatedAt)
 
 	return event, err
 }

@@ -144,7 +144,7 @@ export default function FeedNavigation({ onCreatePost }) {
     { icon: <House size={20} weight="fill" />, label: "Home", onClick: () => navigateTo("/home") },
     { icon: <PlusCircle size={20} weight="fill" />, label: "Create post", onClick: onCreatePost },
     { icon: <User size={20} />, label: "Profile", onClick: () => navigateTo("/profile") },
-    { icon: <UsersThree size={20} />, label: "Groups", disabled: true },
+    { icon: <UsersThree size={20} />, label: "Groups", onClick: () => navigateTo("/groups")},
     { icon: <ChatCircle size={20} />, label: "Messages", onClick: () => navigateTo("/messages") },
     { icon: <Bell size={20} />, label: "Notifications", onClick: () => navigateTo("/notifications") },
     { icon: <SignOut size={20} />, label: "Log out", onClick: handleLogout },

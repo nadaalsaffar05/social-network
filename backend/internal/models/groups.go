@@ -17,29 +17,52 @@ type GroupResponse struct {
 
 type GroupDetailsResponse struct {
 	GroupResponse
-	IsMember          bool `json:"is_member"`
-	HasPendingRequest bool `json:"has_pending_request"`
-	HasPendingInvite  bool `json:"has_pending_invite"`
+	IsMember          bool    `json:"is_member"`
+	CreatorFirstName  string  `json:"creator_first_name"`
+	CreatorLastName   string  `json:"creator_last_name"`
+	CreatorNickname   *string `json:"creator_nickname,omitempty"`
+	MemberCount       int     `json:"member_count"`
+	JoinedAt          *string `json:"joined_at,omitempty"`
+	HasPendingRequest bool    `json:"has_pending_request"`
+	HasPendingInvite  bool    `json:"has_pending_invite"`
+}
+
+type GroupsPageResponse struct {
+	Groups     []GroupDetailsResponse `json:"groups"`
+	NextCursor string                 `json:"next_cursor,omitempty"`
 }
 
 type GroupMemberResponse struct {
-	UserID    string                `json:"user_id"`
-	FirstName string                `json:"first_name"`
-	LastName  string                `json:"last_name"`
-	Nickname  *string               `json:"nickname,omitempty"`
-	Role      enums.GroupMemberRole `json:"role"`
-	JoinedAt  string                `json:"joined_at"`
+	UserID     string                `json:"user_id"`
+	FirstName  string                `json:"first_name"`
+	LastName   string                `json:"last_name"`
+	Nickname   *string               `json:"nickname,omitempty"`
+	AvatarPath *string               `json:"avatar_path,omitempty"`
+	Role       enums.GroupMemberRole `json:"role"`
+	JoinedAt   string                `json:"joined_at"`
+}
+
+type GroupMembersPageResponse struct {
+	Members    []GroupMemberResponse `json:"members"`
+	NextCursor string                `json:"next_cursor,omitempty"`
 }
 
 type GroupJoinRequestResponse struct {
-	RequestID string                       `json:"request_id"`
-	GroupID   string                       `json:"group_id"`
-	UserID    string                       `json:"user_id"`
-	FirstName string                       `json:"first_name"`
-	LastName  string                       `json:"last_name"`
-	Nickname  *string                      `json:"nickname,omitempty"`
-	Status    enums.GroupJoinRequestStatus `json:"status"`
-	CreatedAt string                       `json:"created_at"`
+	RequestID  string                       `json:"request_id"`
+	GroupID    string                       `json:"group_id"`
+	UserID     string                       `json:"user_id"`
+	FirstName  string                       `json:"first_name"`
+	LastName   string                       `json:"last_name"`
+	Nickname   *string                      `json:"nickname,omitempty"`
+	AvatarPath *string                      `json:"avatar_path,omitempty"`
+	Status     enums.GroupJoinRequestStatus `json:"status"`
+	CreatedAt  string                       `json:"created_at"`
+}
+
+type GroupJoinRequestsPageResponse struct {
+	Requests   []GroupJoinRequestResponse `json:"requests"`
+	NextCursor string                     `json:"next_cursor,omitempty"`
+	Total      int                        `json:"total"`
 }
 
 type GroupInvitationResponse struct {
@@ -70,17 +93,23 @@ type UserGroupInvitationResponse struct {
 }
 
 type GroupEventResponse struct {
-	ID               string               `json:"id"`
-	GroupID          string               `json:"group_id"`
-	CreatorID        string               `json:"creator_id"`
-	CreatorFirstName string               `json:"creator_first_name"`
-	CreatorLastName  string               `json:"creator_last_name"`
-	CreatorNickname  *string              `json:"creator_nickname,omitempty"`
-	Title            string               `json:"title"`
-	Description      string               `json:"description"`
-	StartsAt         string               `json:"starts_at"`
-	CreatedAt        string               `json:"created_at"`
-	MyResponse       *enums.EventResponse `json:"my_response,omitempty"`
+	ID                string               `json:"id"`
+	GroupID           string               `json:"group_id"`
+	CreatorID         string               `json:"creator_id"`
+	CreatorFirstName  string               `json:"creator_first_name"`
+	CreatorLastName   string               `json:"creator_last_name"`
+	CreatorNickname   *string              `json:"creator_nickname,omitempty"`
+	CreatorAvatarPath *string              `json:"creator_avatar_path,omitempty"`
+	Title             string               `json:"title"`
+	Description       string               `json:"description"`
+	StartsAt          string               `json:"starts_at"`
+	CreatedAt         string               `json:"created_at"`
+	MyResponse        *enums.EventResponse `json:"my_response,omitempty"`
+}
+
+type GroupEventsPageResponse struct {
+	Events     []GroupEventResponse `json:"events"`
+	NextCursor string               `json:"next_cursor,omitempty"`
 }
 
 type GroupMessage struct {

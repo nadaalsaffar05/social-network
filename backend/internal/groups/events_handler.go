@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"social-network/internal/auth"
 	"social-network/internal/enums"
+	"social-network/internal/feed"
 	"social-network/internal/helpers"
+	"social-network/internal/models"
 	"social-network/internal/notifications"
 	"strings"
 	"time"
@@ -195,13 +197,26 @@ func (h *Handler) GetAllEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := getAllActiveEvents(h.DB, groupID, currentUser.ID)
+	limit, err := feed.FeedLimit(r.URL.Query().Get("limit"))
 	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
+		return
+	}
+
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+
+	events, nextCursor, err := getAllActiveEvents(h.DB, groupID, currentUser.ID, cursor, limit)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")
+			return
+		}
+
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch events")
 		return
 	}
 
-	helpers.WriteJSON(w, http.StatusOK, events)
+	helpers.WriteJSON(w, http.StatusOK, models.GroupEventsPageResponse{Events: events, NextCursor: nextCursor})
 }
 
 func (h *Handler) GetEvent(w http.ResponseWriter, r *http.Request) {
