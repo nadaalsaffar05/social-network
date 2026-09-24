@@ -30,18 +30,19 @@ export default function LoginPage() {
     <main className="auth-page">
       <AuthBackground />
 
-      <section className="auth-card" aria-labelledby="login-title">
+      <section className="auth-card loop-glass-surface" aria-labelledby="login-title">
         <p className="auth-eyebrow">Welcome back</p>
         <h1 id="login-title">Log in to loop</h1>
         <p className="auth-description">
           Connect with your communities and friends
         </p>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label>
+        <form className="auth-form loop-form" onSubmit={handleSubmit}>
+          <label className="loop-form__field">
             Email
             <input
               type="email"
+              className="loop-form__control"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               autoComplete="email"
@@ -49,10 +50,11 @@ export default function LoginPage() {
             />
           </label>
 
-          <label>
+          <label className="loop-form__field">
             Password
             <input
               type="password"
+              className="loop-form__control"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
@@ -62,7 +64,7 @@ export default function LoginPage() {
           </label>
 
           <button
-            className="primary-button"
+            className="primary-button loop-button loop-button--primary"
             type="submit"
             disabled={isSubmitting}
           >

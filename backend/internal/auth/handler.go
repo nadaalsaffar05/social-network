@@ -2,6 +2,7 @@ package auth
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -114,6 +115,26 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if request.Nickname != nil {
+		taken, err := nicknameTaken(h.DB, *request.Nickname)
+		if err != nil {
+			helpers.WriteError(
+				w,
+				http.StatusInternalServerError,
+				"failed to validate nickname",
+			)
+			return
+		}
+		if taken {
+			helpers.WriteError(
+				w,
+				http.StatusConflict,
+				"nickname is already taken",
+			)
+			return
+		}
+	}
+
 	passwordHash, err := hashPassword(request.Password)
 	if err != nil {
 		helpers.WriteError(
@@ -126,6 +147,14 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := createUser(h.DB, request, passwordHash)
 	if err != nil {
+		if errors.Is(err, errNicknameTaken) {
+			helpers.WriteError(
+				w,
+				http.StatusConflict,
+				"nickname is already taken",
+			)
+			return
+		}
 		helpers.WriteError(
 			w,
 			http.StatusInternalServerError,

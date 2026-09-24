@@ -185,7 +185,7 @@ export default function PostComposer({
     <>
       {isOpen && (
         <div
-          className="post-composer-overlay"
+          className="post-composer-overlay loop-glass-backdrop"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeComposer();
@@ -199,8 +199,8 @@ export default function PostComposer({
             initialOpacity={0}
             animateOpacity
           >
-            <div className="post-composer-surface">
-              <form className="post-composer" onSubmit={handleSubmit}>
+            <div className="post-composer-surface loop-glass-surface">
+              <form className="post-composer loop-form" onSubmit={handleSubmit}>
                 <header className="post-composer__header">
                   <h2>
                     {isCommentComposer
@@ -211,7 +211,7 @@ export default function PostComposer({
                   </h2>
                   <button
                     type="button"
-                    className="post-composer__close"
+                    className="post-composer__close loop-icon-button"
                     onClick={closeComposer}
                     disabled={isSubmitting}
                     aria-label="Close post composer"
@@ -243,9 +243,9 @@ export default function PostComposer({
                   <>
                     <div className="post-composer__attachment-row">
                       <label
-                        className={`post-composer__attachment-button${
+                        className={`post-composer__attachment-button loop-media-dropzone${
                           isDraggingMedia
-                            ? " post-composer__attachment-button--dragging"
+                            ? " post-composer__attachment-button--dragging loop-media-dropzone--dragging"
                             : ""
                         }`}
                         onDragEnter={() => setIsDraggingMedia(true)}
@@ -304,7 +304,7 @@ export default function PostComposer({
                     </div>
                     <textarea
                       id="post-content"
-                      className="post-composer__textarea"
+                      className="post-composer__textarea loop-form__control"
                       value={content}
                       onChange={(event) => setContent(event.target.value)}
                       placeholder={
@@ -382,11 +382,11 @@ export default function PostComposer({
                   </p>
                 )}
 
-                <footer className="post-composer__footer">
+                <footer className="post-composer__footer loop-form__footer">
                   {!isCommentComposer && step === 2 ? (
                     <button
                       type="button"
-                      className="post-composer__back"
+                      className="post-composer__back loop-button loop-button--secondary"
                       onClick={() => setStep(1)}
                     >
                       <ArrowLeft size={16} /> Previous
@@ -406,7 +406,7 @@ export default function PostComposer({
                     >
                       <button
                         type="submit"
-                        className="post-composer__submit"
+                        className="post-composer__submit loop-button loop-button--primary"
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? "Posting…" : "Post comment"}
@@ -415,7 +415,7 @@ export default function PostComposer({
                   ) : step === 1 ? (
                     <button
                       type="button"
-                      className="post-composer__submit"
+                      className="post-composer__submit loop-button loop-button--primary"
                       onClick={continueToPrivacy}
                     >
                       Next
@@ -430,7 +430,7 @@ export default function PostComposer({
                     >
                       <button
                         type="submit"
-                        className="post-composer__submit"
+                        className="post-composer__submit loop-button loop-button--primary"
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? "Posting…" : "Share post"}

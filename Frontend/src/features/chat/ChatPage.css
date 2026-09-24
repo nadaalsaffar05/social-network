@@ -123,8 +123,7 @@
   background: rgb(255 255 255 / 5%);
   border-radius: 0.75rem;
 }
-.chat-inbox__search input,
-.chat-composer input {
+.chat-inbox__search input {
   width: 100%;
   min-width: 0;
   color: var(--color-text);
@@ -132,6 +131,11 @@
   background: transparent;
   border: 0;
   outline: 0;
+}
+
+.chat-composer input {
+  width: 100%;
+  min-width: 0;
 }
 .chat-inbox__scroll,
 .chat-messages {
@@ -355,8 +359,6 @@
 }
 .chat-composer input {
   padding: 0.65rem 0.8rem;
-  background: rgb(255 255 255 / 5%);
-  border-radius: 0.75rem;
 }
 .chat-composer__send,
 .chat-composer__emoji-button {
@@ -364,12 +366,7 @@
   place-items: center;
   width: 2.5rem;
   height: 2.5rem;
-  color: white;
-  border: 0;
-  border-radius: 0.7rem;
-}
-.chat-composer__send {
-  background: var(--color-primary);
+  padding: 0;
 }
 .chat-composer__send:disabled {
   opacity: 0.45;
@@ -381,6 +378,7 @@
 .chat-composer__emoji-button {
   color: var(--color-text-muted);
   background: transparent;
+  border-radius: 50%;
   transition:
     color 160ms ease,
     background 160ms ease;

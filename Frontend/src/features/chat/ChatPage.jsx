@@ -683,6 +683,7 @@ export default function ChatPage() {
                 <form className="chat-composer" onSubmit={handleSubmit}>
                   <input
                     ref={composerInputRef}
+                    className="loop-form__control"
                     value={content}
                     onChange={handleTyping}
                     maxLength="10000"
@@ -694,7 +695,7 @@ export default function ChatPage() {
                     className="chat-composer__emoji-control"
                   >
                     <button
-                      className="chat-composer__emoji-button"
+                      className="chat-composer__emoji-button loop-icon-button"
                       type="button"
                       onClick={() =>
                         setIsComposerEmojiPickerOpen((current) => !current)
@@ -715,7 +716,7 @@ export default function ChatPage() {
                     )}
                   </div>
                   <button
-                    className="chat-composer__send"
+                    className="chat-composer__send loop-button loop-button--primary"
                     type="submit"
                     disabled={isSending || !content.trim()}
                     aria-label="Send message"

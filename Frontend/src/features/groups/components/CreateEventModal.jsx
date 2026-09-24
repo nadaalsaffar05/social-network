@@ -3,7 +3,6 @@ import { CalendarDots, X } from "@phosphor-icons/react";
 import { createPortal } from "react-dom";
 
 import { useToast } from "../../../shared/components/toast/useToast.js";
-import "./CreateEventModal.css";
 
 export default function CreateEventModal({ creating, onClose, onCreate }) {
   const [title, setTitle] = useState("");
@@ -57,24 +56,24 @@ export default function CreateEventModal({ creating, onClose, onCreate }) {
 
   return createPortal(
     <div
-      className="create-event-overlay"
+      className="create-event-overlay loop-glass-backdrop"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !creating) {
           onClose();
         }
       }}
     >
-      <div className="create-event-modal border-glow">
-        <form onSubmit={handleSubmit} className="create-event-form">
-          <header className="create-event-modal-header">
-            <div className="create-event-modal-title">
+      <div className="create-event-modal creation-modal loop-glass-surface">
+        <form onSubmit={handleSubmit} className="create-event-form loop-form">
+          <header className="create-event-modal-header creation-modal__header">
+            <div className="create-event-modal-title creation-modal__title">
               <CalendarDots size={22} weight="bold" />
               <h2>Create Event</h2>
             </div>
 
             <button
               type="button"
-              className="create-event-close"
+              className="create-event-close loop-icon-button"
               onClick={onClose}
               disabled={creating}
               aria-label="Close create event"
@@ -83,11 +82,12 @@ export default function CreateEventModal({ creating, onClose, onCreate }) {
             </button>
           </header>
 
-          <div className="create-event-field">
+          <div className="create-event-field loop-form__field">
             <label htmlFor="event-title">Event name</label>
 
             <input
               id="event-title"
+              className="loop-form__control"
               type="text"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
@@ -98,11 +98,12 @@ export default function CreateEventModal({ creating, onClose, onCreate }) {
             />
           </div>
 
-          <div className="create-event-field">
+          <div className="create-event-field loop-form__field">
             <label htmlFor="event-description">Description</label>
 
             <textarea
               id="event-description"
+              className="loop-form__control"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="What is this event about?"
@@ -111,16 +112,17 @@ export default function CreateEventModal({ creating, onClose, onCreate }) {
               disabled={creating}
             />
 
-            <span className="create-event-character-count">
+            <span className="create-event-character-count creation-modal__count">
               {description.length}/1000
             </span>
           </div>
 
-          <div className="create-event-field">
+          <div className="create-event-field loop-form__field">
             <label htmlFor="event-starts-at">Starts at</label>
 
             <input
               id="event-starts-at"
+              className="loop-form__control"
               type="datetime-local"
               value={startsAt}
               onChange={(event) => setStartsAt(event.target.value)}
@@ -128,10 +130,10 @@ export default function CreateEventModal({ creating, onClose, onCreate }) {
             />
           </div>
 
-          <footer className="create-event-actions">
+          <footer className="create-event-actions loop-form__footer loop-form__footer--stack-on-mobile">
             <button
               type="button"
-              className="create-event-cancel"
+              className="create-event-cancel loop-button loop-button--secondary"
               onClick={onClose}
               disabled={creating}
             >
@@ -140,7 +142,7 @@ export default function CreateEventModal({ creating, onClose, onCreate }) {
 
             <button
               type="submit"
-              className="create-event-submit"
+              className="create-event-submit loop-button loop-button--primary"
               disabled={
                 creating || !title.trim() || !description.trim() || !startsAt
               }

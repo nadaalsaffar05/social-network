@@ -116,9 +116,9 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
         : "@username";
 
   return (
-    <div className="edit-profile-modal-backdrop" onClick={onClose}>
+    <div className="edit-profile-modal-backdrop loop-glass-backdrop" onClick={onClose}>
       <div
-        className="edit-profile-modal-card"
+        className="edit-profile-modal-card loop-glass-surface"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="edit-profile-modal-header">
@@ -132,7 +132,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
           </div>
           <button
             type="button"
-            className="edit-profile-close-btn"
+            className="edit-profile-close-btn loop-icon-button"
             onClick={onClose}
             aria-label="Close"
           >
@@ -177,7 +177,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
 
               <button
                 type="button"
-                className="edit-avatar-change-btn"
+                className="edit-avatar-change-btn loop-button loop-button--secondary"
                 onClick={handleAvatarClick}
               >
                 Change Photo
@@ -191,10 +191,11 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
             <div className="edit-profile-right-col">
               {/* Row 1: 2 fields (First Name, Last Name) */}
               <div className="edit-profile-row-2">
-                <div className="edit-profile-field">
+                <div className="edit-profile-field loop-form__field">
                   <label htmlFor="edit-first-name">First Name *</label>
                   <input
                     id="edit-first-name"
+                    className="loop-form__control"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -203,10 +204,11 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
                     maxLength={100}
                   />
                 </div>
-                <div className="edit-profile-field">
+                <div className="edit-profile-field loop-form__field">
                   <label htmlFor="edit-last-name">Last Name *</label>
                   <input
                     id="edit-last-name"
+                    className="loop-form__control"
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -219,10 +221,11 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
 
               {/* Row 2: 3 fields (Username/Nickname, Date of Birth, Privacy) */}
               <div className="edit-profile-row-3">
-                <div className="edit-profile-field">
+                <div className="edit-profile-field loop-form__field">
                   <label htmlFor="edit-nickname">Username</label>
                   <input
                     id="edit-nickname"
+                    className="loop-form__control"
                     type="text"
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
@@ -230,24 +233,25 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
                     maxLength={40}
                   />
                 </div>
-                <div className="edit-profile-field">
+                <div className="edit-profile-field loop-form__field">
                   <label htmlFor="edit-dob">Date of Birth *</label>
                   <input
                     id="edit-dob"
+                    className="loop-form__control"
                     type="date"
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
                     required
                   />
                 </div>
-                <div className="edit-profile-field">
+                <div className="edit-profile-field loop-form__field">
                   <label htmlFor="edit-privacy">Privacy</label>
                   <div className="edit-profile-select-wrapper">
                     <select
                       id="edit-privacy"
                       value={privacy}
                       onChange={(e) => setPrivacy(Number(e.target.value))}
-                      className="edit-profile-select"
+                      className="edit-profile-select loop-form__control"
                     >
                       <option value={PROFILE_PRIVACY.PUBLIC}>Public</option>
                       <option value={PROFILE_PRIVACY.PRIVATE}>Private</option>
@@ -267,6 +271,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
                   </div>
                   <textarea
                     id="edit-about-me"
+                    className="loop-form__control"
                     rows={4}
                     value={aboutMe}
                     onChange={(e) => setAboutMe(e.target.value)}
@@ -280,7 +285,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
               <div className="edit-profile-actions">
                 <button
                   type="button"
-                  className="edit-profile-btn secondary"
+                  className="edit-profile-btn secondary loop-button loop-button--secondary"
                   onClick={onClose}
                   disabled={saving}
                 >
@@ -288,7 +293,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
                 </button>
                 <button
                   type="submit"
-                  className="edit-profile-btn primary"
+                  className="edit-profile-btn primary loop-button loop-button--primary"
                   disabled={saving}
                 >
                   <FloppyDisk size={18} weight="bold" />

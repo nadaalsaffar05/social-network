@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"math/rand"
+	"strings"
 
 	"social-network/internal/enums"
 	"social-network/internal/helpers"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/gofrs/uuid/v5"
 )
+
+var errNicknameTaken = errors.New("nickname is already taken")
 
 const userQuery = `
 	SELECT
@@ -29,6 +32,18 @@ const userQuery = `
 
 func getUserByEmail(db *sql.DB, email string) (*models.User, error) {
 	return getUser(db, userQuery+"WHERE u.email = ?", email)
+}
+
+func nicknameTaken(db *sql.DB, nickname string) (bool, error) {
+	var exists bool
+	err := db.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1
+			FROM profiles
+			WHERE LOWER(nickname) = LOWER(?)
+		)
+	`, nickname).Scan(&exists)
+	return exists, err
 }
 
 func GetUserByID(db *sql.DB, userID string) (*models.User, error) {
@@ -105,6 +120,9 @@ func createUser(
 			request.Nickname,
 			request.AboutMe,
 		); err != nil {
+			if strings.Contains(err.Error(), "profiles.nickname") {
+				return errNicknameTaken
+			}
 			return err
 		}
 

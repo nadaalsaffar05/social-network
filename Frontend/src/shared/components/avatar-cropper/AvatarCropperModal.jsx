@@ -35,13 +35,13 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
   };
 
   return (
-    <div className="cropper-modal-backdrop" onClick={onClose}>
-      <div className="cropper-modal-card" onClick={(e) => e.stopPropagation()}>
+    <div className="cropper-modal-backdrop loop-glass-backdrop" onClick={onClose}>
+      <div className="cropper-modal-card loop-glass-surface" onClick={(e) => e.stopPropagation()}>
         <div className="cropper-modal-header">
           <h3 className="cropper-modal-title">Crop Profile Picture</h3>
           <button
             type="button"
-            className="cropper-close-btn"
+            className="cropper-close-btn loop-icon-button"
             onClick={onClose}
             aria-label="Close"
           >
@@ -84,7 +84,7 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
           <div className="cropper-action-buttons">
             <button
               type="button"
-              className="cropper-btn secondary"
+              className="cropper-btn secondary loop-button loop-button--secondary"
               onClick={onClose}
               disabled={isSaving}
             >
@@ -92,14 +92,9 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
             </button>
             <button
               type="button"
-              className="cropper-btn primary"
+              className="cropper-btn primary loop-button loop-button--primary"
               onClick={handleSave}
               disabled={isSaving}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
             >
               <Check size={18} weight="bold" />
               {isSaving ? "Saving" : "Save Avatar"}
