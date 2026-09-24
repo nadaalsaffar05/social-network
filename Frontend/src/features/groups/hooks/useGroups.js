@@ -1,23 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { getGroups } from "../../../api/groups.js";
+import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
-const INITIAL_CURSOR = "";
-
-const STATUS = {
-  LOADING: "loading",
-  LOADING_MORE: "loading-more",
-  READY: "ready",
-  ERROR: "error",
-};
 
 export function useGroups(filter) {
   const [groups, setGroups] = useState([]);
   const [nextCursor, setNextCursor] = useState(INITIAL_CURSOR);
-  const [status, setStatus] = useState(STATUS.LOADING);
+  const [status, setStatus] = useState(PAGINATION_STATUS.LOADING);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
-    setStatus(STATUS.LOADING);
+    setStatus(PAGINATION_STATUS.LOADING);
     setError(null);
 
     try {
@@ -29,19 +22,19 @@ export function useGroups(filter) {
 
       setGroups(nextGroups);
       setNextCursor(cursor);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
-      setStatus(STATUS.ERROR);
+      setStatus(PAGINATION_STATUS.ERROR);
     }
   }, [filter]);
 
   const loadMore = useCallback(async () => {
-    if (!nextCursor || status === STATUS.LOADING_MORE) {
+    if (!nextCursor || status === PAGINATION_STATUS.LOADING_MORE) {
       return;
     }
 
-    setStatus(STATUS.LOADING_MORE);
+    setStatus(PAGINATION_STATUS.LOADING_MORE);
     setError(null);
 
     try {
@@ -55,10 +48,10 @@ export function useGroups(filter) {
       setGroups((currentGroups) => [...currentGroups, ...nextGroups]);
 
       setNextCursor(cursor);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     }
   }, [filter, nextCursor, status]);
 

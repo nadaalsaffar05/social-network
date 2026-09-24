@@ -199,8 +199,7 @@
   font-size: 0.88rem;
 }
 
-.post-composer__followers p,
-.post-composer__error {
+.post-composer__followers p {
   margin: 0;
   color: var(--color-secondary);
   font-size: 0.85rem;

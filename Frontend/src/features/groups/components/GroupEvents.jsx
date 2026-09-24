@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, X } from "@phosphor-icons/react";
 
 import Avatar from "../../../shared/components/avatar/Avatar.jsx";
 import { usePageNavigate } from "../../../shared/components/back-button/usePageBack.js";
 import { useToast } from "../../../shared/components/toast/useToast.js";
 import { formatLocalDateTime } from "../../../shared/utils/dateTime.js";
+import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserver.js";
 import { EVENT_RESPONSE } from "../constants.js";
 import { useGroupEvents } from "../hooks/useGroupEvents.js";
 import CreateEventModal from "./CreateEventModal.jsx";
@@ -13,8 +14,6 @@ import "./GroupEvents.css";
 export default function GroupEvents({ groupID, currentUserID }) {
   const navigateTo = usePageNavigate();
   const { error: showError, success: showSuccess } = useToast();
-  const loadMoreRef = useRef(null);
-
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const {
@@ -31,6 +30,7 @@ export default function GroupEvents({ groupID, currentUserID }) {
 
   const loading = status === "loading";
   const loadingMore = status === "loading-more";
+  const loadMoreRef = usePaginationObserver({ hasMore, status, loadMore });
 
   useEffect(() => {
     if (!error) {
@@ -39,33 +39,6 @@ export default function GroupEvents({ groupID, currentUserID }) {
 
     showError("Could not load events", error || "Please try again.");
   }, [error, showError]);
-
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target || !hasMore) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-
-        if (entry.isIntersecting && status === "ready") {
-          void loadMore();
-        }
-      },
-      {
-        rootMargin: "200px",
-      },
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [hasMore, status, loadMore]);
 
   async function handleResponse(event, action) {
     const success = await respond(event.id, action);

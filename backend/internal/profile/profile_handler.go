@@ -160,7 +160,7 @@ func UpdateProfile(db *sql.DB) http.HandlerFunc {
 		}
 
 		dateOfBirth := strings.TrimSpace(req.DateOfBirth)
-		if err := helpers.ParseDateOnly(dateOfBirth); err != nil {
+		if _, err := helpers.ParseDateOnly(dateOfBirth); err != nil {
 			helpers.WriteError(w, http.StatusBadRequest, "invalid date of birth format (YYYY-MM-DD expected)")
 			return
 		}

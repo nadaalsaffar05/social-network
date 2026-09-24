@@ -33,16 +33,6 @@
   transform: scale(0.995);
 }
 
-.group-card-selected {
-  background: rgb(26 30 41 / 72%);
-  border-color: rgb(104 144 245 / 42%);
-}
-
-.group-card-selected:hover {
-  background: rgb(26 30 41 / 72%);
-  border-color: rgb(126 159 249 / 70%);
-}
-
 .group-card-header {
   display: flex;
   align-items: center;
@@ -63,17 +53,6 @@
   font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.group-card-meta {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  min-width: 0;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
 }
 
 .group-member-count {
@@ -131,7 +110,4 @@
     align-items: flex-start;
   }
 
-  .group-card-meta {
-    gap: 0.5rem;
-  }
 }

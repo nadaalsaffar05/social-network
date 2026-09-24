@@ -1,24 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { getGroupMembers } from "../../../api/groups.js";
+import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
-const INITIAL_CURSOR = "";
 const MEMBERS_LIMIT = 10;
-
-const STATUS = {
-  LOADING: "loading",
-  LOADING_MORE: "loading-more",
-  READY: "ready",
-  ERROR: "error",
-};
 
 export function useGroupMembers(groupID) {
   const [members, setMembers] = useState([]);
   const [nextCursor, setNextCursor] = useState(INITIAL_CURSOR);
-  const [status, setStatus] = useState(STATUS.LOADING);
+  const [status, setStatus] = useState(PAGINATION_STATUS.LOADING);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
-    setStatus(STATUS.LOADING);
+    setStatus(PAGINATION_STATUS.LOADING);
     setError(null);
 
     try {
@@ -31,19 +24,19 @@ export function useGroupMembers(groupID) {
 
       setMembers(nextMembers);
       setNextCursor(cursor);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
-      setStatus(STATUS.ERROR);
+      setStatus(PAGINATION_STATUS.ERROR);
     }
   }, [groupID]);
 
   const loadMore = useCallback(async () => {
-    if (!nextCursor || status === STATUS.LOADING_MORE) {
+    if (!nextCursor || status === PAGINATION_STATUS.LOADING_MORE) {
       return;
     }
 
-    setStatus(STATUS.LOADING_MORE);
+    setStatus(PAGINATION_STATUS.LOADING_MORE);
     setError(null);
 
     try {
@@ -58,15 +51,19 @@ export function useGroupMembers(groupID) {
       setMembers((currentMembers) => [...currentMembers, ...nextMembers]);
 
       setNextCursor(cursor);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     }
   }, [groupID, nextCursor, status]);
 
   useEffect(() => {
-    void refresh();
+    async function loadInitialMembers() {
+      await refresh();
+    }
+
+    void loadInitialMembers();
   }, [refresh]);
 
   return {

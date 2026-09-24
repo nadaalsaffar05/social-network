@@ -23,9 +23,8 @@ func ParseJSON(body io.Reader, data any) error {
 	return json.NewDecoder(body).Decode(data)
 }
 
-func ParseDateOnly(value string) error {
-	_, err := time.Parse(time.DateOnly, value)
-	return err
+func ParseDateOnly(value string) (time.Time, error) {
+	return time.Parse(time.DateOnly, value)
 }
 
 func normalizeErrorMessage(message string) string {

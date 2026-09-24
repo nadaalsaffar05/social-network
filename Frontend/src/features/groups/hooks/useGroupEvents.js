@@ -6,26 +6,19 @@ import {
   respondToGroupEvent,
 } from "../../../api/groups.js";
 import { EVENT_RESPONSE } from "../constants.js";
+import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
-const INITIAL_CURSOR = "";
 const EVENTS_LIMIT = 10;
-
-const STATUS = {
-  LOADING: "loading",
-  LOADING_MORE: "loading-more",
-  READY: "ready",
-  ERROR: "error",
-};
 
 export function useGroupEvents(groupID) {
   const [events, setEvents] = useState([]);
   const [nextCursor, setNextCursor] = useState(INITIAL_CURSOR);
-  const [status, setStatus] = useState(STATUS.LOADING);
+  const [status, setStatus] = useState(PAGINATION_STATUS.LOADING);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
   const [respondingEventID, setRespondingEventID] = useState(null);
   const refresh = useCallback(async () => {
-    setStatus(STATUS.LOADING);
+    setStatus(PAGINATION_STATUS.LOADING);
     setError(null);
     try {
       const { events: nextEvents = [], next_cursor: cursor = INITIAL_CURSOR } =
@@ -34,19 +27,19 @@ export function useGroupEvents(groupID) {
         });
       setEvents(nextEvents);
       setNextCursor(cursor);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
-      setStatus(STATUS.ERROR);
+      setStatus(PAGINATION_STATUS.ERROR);
     }
   }, [groupID]);
 
   const loadMore = useCallback(async () => {
-    if (!nextCursor || status === STATUS.LOADING_MORE) {
+    if (!nextCursor || status === PAGINATION_STATUS.LOADING_MORE) {
       return;
     }
 
-    setStatus(STATUS.LOADING_MORE);
+    setStatus(PAGINATION_STATUS.LOADING_MORE);
     setError(null);
 
     try {
@@ -59,10 +52,10 @@ export function useGroupEvents(groupID) {
       setEvents((currentEvents) => [...currentEvents, ...nextEvents]);
 
       setNextCursor(cursor);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     }
   }, [groupID, nextCursor, status]);
 
@@ -121,7 +114,11 @@ export function useGroupEvents(groupID) {
   );
 
   useEffect(() => {
-    void refresh();
+    async function loadInitialEvents() {
+      await refresh();
+    }
+
+    void loadInitialEvents();
   }, [refresh]);
 
   return {

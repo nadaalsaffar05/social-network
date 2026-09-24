@@ -441,9 +441,9 @@ export default function ChatPage() {
         <span className="chat-page__backdrop-card chat-page__backdrop-card--two" />
         <span className="chat-page__backdrop-card chat-page__backdrop-card--three" />
       </div>
-      <div className="chat-page__overlay post-composer-overlay">
+      <div className="chat-page__overlay loop-glass-backdrop">
         <section
-          className={`chat-shell post-composer-surface${userId ? " chat-shell--thread-open" : ""}`}
+          className={`chat-shell loop-glass-surface${userId ? " chat-shell--thread-open" : ""}`}
         >
           <aside className="chat-inbox" aria-label="Message inbox">
             <PageHeader
@@ -683,7 +683,6 @@ export default function ChatPage() {
                 <form className="chat-composer" onSubmit={handleSubmit}>
                   <input
                     ref={composerInputRef}
-                    className="loop-form__control"
                     value={content}
                     onChange={handleTyping}
                     maxLength="10000"
@@ -695,7 +694,7 @@ export default function ChatPage() {
                     className="chat-composer__emoji-control"
                   >
                     <button
-                      className="chat-composer__emoji-button loop-icon-button"
+                      className="chat-composer__emoji-button"
                       type="button"
                       onClick={() =>
                         setIsComposerEmojiPickerOpen((current) => !current)
@@ -716,7 +715,7 @@ export default function ChatPage() {
                     )}
                   </div>
                   <button
-                    className="chat-composer__send loop-button loop-button--primary"
+                    className="chat-composer__send"
                     type="submit"
                     disabled={isSending || !content.trim()}
                     aria-label="Send message"

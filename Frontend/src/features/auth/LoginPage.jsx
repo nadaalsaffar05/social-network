@@ -30,7 +30,10 @@ export default function LoginPage() {
     <main className="auth-page">
       <AuthBackground />
 
-      <section className="auth-card loop-glass-surface" aria-labelledby="login-title">
+      <section
+        className="auth-card loop-glass-surface"
+        aria-labelledby="login-title"
+      >
         <p className="auth-eyebrow">Welcome back</p>
         <h1 id="login-title">Log in to loop</h1>
         <p className="auth-description">

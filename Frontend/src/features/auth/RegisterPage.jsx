@@ -3,7 +3,7 @@ import { ImageSquare } from "@phosphor-icons/react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { registerUser } from "../../api/auth.js";
-import { uploadAvatar } from "../../api/Profile.js";
+import { uploadAvatar } from "../../api/profile.js";
 import AvatarCropperModal from "../../shared/components/avatar-cropper/AvatarCropperModal.jsx";
 import { useToast } from "../../shared/components/toast/useToast.js";
 import AuthBackground from "./components/AuthBackground.jsx";
@@ -18,6 +18,29 @@ const initialForm = {
   about_me: "",
 };
 
+const MINIMUM_REGISTRATION_AGE = 18;
+const MAXIMUM_REGISTRATION_AGE = 65;
+
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function registrationDateBounds() {
+  const today = new Date();
+  const latest = new Date(today);
+  const earliest = new Date(today);
+  latest.setFullYear(latest.getFullYear() - MINIMUM_REGISTRATION_AGE);
+  earliest.setFullYear(earliest.getFullYear() - MAXIMUM_REGISTRATION_AGE);
+
+  return {
+    earliest: formatDateInput(earliest),
+    latest: formatDateInput(latest),
+  };
+}
+
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { error: showError, warning: showWarning } = useToast();
@@ -27,9 +50,10 @@ export default function RegisterPage() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
   const [selectedImageSrc, setSelectedImageSrc] = useState("");
-  const [nicknameError, setNicknameError] = useState("");
   const avatarInputRef = useRef(null);
   const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
+  const { earliest: oldestAllowedBirthDate, latest: youngestAllowedBirthDate } =
+    registrationDateBounds();
 
   useEffect(() => {
     return () => {
@@ -48,7 +72,6 @@ export default function RegisterPage() {
   function updateField(event) {
     const { name, value } = event.target;
     setForm((currentForm) => ({ ...currentForm, [name]: value }));
-    if (name === "nickname") setNicknameError("");
   }
 
   function openAvatarCropper(file) {
@@ -82,8 +105,17 @@ export default function RegisterPage() {
     event.preventDefault();
     if (isSubmitting || selectedImageSrc) return;
 
-    // The existing required/email/password rules validate step 1 first.
     if (step === 1) {
+      if (
+        form.date_of_birth < oldestAllowedBirthDate ||
+        form.date_of_birth > youngestAllowedBirthDate
+      ) {
+        showError(
+          "Date of birth is not eligible",
+          "You must be 18–65 years old to create an account.",
+        );
+        return;
+      }
       setStep(2);
       return;
     }
@@ -99,7 +131,6 @@ export default function RegisterPage() {
     try {
       await registerUser(user);
 
-      // Upload after registration creates the session required by this API.
       if (avatarFile) {
         try {
           await uploadAvatar(avatarFile);
@@ -114,7 +145,10 @@ export default function RegisterPage() {
       navigate("/home", { replace: true });
     } catch (requestError) {
       if (requestError.message === "nickname is already taken") {
-        setNicknameError("That nickname is already taken. Try another one.");
+        showError(
+          "Nickname unavailable",
+          "That nickname is already taken. Try another one.",
+        );
         return;
       }
       showError(
@@ -130,7 +164,10 @@ export default function RegisterPage() {
     <main className="auth-page">
       <AuthBackground />
 
-      <section className="auth-card loop-glass-surface" aria-labelledby="register-title">
+      <section
+        className="auth-card loop-glass-surface"
+        aria-labelledby="register-title"
+      >
         <p className="auth-eyebrow">Join the conversation</p>
         <h1 id="register-title">Create your account</h1>
         <p className="auth-description">
@@ -170,8 +207,8 @@ export default function RegisterPage() {
                 Email
                 <input
                   type="email"
-                name="email"
-                className="loop-form__control"
+                  name="email"
+                  className="loop-form__control"
                   value={form.email}
                   onChange={updateField}
                   autoComplete="email"
@@ -182,8 +219,8 @@ export default function RegisterPage() {
                 Password
                 <input
                   type="password"
-                name="password"
-                className="loop-form__control"
+                  name="password"
+                  className="loop-form__control"
                   value={form.password}
                   onChange={updateField}
                   minLength={6}
@@ -209,8 +246,8 @@ export default function RegisterPage() {
                 Date of birth
                 <input
                   type="date"
-                name="date_of_birth"
-                className="loop-form__control"
+                  name="date_of_birth"
+                  className="loop-form__control"
                   value={form.date_of_birth}
                   onChange={updateField}
                   required
@@ -287,11 +324,6 @@ export default function RegisterPage() {
                   onChange={updateField}
                   autoComplete="nickname"
                 />
-                {nicknameError && (
-                  <p className="auth-field-error" role="alert">
-                    {nicknameError}
-                  </p>
-                )}
               </label>
 
               <label className="loop-form__field">

@@ -5,7 +5,6 @@ import "./GroupCard.css";
 
 export default function GroupCard({
   group,
-  selected,
   onSelect,
   filter,
   currentUserID,
@@ -23,7 +22,7 @@ export default function GroupCard({
   return (
     <button
       type="button"
-      className={`group-card ${selected ? "group-card-selected" : ""}`}
+      className="group-card"
       onClick={onSelect}
     >
       <div className="group-card-header">

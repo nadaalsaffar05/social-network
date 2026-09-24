@@ -16,6 +16,7 @@ import {
 } from "../../../api/feed.js";
 import { getFollowers } from "../../../api/profile.js";
 import { POST_PRIVACY } from "../../../shared/constants/enums.js";
+import { useToast } from "../../../shared/components/toast/useToast.js";
 import { getUserDisplayName } from "../../../shared/utils/user.js";
 import AnimatedContent from "./AnimatedContent.jsx";
 import ClickSpark from "./ClickSpark.jsx";
@@ -61,8 +62,8 @@ export default function PostComposer({
   const [selectedUserIDs, setSelectedUserIDs] = useState([]);
   const [step, setStep] = useState(1);
   const [isDraggingMedia, setIsDraggingMedia] = useState(false);
-  const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { error: showError } = useToast();
 
   const isCommentComposer = Boolean(postId);
   const isOpen = Boolean(open);
@@ -92,8 +93,13 @@ export default function PostComposer({
 
     getFollowers()
       .then(setFollowers)
-      .catch(() => setError("Failed to load your followers"));
-  }, [followers.length, isCommentComposer, isOpen, privacy]);
+      .catch(() =>
+        showError(
+          "Couldn’t load followers",
+          "Try again before sharing with selected followers.",
+        ),
+      );
+  }, [followers.length, isCommentComposer, isOpen, privacy, showError]);
 
   function resetComposer() {
     setIsOpen(false);
@@ -102,7 +108,6 @@ export default function PostComposer({
     setFiles([]);
     setSelectedUserIDs([]);
     setStep(1);
-    setError("");
   }
 
   function closeComposer() {
@@ -126,19 +131,16 @@ export default function PostComposer({
 
   function continueToPrivacy() {
     if (!content.trim()) {
-      setError("Write something before posting");
+      showError("Post needs content", "Write something before continuing.");
       return;
     }
-    setError("");
     setStep(2);
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setError("");
-
     if (!content.trim()) {
-      setError("Write something before posting");
+      showError("Post needs content", "Write something before posting.");
       return;
     }
     if (
@@ -146,7 +148,10 @@ export default function PostComposer({
       privacy === POST_PRIVACY.SELECTED &&
       selectedUserIDs.length === 0
     ) {
-      setError("Select at least one follower");
+      showError(
+        "Choose followers",
+        "Select at least one follower for this privacy option.",
+      );
       return;
     }
 
@@ -175,7 +180,10 @@ export default function PostComposer({
       await onCreated();
       resetComposer();
     } catch (requestError) {
-      setError(requestError.message || "Failed to create the post");
+      showError(
+        isCommentComposer ? "Couldn’t post comment" : "Couldn’t create post",
+        requestError.message || "Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -243,9 +251,9 @@ export default function PostComposer({
                   <>
                     <div className="post-composer__attachment-row">
                       <label
-                        className={`post-composer__attachment-button loop-media-dropzone${
+                        className={`loop-media-dropzone${
                           isDraggingMedia
-                            ? " post-composer__attachment-button--dragging loop-media-dropzone--dragging"
+                            ? " loop-media-dropzone--dragging"
                             : ""
                         }`}
                         onDragEnter={() => setIsDraggingMedia(true)}
@@ -374,12 +382,6 @@ export default function PostComposer({
                       </fieldset>
                     )}
                   </section>
-                )}
-
-                {error && (
-                  <p className="post-composer__error" role="alert">
-                    {error}
-                  </p>
                 )}
 
                 <footer className="post-composer__footer loop-form__footer">

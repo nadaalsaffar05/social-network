@@ -1,20 +1,21 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import Avatar from "../../../shared/components/avatar/Avatar.jsx";
 
 import { usePageNavigate } from "../../../shared/components/back-button/usePageBack.js";
 import { useToast } from "../../../shared/components/toast/useToast.js";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
+import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserver.js";
 import { useGroupMembers } from "../hooks/useGroupMembers.js";
 import "./GroupMembers.css";
 
 export default function GroupMembers({ groupID, memberCount }) {
   const navigateTo = usePageNavigate();
   const { error: showError } = useToast();
-  const loadMoreRef = useRef(null);
   const { members, error, status, hasMore, loadMore } =
     useGroupMembers(groupID);
   const loading = status === "loading";
   const loadingMore = status === "loading-more";
+  const loadMoreRef = usePaginationObserver({ hasMore, status, loadMore });
 
   useEffect(() => {
     if (!error) {
@@ -23,33 +24,6 @@ export default function GroupMembers({ groupID, memberCount }) {
 
     showError("Could not load members", error || "Please try again.");
   }, [error, showError]);
-
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target || !hasMore) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-
-        if (entry.isIntersecting && status === "ready") {
-          void loadMore();
-        }
-      },
-      {
-        rootMargin: "200px",
-      },
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [hasMore, status, loadMore]);
 
   if (loading) {
     return <div className="group-members-state">Loading members...</div>;

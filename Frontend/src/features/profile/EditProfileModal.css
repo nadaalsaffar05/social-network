@@ -61,16 +61,6 @@
   padding: 24px;
 }
 
-.edit-profile-error {
-  margin-bottom: 16px;
-  padding: 10px 14px;
-  color: #f87171;
-  font-size: 0.88rem;
-  background: rgb(239 68 68 / 12%);
-  border: 1px solid rgb(239 68 68 / 25%);
-  border-radius: 10px;
-}
-
 /* 2-Column Split Layout */
 .edit-profile-layout {
   display: flex;

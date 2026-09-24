@@ -1,17 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Check, X } from "@phosphor-icons/react";
 
 import { usePageNavigate } from "../../../shared/components/back-button/usePageBack.js";
 import { useToast } from "../../../shared/components/toast/useToast.js";
 import Avatar from "../../../shared/components/avatar/Avatar.jsx";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
+import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserver.js";
 import { useGroupJoinRequests } from "../hooks/useGroupJoinRequests.js";
 import "./GroupJoinRequests.css";
 
 export default function GroupJoinRequests({ groupID }) {
   const navigateTo = usePageNavigate();
   const { error: showError, success: showSuccess } = useToast();
-  const loadMoreRef = useRef(null);
   const {
     requests,
     total,
@@ -24,6 +24,7 @@ export default function GroupJoinRequests({ groupID }) {
   } = useGroupJoinRequests(groupID);
   const loading = status === "loading";
   const loadingMore = status === "loading-more";
+  const loadMoreRef = usePaginationObserver({ hasMore, status, loadMore });
 
   useEffect(() => {
     if (!error) {
@@ -32,33 +33,6 @@ export default function GroupJoinRequests({ groupID }) {
 
     showError("Could not load join requests", error || "Please try again.");
   }, [error, showError]);
-
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target || !hasMore) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-
-        if (entry.isIntersecting && status === "ready") {
-          void loadMore();
-        }
-      },
-      {
-        rootMargin: "200px",
-      },
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [hasMore, status, loadMore]);
 
   async function handleResponse(request, action) {
     const success = await respond(request.request_id, action);

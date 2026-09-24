@@ -9,6 +9,7 @@ import { updateProfile, uploadAvatar } from "../../api/profile.js";
 import AvatarCropperModal from "../../shared/components/avatar-cropper/AvatarCropperModal";
 import Avatar from "../../shared/components/avatar/Avatar.jsx";
 import { PROFILE_PRIVACY } from "../../shared/constants/enums.js";
+import { useToast } from "../../shared/components/toast/useToast.js";
 import "./EditProfileModal.css";
 
 export default function EditProfileModal({ profile, onClose, onSave }) {
@@ -30,7 +31,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
   const fileInputRef = useRef(null);
 
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { error: showError } = useToast();
 
   function handleAvatarClick() {
     if (fileInputRef.current) {
@@ -60,18 +61,16 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError("");
-
     if (!firstName.trim()) {
-      setError("First name is required");
+      showError("First name is required", "Add your first name to continue.");
       return;
     }
     if (!lastName.trim()) {
-      setError("Last name is required");
+      showError("Last name is required", "Add your last name to continue.");
       return;
     }
     if (!dateOfBirth) {
-      setError("Date of birth is required");
+      showError("Date of birth is required", "Add your date of birth to continue.");
       return;
     }
 
@@ -100,7 +99,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
       onSave(updatedUser);
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to update profile — please try again");
+      showError("Couldn’t save profile", err.message || "Please try again.");
     } finally {
       setSaving(false);
     }
@@ -141,8 +140,6 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="edit-profile-form">
-          {error && <div className="edit-profile-error">{error}</div>}
-
           <div className="edit-profile-layout">
             {/* LEFT COLUMN: Avatar, Name, Username */}
             <div className="edit-profile-left-col">

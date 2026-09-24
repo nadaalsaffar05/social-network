@@ -134,7 +134,7 @@ export default function GroupPage() {
                 isCreator={isCreator}
               />
 
-              <div className="group-content-card border-glow">
+              <div className="group-content-card">
                 <div className="group-section-content">
                   {activeSection === "events" && (
                     <GroupEvents

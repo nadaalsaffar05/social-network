@@ -5,9 +5,15 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"social-network/internal/helpers"
 	"social-network/internal/models"
+)
+
+const (
+	minimumRegistrationAge = 18
+	maximumRegistrationAge = 65
 )
 
 type Handler struct {
@@ -87,11 +93,22 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := helpers.ParseDateOnly(request.DateOfBirth); err != nil {
+	birthDate, err := helpers.ParseDateOnly(request.DateOfBirth)
+	if err != nil {
 		helpers.WriteError(
 			w,
 			http.StatusBadRequest,
 			"date_of_birth must use YYYY-MM-DD",
+		)
+		return
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	if birthDate.After(today.AddDate(-minimumRegistrationAge, 0, 0)) ||
+		birthDate.Before(today.AddDate(-maximumRegistrationAge, 0, 0)) {
+		helpers.WriteError(
+			w,
+			http.StatusBadRequest,
+			"you must be between 18 and 65 years old to register",
 		)
 		return
 	}

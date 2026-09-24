@@ -7,6 +7,7 @@ import {
   Check,
 } from "@phosphor-icons/react";
 import { getCroppedImg } from "../../utils/cropImage";
+import { useToast } from "../toast/useToast.js";
 import "./AvatarCropperModal.css";
 
 export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
@@ -14,7 +15,7 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { error: showError } = useToast();
 
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -24,11 +25,10 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
     if (!croppedAreaPixels) return;
     try {
       setIsSaving(true);
-      setError("");
       const croppedFile = await getCroppedImg(imageSrc, croppedAreaPixels);
       await onCropSave(croppedFile);
     } catch (cropError) {
-      setError(cropError.message || "Failed to crop avatar");
+      showError("Couldn’t crop photo", cropError.message || "Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -78,8 +78,6 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
             />
             <MagnifyingGlassPlus size={20} weight="bold" />
           </div>
-
-          {error && <p className="form-error">{error}</p>}
 
           <div className="cropper-action-buttons">
             <button

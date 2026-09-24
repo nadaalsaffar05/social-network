@@ -1,27 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { getJoinRequests, respondToJoinRequest } from "../../../api/groups.js";
+import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
-const INITIAL_CURSOR = "";
 const REQUESTS_LIMIT = 10;
-
-const STATUS = {
-  LOADING: "loading",
-  LOADING_MORE: "loading-more",
-  READY: "ready",
-  ERROR: "error",
-};
 
 export function useGroupJoinRequests(groupID) {
   const [requests, setRequests] = useState([]);
   const [nextCursor, setNextCursor] = useState(INITIAL_CURSOR);
-  const [status, setStatus] = useState(STATUS.LOADING);
+  const [status, setStatus] = useState(PAGINATION_STATUS.LOADING);
   const [error, setError] = useState(null);
   const [respondingRequestID, setRespondingRequestID] = useState(null);
   const [total, setTotal] = useState(0);
 
   const refresh = useCallback(async () => {
-    setStatus(STATUS.LOADING);
+    setStatus(PAGINATION_STATUS.LOADING);
     setError(null);
 
     try {
@@ -36,19 +29,19 @@ export function useGroupJoinRequests(groupID) {
       setRequests(nextRequests);
       setNextCursor(cursor);
       setTotal(nextTotal);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
-      setStatus(STATUS.ERROR);
+      setStatus(PAGINATION_STATUS.ERROR);
     }
   }, [groupID]);
 
   const loadMore = useCallback(async () => {
-    if (!nextCursor || status === STATUS.LOADING_MORE) {
+    if (!nextCursor || status === PAGINATION_STATUS.LOADING_MORE) {
       return;
     }
 
-    setStatus(STATUS.LOADING_MORE);
+    setStatus(PAGINATION_STATUS.LOADING_MORE);
     setError(null);
 
     try {
@@ -63,10 +56,10 @@ export function useGroupJoinRequests(groupID) {
       setRequests((currentRequests) => [...currentRequests, ...nextRequests]);
 
       setNextCursor(cursor);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
-      setStatus(STATUS.READY);
+      setStatus(PAGINATION_STATUS.READY);
     }
   }, [groupID, nextCursor, status]);
 
@@ -78,13 +71,10 @@ export function useGroupJoinRequests(groupID) {
       try {
         await respondToJoinRequest(groupID, requestID, action);
 
-        setRequests(
-          (currentRequests) =>
-            currentRequests.filter(
-              (request) => request.request_id !== requestID,
-            ),
-          setTotal((currentTotal) => Math.max(0, currentTotal - 1)),
+        setRequests((currentRequests) =>
+          currentRequests.filter((request) => request.request_id !== requestID),
         );
+        setTotal((currentTotal) => Math.max(0, currentTotal - 1));
 
         return true;
       } catch (requestError) {
@@ -98,7 +88,11 @@ export function useGroupJoinRequests(groupID) {
   );
 
   useEffect(() => {
-    void refresh();
+    async function loadInitialRequests() {
+      await refresh();
+    }
+
+    void loadInitialRequests();
   }, [refresh]);
 
   return {

@@ -31,11 +31,7 @@ export default function GroupDetails({
     `${group.creator_first_name} ${group.creator_last_name}`;
 
   return (
-    <aside
-      className={`group-details border-glow ${
-        mode === "discover" ? "group-details-discover" : "group-details-member"
-      }`}
-    >
+    <aside className="group-details border-glow">
       <div className="group-details-field">
         <h2>{group.title}</h2>
         <div className="group-details-members">

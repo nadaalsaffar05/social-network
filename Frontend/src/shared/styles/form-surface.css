@@ -34,6 +34,9 @@
 .loop-form__field {
   display: grid;
   gap: 0.45rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .loop-form__field > label,

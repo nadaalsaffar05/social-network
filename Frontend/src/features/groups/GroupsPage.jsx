@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 
 import {
@@ -13,6 +13,7 @@ import CreateGroupModal from "./components/CreateGroupModal.jsx";
 import PageHeader from "../../shared/components/back-button/PageHeader.jsx";
 import { useToast } from "../../shared/components/toast/useToast.js";
 import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
+import { usePaginationObserver } from "../../shared/hooks/usePaginationObserver.js";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
 import { useGroups } from "./hooks/useGroups.js";
@@ -34,9 +35,17 @@ export default function GroupsPage() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [groupActionLoading, setGroupActionLoading] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const loadMoreRef = useRef(null);
   const loading = status === "loading";
   const loadingMore = status === "loading-more";
+  const loadMoreRef = usePaginationObserver({ hasMore, status, loadMore });
+  const selectedGroupIsVisible =
+    filter === "discover" &&
+    Boolean(selectedGroupId) &&
+    groups.some((group) => group.id === selectedGroupId);
+  const displayedSelectedGroup =
+    selectedGroupIsVisible && selectedGroup?.id === selectedGroupId
+      ? selectedGroup
+      : null;
 
   // Get current user
   useEffect(() => {
@@ -65,12 +74,10 @@ export default function GroupsPage() {
   // make discover always have a selected group
   useEffect(() => {
     if (filter !== "discover") {
-      setSelectedGroup(null);
       return;
     }
 
     if (groups.length === 0) {
-      setSelectedGroup(null);
       return;
     }
 
@@ -98,38 +105,9 @@ export default function GroupsPage() {
     }
   }, [filter, groups, selectedGroupId, location.state, setSearchParams]);
 
-  // Pagination
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target || !hasMore) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-
-        if (entry.isIntersecting && status === "ready") {
-          void loadMore();
-        }
-      },
-      {
-        rootMargin: "200px",
-      },
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [hasMore, status, loadMore]);
-
   // Load selected Discover group details
   useEffect(() => {
-    if (filter !== "discover" || !selectedGroupId) {
-      setSelectedGroup(null);
+    if (!selectedGroupId || !selectedGroupIsVisible) {
       return;
     }
 
@@ -165,7 +143,7 @@ export default function GroupsPage() {
     return () => {
       isMounted = false;
     };
-  }, [filter, selectedGroupId, showError]);
+  }, [selectedGroupId, selectedGroupIsVisible, showError]);
 
   // Pagination errors
   useEffect(() => {
@@ -178,6 +156,7 @@ export default function GroupsPage() {
 
   function handleFilterChange(nextFilter) {
     setSelectedGroup(null);
+    setGroups([]);
 
     setSearchParams(
       (currentParams) => {
@@ -201,6 +180,10 @@ export default function GroupsPage() {
   }
 
   function handleDiscoverSelection(groupID) {
+    setSelectedGroup((currentGroup) =>
+      currentGroup?.id === groupID ? currentGroup : null,
+    );
+
     setSearchParams(
       (currentParams) => {
         const nextParams = new URLSearchParams(currentParams);
@@ -335,7 +318,7 @@ export default function GroupsPage() {
               </button>
             </div>
 
-            <div className="groups-list-panel border-glow">
+            <div className="groups-list-panel">
               {loading && <p>Loading groups...</p>}
 
               {!loading && groups.length === 0 && (
@@ -355,9 +338,6 @@ export default function GroupsPage() {
                         group={group}
                         filter={filter}
                         currentUserID={currentUser?.id}
-                        selected={
-                          filter === "discover" && selectedGroupId === group.id
-                        }
                         onSelect={() => {
                           if (filter === "mine") {
                             navigateTo(`/groups/${group.id}`);
@@ -389,9 +369,9 @@ export default function GroupsPage() {
           </section>
 
           <aside className="groups-side-column">
-            {filter === "discover" && selectedGroup && (
+            {displayedSelectedGroup && (
               <GroupDetails
-                group={selectedGroup}
+                group={displayedSelectedGroup}
                 loading={detailsLoading}
                 error=""
                 actionLoading={groupActionLoading}

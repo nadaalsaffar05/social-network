@@ -1,11 +1,6 @@
 import { useCallback, useState } from "react";
-import {
-  CheckCircle,
-  Info,
-  WarningCircle,
-  XCircle,
-} from "@phosphor-icons/react";
 
+import Toast from "./Toast.jsx";
 import { ToastContext } from "./toastContext.js";
 
 export function ToastProvider({ children }) {
@@ -42,6 +37,9 @@ export function ToastProvider({ children }) {
     (title, description) => showToast({ title, description, variant: "info" }),
     [showToast],
   );
+  const dismissToast = useCallback((toastID) => {
+    setToasts((current) => current.filter((toast) => toast.id !== toastID));
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast, error, success, warning, info }}>
@@ -52,59 +50,7 @@ export function ToastProvider({ children }) {
         aria-label="Notifications"
       >
         {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`toast${toast.variant ? ` toast--${toast.variant}` : ""}${toast.onClick ? " toast--clickable" : ""}`}
-            role={toast.onClick ? "button" : "status"}
-            tabIndex={toast.onClick ? 0 : undefined}
-            onClick={() => {
-              toast.onClick?.();
-              setToasts((current) =>
-                current.filter((item) => item.id !== toast.id),
-              );
-            }}
-            onKeyDown={(event) => {
-              if (
-                toast.onClick &&
-                (event.key === "Enter" || event.key === " ")
-              ) {
-                toast.onClick();
-                setToasts((current) =>
-                  current.filter((item) => item.id !== toast.id),
-                );
-              }
-            }}
-          >
-            {toast.variant && (
-              <span className="toast__icon" aria-hidden="true">
-                {
-                  {
-                    error: <XCircle weight="fill" />,
-                    success: <CheckCircle weight="fill" />,
-                    warning: <WarningCircle weight="fill" />,
-                    info: <Info weight="fill" />,
-                  }[toast.variant]
-                }
-              </span>
-            )}
-            <div>
-              <strong>{toast.title}</strong>
-              {toast.description && <p>{toast.description}</p>}
-            </div>
-            {toast.action && (
-              <button
-                type="button"
-                onClick={() => {
-                  toast.action.onClick?.();
-                  setToasts((current) =>
-                    current.filter((item) => item.id !== toast.id),
-                  );
-                }}
-              >
-                {toast.action.label}
-              </button>
-            )}
-          </div>
+          <Toast key={toast.id} toast={toast} onDismiss={dismissToast} />
         ))}
       </aside>
     </ToastContext.Provider>

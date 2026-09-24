@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Bell, UserPlus } from "@phosphor-icons/react";
+import { Bell } from "@phosphor-icons/react";
 import { usePageNavigate } from "../back-button/usePageBack.js";
 import { useChatRealtime } from "../../../features/chat/realtime/useChatRealtime.js";
 import "./HeaderNav.css";
@@ -9,15 +9,6 @@ export default function HeaderNav() {
   const { attentionCounts } = useChatRealtime();
 
   const items = [
-    /*
-    {
-      id: "follow-requests",
-      label: "Follow requests",
-      Icon: UserPlus,
-      count: attentionCounts.followRequests,
-      path: "/follow-requests",
-    },
-    */
     {
       id: "notifications",
       label: "Notifications",
