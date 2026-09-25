@@ -3,26 +3,12 @@ package feed
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"social-network/internal/enums"
 )
 
 const maxPostContentLength = 10000
-
-func FeedLimit(value string) (int, error) {
-	if value == "" {
-		return 10, nil
-	}
-
-	limit, err := strconv.Atoi(value)
-	if err != nil || limit < 1 || limit > 50 {
-		return 0, fmt.Errorf("invalid limit")
-	}
-
-	return limit, nil
-}
 
 func NormalizePostContent(content string) (string, error) {
 	content = strings.TrimSpace(content)

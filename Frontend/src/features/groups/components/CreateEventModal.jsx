@@ -3,6 +3,21 @@ import { CalendarDots, X } from "@phosphor-icons/react";
 import { createPortal } from "react-dom";
 
 import { useToast } from "../../../shared/components/toast/useToast.js";
+import {
+  formatLocalDate,
+  formatLocalTime,
+} from "../../../shared/utils/dateTime.js";
+
+function formatEventStart(value) {
+  return `${formatLocalDate(value, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  })} at ${formatLocalTime(value, {
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+}
 
 export default function CreateEventModal({ creating, onClose, onCreate }) {
   const [title, setTitle] = useState("");
@@ -50,7 +65,7 @@ export default function CreateEventModal({ creating, onClose, onCreate }) {
       return;
     }
 
-    showSuccess("Event created");
+    showSuccess("Event created", formatEventStart(startDate.toISOString()));
     onClose();
   }
 

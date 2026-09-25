@@ -1,10 +1,22 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import Toast from "./Toast.jsx";
 import { ToastContext } from "./toastContext.js";
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const timeoutIDsRef = useRef(new Map());
+
+  const dismissToast = useCallback((toastID) => {
+    const timeoutID = timeoutIDsRef.current.get(toastID);
+
+    if (timeoutID !== undefined) {
+      window.clearTimeout(timeoutID);
+      timeoutIDsRef.current.delete(toastID);
+    }
+
+    setToasts((current) => current.filter((toast) => toast.id !== toastID));
+  }, []);
 
   const showToast = useCallback((toast) => {
     const id = crypto.randomUUID();
@@ -15,10 +27,9 @@ export function ToastProvider({ children }) {
         : current),
       { id, ...details },
     ]);
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 4000);
-  }, []);
+    const timeoutID = window.setTimeout(() => dismissToast(id), 4000);
+    timeoutIDsRef.current.set(id, timeoutID);
+  }, [dismissToast]);
   const error = useCallback(
     (title, description) => showToast({ title, description, variant: "error" }),
     [showToast],
@@ -37,8 +48,13 @@ export function ToastProvider({ children }) {
     (title, description) => showToast({ title, description, variant: "info" }),
     [showToast],
   );
-  const dismissToast = useCallback((toastID) => {
-    setToasts((current) => current.filter((toast) => toast.id !== toastID));
+  useEffect(() => {
+    const timeoutIDs = timeoutIDsRef.current;
+
+    return () => {
+      timeoutIDs.forEach((timeoutID) => window.clearTimeout(timeoutID));
+      timeoutIDs.clear();
+    };
   }, []);
 
   return (

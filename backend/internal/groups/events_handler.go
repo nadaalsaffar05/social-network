@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"social-network/internal/auth"
 	"social-network/internal/enums"
-	"social-network/internal/feed"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
 	"social-network/internal/notifications"
@@ -31,37 +30,8 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
-	currentUser := auth.CurrentUser(r)
-	if currentUser == nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	groupID := r.PathValue("group_id")
-	if groupID == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "Group ID is required")
-		return
-	}
-
-	_, err := getGroupByID(h.DB, groupID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			helpers.WriteError(w, http.StatusNotFound, "Group not found")
-			return
-		}
-
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group")
-		return
-	}
-
-	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
-		return
-	}
-
-	if !isMember {
-		helpers.WriteError(w, http.StatusForbidden, "You must be a group member to create an event")
+	groupID, currentUserID, ok := h.requireActiveGroupMember(w, r, "You must be a group member to create an event")
+	if !ok {
 		return
 	}
 
@@ -112,7 +82,7 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	operationError := "Failed to start event"
 	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
 		operationError = "Failed to create event"
-		if err := createEvent(tx, eventID, groupID, currentUser.ID, req.Title, req.Description, startsAtUTC); err != nil {
+		if err := createEvent(tx, eventID, groupID, currentUserID, req.Title, req.Description, startsAtUTC); err != nil {
 			return err
 		}
 
@@ -124,13 +94,13 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 
 		operationError = "Failed to create event notifications"
 		for _, memberID := range members {
-			if memberID == currentUser.ID {
+			if memberID == currentUserID {
 				continue
 			}
 			notifiedMemberIDs = append(notifiedMemberIDs, memberID)
 			if err := notifications.Create(tx, notifications.CreateInput{
 				RecipientID:  memberID,
-				ActorID:      currentUser.ID,
+				ActorID:      currentUserID,
 				Type:         enums.NotificationTypeEventCreated,
 				GroupEventID: &eventID,
 			}); err != nil {
@@ -163,41 +133,12 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetAllEvents(w http.ResponseWriter, r *http.Request) {
-	currentUser := auth.CurrentUser(r)
-	if currentUser == nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+	groupID, currentUserID, ok := h.requireActiveGroupMember(w, r, "You must be a group member to view events")
+	if !ok {
 		return
 	}
 
-	groupID := r.PathValue("group_id")
-	if groupID == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "Group ID is required")
-		return
-	}
-
-	_, err := getGroupByID(h.DB, groupID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			helpers.WriteError(w, http.StatusNotFound, "Group not found")
-			return
-		}
-
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group")
-		return
-	}
-
-	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
-		return
-	}
-
-	if !isMember {
-		helpers.WriteError(w, http.StatusForbidden, "You must be a group member to view events")
-		return
-	}
-
-	limit, err := feed.FeedLimit(r.URL.Query().Get("limit"))
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
 		return
@@ -205,7 +146,7 @@ func (h *Handler) GetAllEvents(w http.ResponseWriter, r *http.Request) {
 
 	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
 
-	events, nextCursor, err := getAllActiveEvents(h.DB, groupID, currentUser.ID, cursor, limit)
+	events, nextCursor, err := getAllActiveEvents(h.DB, groupID, currentUserID, cursor, limit)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")

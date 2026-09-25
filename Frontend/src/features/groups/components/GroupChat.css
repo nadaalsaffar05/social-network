@@ -1,19 +1,17 @@
 .group-chat {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: 100%;
   min-width: 0;
-  height: 680px;
-  min-height: 0;
+  height: min(680px, calc(100dvh - 11rem));
+  min-height: 33rem;
 }
 
 .group-chat-header {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.5rem 1.5rem 1rem;
+  min-height: 5rem;
+  padding: 0 1.25rem;
   border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
 
@@ -21,32 +19,51 @@
   min-width: 0;
 }
 
-.group-chat-label {
-  display: block;
-  margin-bottom: 0.4rem;
-  color: var(--color-text-faint);
-  font-size: 0.7rem;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.08em;
-}
-
-.group-chat-header h2 {
+.group-chat .group-chat-header h2 {
   margin: 0;
   overflow: hidden;
   color: var(--color-text);
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.15rem;
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .group-chat-messages {
-  flex: 1 1 auto;
   min-height: 0;
 }
 
-.group-chat-sender {
+/* GroupPage's generic text rules must not override the shared chat geometry. */
+.group-chat .chat-day-divider {
+  display: block;
+  width: fit-content;
+  margin: 0.8rem auto;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  line-height: normal;
+}
+
+.group-chat .chat-message > div > p {
+  margin: 0;
+  color: white;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.group-chat .chat-empty {
+  padding: 1rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+.group-chat .chat-loading-older {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.group-chat .group-chat-sender {
   margin: 0.65rem 0 0.25rem 0.5rem;
   color: var(--color-text-muted);
   font-size: 0.72rem;
@@ -66,15 +83,17 @@
 }
 
 .group-chat-composer {
-  flex: 0 0 auto;
+  min-width: 0;
 }
 
 @media (max-width: 700px) {
   .group-chat {
-    height: 620px;
+    height: calc(100dvh - 8rem);
+    min-height: 30rem;
   }
 
   .group-chat-header {
-    padding: 1rem;
+    min-height: 4.5rem;
+    padding: 0 1rem;
   }
 }

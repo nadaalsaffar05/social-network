@@ -201,21 +201,12 @@
 
 .edit-profile-field {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .edit-profile-field-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.edit-profile-field label {
-  color: var(--color-text, #e2e8f0);
-  font-size: 0.84rem;
-  font-weight: 600;
 }
 
 .edit-profile-select-wrapper {
@@ -253,10 +244,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
   margin-top: 6px;
-  padding-top: 14px;
-  border-top: 1px solid rgb(255 255 255 / 10%);
 }
 
 /* Responsive adjustments */

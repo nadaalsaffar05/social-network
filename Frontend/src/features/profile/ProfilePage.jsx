@@ -546,7 +546,19 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   className="profile-secondary-btn"
-                  onClick={() => navigateTo(`/messages/${id}`)}
+                  onClick={() =>
+                    navigateTo(`/messages/${id}`, {
+                      state: {
+                        chatUser: {
+                          id: profile.id,
+                          first_name: profile.first_name,
+                          last_name: profile.last_name,
+                          nickname: profile.nickname,
+                          avatar_path: profile.avatar_path,
+                        },
+                      },
+                    })
+                  }
                 >
                   Message
                 </button>

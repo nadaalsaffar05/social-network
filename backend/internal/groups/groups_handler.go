@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"social-network/internal/auth"
-	"social-network/internal/feed"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
 	"strings"
@@ -109,7 +108,7 @@ func (h *Handler) GetGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, err := feed.FeedLimit(r.URL.Query().Get("limit"))
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
 		return
@@ -200,7 +199,7 @@ func (h *Handler) GetGroupMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, err := feed.FeedLimit(r.URL.Query().Get("limit"))
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
 		return

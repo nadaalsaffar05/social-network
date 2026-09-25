@@ -4,13 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"os"
-	"strconv"
 
 	"social-network/internal/auth"
 	"social-network/internal/helpers"
-
-	"github.com/google/uuid"
 )
 
 func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
@@ -59,53 +55,22 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "invalid or oversized upload")
-		return
-	}
-
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "file is required")
-		return
-	}
-	defer file.Close()
-
-	mimeType, err := helpers.DetectMediaMIMEType(file)
-	if err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "only JPEG, PNG, and GIF are allowed")
-		return
-	}
-
-	position, err := strconv.Atoi(r.FormValue("position"))
-	if err != nil || position < 0 {
-		helpers.WriteError(w, http.StatusBadRequest, "position must be a non-negative integer")
-		return
-	}
-
-	mediaID := uuid.New().String()
-	relativePath, fileSize, err := helpers.SaveMediaFile(file, "uploads/posts", mediaID, mimeType)
-	if errors.Is(err, helpers.ErrEmptyMediaFile) {
-		helpers.WriteError(w, http.StatusBadRequest, "file cannot be empty")
-		return
-	}
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save media")
+	upload, ok := parseMediaUpload(w, r, "uploads/posts")
+	if !ok {
 		return
 	}
 
 	keepFile := false
 	defer func() {
 		if !keepFile {
-			_ = os.Remove(relativePath)
+			upload.removeFile()
 		}
 	}()
 
 	operationError := "could not start transaction"
 	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
 		operationError = "could not record post media"
-		if err := addPostMedia(tx, postID, mediaID, currentUser.ID, header.Filename, relativePath, mimeType, fileSize, position); err != nil {
+		if err := addPostMedia(tx, postID, upload.ID, currentUser.ID, upload.FileName, upload.RelativePath, upload.MIMEType, upload.FileSize, upload.Position); err != nil {
 			return err
 		}
 
@@ -118,8 +83,8 @@ func (h *Handler) UploadPostMedia(w http.ResponseWriter, r *http.Request) {
 
 	keepFile = true
 	helpers.WriteJSON(w, http.StatusCreated, map[string]string{
-		"media_id":  mediaID,
-		"file_path": helpers.PublicMediaURL(relativePath),
+		"media_id":  upload.ID,
+		"file_path": helpers.PublicMediaURL(upload.RelativePath),
 	})
 }
 
@@ -169,48 +134,15 @@ func (h *Handler) UploadCommentMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
-
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "invalid or oversized upload")
-		return
-	}
-
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "file is required")
-		return
-	}
-	defer file.Close()
-
-	mimeType, err := helpers.DetectMediaMIMEType(file)
-	if err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "only JPEG, PNG, and GIF are allowed")
-		return
-	}
-
-	position, err := strconv.Atoi(r.FormValue("position"))
-	if err != nil || position < 0 {
-		helpers.WriteError(w, http.StatusBadRequest, "position must be a non-negative integer")
-		return
-	}
-
-	mediaID := uuid.New().String()
-
-	relativePath, fileSize, err := helpers.SaveMediaFile(file, "uploads/comments", mediaID, mimeType)
-	if errors.Is(err, helpers.ErrEmptyMediaFile) {
-		helpers.WriteError(w, http.StatusBadRequest, "file cannot be empty")
-		return
-	}
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not save media")
+	upload, ok := parseMediaUpload(w, r, "uploads/comments")
+	if !ok {
 		return
 	}
 
 	keepFile := false
 	defer func() {
 		if !keepFile {
-			_ = os.Remove(relativePath)
+			upload.removeFile()
 		}
 	}()
 
@@ -220,13 +152,13 @@ func (h *Handler) UploadCommentMedia(w http.ResponseWriter, r *http.Request) {
 		if err := addCommentMedia(
 			tx,
 			commentID,
-			mediaID,
+			upload.ID,
 			currentUser.ID,
-			header.Filename,
-			relativePath,
-			mimeType,
-			fileSize,
-			position,
+			upload.FileName,
+			upload.RelativePath,
+			upload.MIMEType,
+			upload.FileSize,
+			upload.Position,
 		); err != nil {
 			return err
 		}
@@ -241,7 +173,7 @@ func (h *Handler) UploadCommentMedia(w http.ResponseWriter, r *http.Request) {
 	keepFile = true
 
 	helpers.WriteJSON(w, http.StatusCreated, map[string]string{
-		"media_id":  mediaID,
-		"file_path": helpers.PublicMediaURL(relativePath),
+		"media_id":  upload.ID,
+		"file_path": helpers.PublicMediaURL(upload.RelativePath),
 	})
 }

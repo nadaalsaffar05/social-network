@@ -123,8 +123,7 @@
   background: rgb(255 255 255 / 5%);
   border-radius: 0.75rem;
 }
-.chat-inbox__search input,
-.chat-composer input {
+.chat-inbox__search input {
   width: 100%;
   min-width: 0;
   color: var(--color-text);
@@ -359,42 +358,24 @@
   padding: 0.85rem 1.25rem;
   border-top: 1px solid rgb(255 255 255 / 10%);
 }
-.chat-composer input {
-  padding: 0.65rem 0.8rem;
-  background: rgb(255 255 255 / 5%);
-  border-radius: 0.75rem;
+.chat-composer .loop-form__control {
+  flex: 1;
+  min-width: 0;
 }
-.chat-composer__send,
-.chat-composer__emoji-button {
-  display: grid;
-  place-items: center;
+
+.chat-composer__send {
+  flex: 0 0 auto;
   width: 2.5rem;
   height: 2.5rem;
-  color: white;
-  border: 0;
-  border-radius: 0.7rem;
-}
-.chat-composer__send {
-  background: var(--color-primary);
-}
-.chat-composer__send:disabled {
-  opacity: 0.45;
 }
 .chat-composer__emoji-control {
   position: relative;
   flex: 0 0 auto;
 }
-.chat-composer__emoji-button {
-  color: var(--color-text-muted);
-  background: transparent;
-  transition:
-    color 160ms ease,
-    background 160ms ease;
-}
-.chat-composer__emoji-button:hover,
 .chat-composer__emoji-button[aria-expanded="true"] {
   color: var(--color-text);
-  background: rgb(255 255 255 / 9%);
+  background: rgb(255 255 255 / 7%);
+  border-color: rgb(255 255 255 / 24%);
 }
 .chat-composer__emoji-picker {
   position: absolute;
@@ -509,10 +490,14 @@
   font-weight: 600 !important;
   border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
-.chat-message__picker .epr-category-nav {
+.chat-message__picker .epr-header,
+.chat-composer__emoji-picker .epr-header {
+  height: 70px !important;
+}
+.chat-message__picker .epr-category-nav,
+.chat-composer__emoji-picker .epr-category-nav {
   display: none !important;
 }
-
 .chat-message__picker .epr-search-container input:hover,
 .chat-composer__emoji-picker .epr-search-container input:hover {
   border-color: rgb(255 255 255 / 16%) !important;
@@ -581,6 +566,7 @@
   .chat-composer {
     padding: 0.75rem;
   }
+  .chat-message__picker .EmojiPickerReact,
   .chat-composer__emoji-picker .EmojiPickerReact {
     width: min(340px, calc(100vw - 1.5rem)) !important;
   }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -397,7 +396,7 @@ func (h *Handler) getMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, err := MessagesLimit(r.URL.Query().Get("limit"))
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 30)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 50")
 		return
@@ -480,16 +479,4 @@ func (h *Handler) createMessage(w http.ResponseWriter, r *http.Request) {
 	h.Hub.SendTo(otherUserID, models.SocketEvent{Type: eventType, Data: message})
 
 	helpers.WriteJSON(w, http.StatusCreated, message)
-}
-
-func MessagesLimit(value string) (int, error) {
-	if value == "" {
-		return 30, nil
-	}
-
-	limit, err := strconv.Atoi(value)
-	if err != nil || limit < 1 || limit > 50 {
-		return 0, errors.New("invalid limit")
-	}
-	return limit, nil
 }

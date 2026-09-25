@@ -1,5 +1,8 @@
 import { buildApiUrl } from "../config/api";
 
+const SERVER_UNAVAILABLE_MESSAGE =
+  "Couldn’t reach the server. Make sure the backend is running, then try again.";
+
 export async function request(pathSegments, options = {}) {
   const {
     method = "GET",
@@ -12,16 +15,28 @@ export async function request(pathSegments, options = {}) {
   const isFormData = body instanceof FormData;
   const hasBody = body != null;
 
-  const response = await fetch(buildApiUrl(pathSegments, queryParams), {
-    ...fetchOptions,
-    method,
-    credentials: "include",
-    headers: {
-      ...(hasBody && !isFormData ? { "Content-Type": "application/json" } : {}),
-      ...headers,
-    },
-    body: hasBody && !isFormData ? JSON.stringify(body) : body,
-  });
+  let response;
+
+  try {
+    response = await fetch(buildApiUrl(pathSegments, queryParams), {
+      ...fetchOptions,
+      method,
+      credentials: "include",
+      headers: {
+        ...(hasBody && !isFormData
+          ? { "Content-Type": "application/json" }
+          : {}),
+        ...headers,
+      },
+      body: hasBody && !isFormData ? JSON.stringify(body) : body,
+    });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(SERVER_UNAVAILABLE_MESSAGE, { cause: error });
+    }
+
+    throw error;
+  }
 
   const responseText = await response.text();
   const isJSON = response.headers

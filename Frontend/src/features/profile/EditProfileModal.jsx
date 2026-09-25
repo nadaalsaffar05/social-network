@@ -139,7 +139,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="edit-profile-form">
+        <form onSubmit={handleSubmit} className="edit-profile-form loop-form">
           <div className="edit-profile-layout">
             {/* LEFT COLUMN: Avatar, Name, Username */}
             <div className="edit-profile-left-col">
@@ -259,7 +259,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
 
               {/* Row 3: 1 wide field (About Me / Bio) */}
               <div className="edit-profile-row-1">
-                <div className="edit-profile-field">
+                <div className="edit-profile-field loop-form__field">
                   <div className="edit-profile-field-header">
                     <label htmlFor="edit-about-me">About Me / Bio</label>
                     <span className="edit-profile-char-count">
@@ -279,7 +279,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
               </div>
 
               {/* Actions Footer */}
-              <div className="edit-profile-actions">
+              <div className="edit-profile-actions loop-form__footer">
                 <button
                   type="button"
                   className="edit-profile-btn secondary loop-button loop-button--secondary"

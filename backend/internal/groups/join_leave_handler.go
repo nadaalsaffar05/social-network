@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"social-network/internal/auth"
 	"social-network/internal/enums"
-	"social-network/internal/feed"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
 	"social-network/internal/notifications"
@@ -185,7 +184,7 @@ func (h *Handler) GetJoinRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, err := feed.FeedLimit(r.URL.Query().Get("limit"))
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
 		return

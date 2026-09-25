@@ -28,47 +28,18 @@ func (h *Handler) GroupMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetGroupMessages(w http.ResponseWriter, r *http.Request) {
-	currentUser := auth.CurrentUser(r)
-	if currentUser == nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+	groupID, currentUserID, ok := h.requireActiveGroupMember(w, r, "You must be a group member to view messages")
+	if !ok {
 		return
 	}
 
-	groupID := r.PathValue("group_id")
-	if groupID == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "Group ID is required")
-		return
-	}
-
-	_, err := getGroupByID(h.DB, groupID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			helpers.WriteError(w, http.StatusNotFound, "Group not found")
-			return
-		}
-
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group")
-		return
-	}
-
-	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
-		return
-	}
-
-	if !isMember {
-		helpers.WriteError(w, http.StatusForbidden, "You must be a group member to view messages")
-		return
-	}
-
-	limit, err := chat.MessagesLimit(r.URL.Query().Get("limit"))
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 30)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 50")
 		return
 	}
 
-	messages, nextCursor, err := getGroupMessages(h.DB, groupID, currentUser.ID, strings.TrimSpace(r.URL.Query().Get("cursor")), limit)
+	messages, nextCursor, err := getGroupMessages(h.DB, groupID, currentUserID, strings.TrimSpace(r.URL.Query().Get("cursor")), limit)
 	if err != nil {
 		if errors.Is(err, errInvalidCursor) {
 			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")
@@ -82,37 +53,8 @@ func (h *Handler) GetGroupMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateGroupMessages(w http.ResponseWriter, r *http.Request) {
-	currentUser := auth.CurrentUser(r)
-	if currentUser == nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	groupID := strings.TrimSpace(r.PathValue("group_id"))
-	if groupID == "" {
-		helpers.WriteError(w, http.StatusBadRequest, "Group ID is required")
-		return
-	}
-
-	_, err := getGroupByID(h.DB, groupID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			helpers.WriteError(w, http.StatusNotFound, "Group not found")
-			return
-		}
-
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group")
-		return
-	}
-
-	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
-		return
-	}
-
-	if !isMember {
-		helpers.WriteError(w, http.StatusForbidden, "You must be a group member to send messages")
+	groupID, currentUserID, ok := h.requireActiveGroupMember(w, r, "You must be a group member to send messages")
+	if !ok {
 		return
 	}
 
@@ -130,7 +72,7 @@ func (h *Handler) CreateGroupMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message, err := createGroupMessage(h.DB, groupID, currentUser.ID, content)
+	message, err := createGroupMessage(h.DB, groupID, currentUserID, content)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to send group message")
 		return
@@ -145,7 +87,7 @@ func (h *Handler) CreateGroupMessages(w http.ResponseWriter, r *http.Request) {
 	event := models.SocketEvent{Type: "group-message:new", Data: message}
 
 	for _, memberID := range memberIDs {
-		if memberID == currentUser.ID {
+		if memberID == currentUserID {
 			continue
 		}
 		h.Hub.SendTo(memberID, event)

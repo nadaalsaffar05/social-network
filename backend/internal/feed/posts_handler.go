@@ -152,7 +152,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, err := FeedLimit(r.URL.Query().Get("limit"))
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 50")
 		return

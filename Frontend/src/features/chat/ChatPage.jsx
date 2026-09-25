@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { useLocation, useParams } from "react-router-dom";
 import PageHeader from "../../shared/components/back-button/PageHeader.jsx";
 import {
   usePageBack,
@@ -30,6 +36,7 @@ import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
 import MessageReactions from "./components/MessageReactions.jsx";
 import ChatEmojiPicker from "./components/ChatEmojiPicker.jsx";
+import { useChatMessageScroll } from "./hooks/useChatMessageScroll.js";
 import {
   formatLocalDate,
   formatLocalDateTime,
@@ -38,6 +45,7 @@ import {
   parseAPITimestamp,
 } from "../../shared/utils/dateTime.js";
 import { getUserDisplayName } from "../../shared/utils/user.js";
+import { getPublicProfile } from "../../api/profile.js";
 import "../../shared/styles/components/PostComposer.css";
 import "./ChatPage.css";
 
@@ -80,16 +88,21 @@ function addMessages(current, incoming, { prepend = false } = {}) {
 
 export default function ChatPage() {
   const { userId } = useParams();
+  const location = useLocation();
   const navigateTo = usePageNavigate();
   const backToChats = usePageBack("/messages", { preferFallback: true });
   const { error: showError, success: showSuccess } = useToast();
   const { events, onlineUserIDs, sendEvent, typingUserIDs } = useChatRealtime();
   const typingTimerRef = useRef(null);
+  const activeThreadUserIDRef = useRef(userId);
+  const isLoadingThreadRef = useRef(Boolean(userId));
+  const isLoadingOlderRef = useRef(false);
+  const threadRequestRef = useRef(0);
   const composerInputRef = useRef(null);
   const composerEmojiRef = useRef(null);
-  const messagesRef = useRef(null);
   const [conversations, setConversations] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [fetchedRoutedUser, setFetchedRoutedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [nextCursor, setNextCursor] = useState("");
   const [lastSeenAt, setLastSeenAt] = useState(null);
@@ -103,6 +116,14 @@ export default function ChatPage() {
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [inboxQuery, setInboxQuery] = useState("");
+  const [debouncedInboxQuery, setDebouncedInboxQuery] = useState("");
+  const {
+    capturePrependAnchor,
+    discardPrependAnchor,
+    messageListRef,
+    queueBottomScroll,
+    queuePrependRestore,
+  } = useChatMessageScroll(messages);
 
   const loadInbox = useCallback(async () => {
     try {
@@ -121,14 +142,44 @@ export default function ChatPage() {
     async ({ cursor = "", appendOlder = false } = {}) => {
       if (!userId) return;
 
+      if (appendOlder && isLoadingOlderRef.current) return;
+
+      const requestID = ++threadRequestRef.current;
+      const requestedUserID = userId;
+      let prependRestoreQueued = false;
+
       try {
-        if (appendOlder) setIsLoadingOlder(true);
-        else setIsLoadingThread(true);
+        if (appendOlder) {
+          capturePrependAnchor();
+          isLoadingOlderRef.current = true;
+          setIsLoadingOlder(true);
+        } else {
+          setMessages([]);
+          setNextCursor("");
+          setLastSeenAt(null);
+          isLoadingThreadRef.current = true;
+          setIsLoadingThread(true);
+        }
 
         const response = await getPrivateMessages(userId, { cursor });
+        if (
+          requestID !== threadRequestRef.current ||
+          requestedUserID !== activeThreadUserIDRef.current
+        ) {
+          if (appendOlder) discardPrependAnchor();
+          return;
+        }
+
         const chronologicalMessages = (response.messages ?? [])
           .slice()
           .reverse();
+        if (appendOlder) {
+          capturePrependAnchor();
+          queuePrependRestore();
+          prependRestoreQueued = true;
+        } else {
+          queueBottomScroll({ force: true });
+        }
         setMessages((current) =>
           appendOlder
             ? addMessages(current, chronologicalMessages, { prepend: true })
@@ -149,22 +200,34 @@ export default function ChatPage() {
           sendEvent("message:read", { public_id: message.public_id });
         });
       } catch (requestError) {
-        setError(requestError.message || "Failed to load messages");
+        if (
+          requestID === threadRequestRef.current &&
+          requestedUserID === activeThreadUserIDRef.current
+        ) {
+          setError(requestError.message || "Failed to load messages");
+        }
       } finally {
-        if (appendOlder) setIsLoadingOlder(false);
-        else setIsLoadingThread(false);
+        if (requestID === threadRequestRef.current) {
+          if (appendOlder) {
+            if (!prependRestoreQueued) discardPrependAnchor();
+            isLoadingOlderRef.current = false;
+            setIsLoadingOlder(false);
+          } else {
+            isLoadingThreadRef.current = false;
+            setIsLoadingThread(false);
+          }
+        }
       }
     },
-    [sendEvent, userId],
+    [
+      capturePrependAnchor,
+      discardPrependAnchor,
+      queueBottomScroll,
+      queuePrependRestore,
+      sendEvent,
+      userId,
+    ],
   );
-
-  useEffect(() => {
-    if (isLoadingThread || messages.length === 0) {
-      return;
-    }
-
-    scrollToBottom();
-  }, [isLoadingThread]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -172,6 +235,42 @@ export default function ChatPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadInbox]);
+
+  useEffect(() => {
+    if (!userId) {
+      return undefined;
+    }
+
+    let isCurrent = true;
+
+    void getPublicProfile(userId)
+      .then((profile) => {
+        if (isCurrent) setFetchedRoutedUser(profile);
+      })
+      .catch(() => {
+        if (isCurrent) setFetchedRoutedUser(null);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedInboxQuery(inboxQuery);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [inboxQuery]);
+
+  useLayoutEffect(() => {
+    activeThreadUserIDRef.current = userId;
+    threadRequestRef.current += 1;
+    isLoadingThreadRef.current = Boolean(userId);
+    isLoadingOlderRef.current = false;
+    discardPrependAnchor();
+  }, [discardPrependAnchor, userId]);
 
   useEffect(() => {
     if (!userId) {
@@ -231,8 +330,7 @@ export default function ChatPage() {
       }
 
       if (event.type === "message:new" && event.data.sender_id === userId) {
-        const shouldScroll = isNearBottom();
-
+        queueBottomScroll();
         setMessages((current) => addMessages(current, [event.data]));
 
         sendEvent("message:delivered", {
@@ -243,11 +341,6 @@ export default function ChatPage() {
           public_id: event.data.public_id,
         });
 
-        if (shouldScroll) {
-          requestAnimationFrame(() => {
-            scrollToBottom();
-          });
-        }
       }
 
       if (event.type === "message:deleted") {
@@ -290,7 +383,7 @@ export default function ChatPage() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [events, loadInbox, sendEvent, userId]);
+  }, [events, loadInbox, queueBottomScroll, sendEvent, userId]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -300,11 +393,10 @@ export default function ChatPage() {
     try {
       setIsSending(true);
       const message = await sendPrivateMessage(userId, text);
+      if (activeThreadUserIDRef.current !== userId) return;
+      queueBottomScroll({ force: true });
       setMessages((current) => addMessages(current, [message]));
       setContent("");
-      requestAnimationFrame(() => {
-        scrollToBottom();
-      });
       window.clearTimeout(typingTimerRef.current);
       sendEvent("typing", { recipient_id: userId, is_typing: false });
       await loadInbox();
@@ -420,8 +512,15 @@ export default function ChatPage() {
     }
   }
 
-  function handleMessageScroll(event) {
-    if (event.currentTarget.scrollTop > 48 || !nextCursor || isLoadingOlder)
+  function handleMessageScroll() {
+    const container = messageListRef.current;
+    if (
+      !container ||
+      container.scrollTop > 48 ||
+      !nextCursor ||
+      isLoadingThreadRef.current ||
+      isLoadingOlderRef.current
+    )
       return;
     void loadThread({ cursor: nextCursor, appendOlder: true });
   }
@@ -450,50 +549,26 @@ export default function ChatPage() {
     }
   }
 
-  function scrollToBottom() {
-    const container = messagesRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    container.scrollTop = container.scrollHeight;
-  }
-
-  function isNearBottom() {
-    const container = messagesRef.current;
-
-    if (!container) {
-      return false;
-    }
-
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-
-    return distanceFromBottom <= 150;
-  }
-
   const chats = conversations.filter(
     (conversation) => !conversation.is_incoming_request,
   );
   const filteredChats = chats.filter((conversation) =>
     getUserDisplayName(conversation.user, "Unknown user")
       .toLowerCase()
-      .includes(inboxQuery.trim().toLowerCase()),
+      .includes(debouncedInboxQuery.trim().toLowerCase()),
   );
+  const routeUser =
+    userId && String(location.state?.chatUser?.id) === String(userId)
+      ? location.state?.chatUser
+      : null;
   const activeUser =
     chats.find((conversation) => conversation.user.id === userId)?.user ||
-    requests.find((request) => request.requester_id === userId)?.requester;
+    requests.find((request) => request.requester_id === userId)?.requester ||
+    routeUser ||
+    (String(fetchedRoutedUser?.id) === String(userId)
+      ? fetchedRoutedUser
+      : null);
   const isRemoteTyping = typingUserIDs.includes(userId);
-  useEffect(() => {
-    if (!isRemoteTyping || !isNearBottom()) {
-      return;
-    }
-
-    requestAnimationFrame(() => {
-      scrollToBottom();
-    });
-  }, [isRemoteTyping]);
 
   return (
     <main className="chat-page">
@@ -527,7 +602,7 @@ export default function ChatPage() {
             <div className="chat-inbox__scroll">
               {filteredChats.length === 0 ? (
                 <p className="chat-empty">
-                  {inboxQuery ? "No matching chats" : "No chats yet"}
+                  {debouncedInboxQuery ? "No matching chats" : "No chats yet"}
                 </p>
               ) : (
                 filteredChats.map((conversation) => (
@@ -649,7 +724,7 @@ export default function ChatPage() {
                   </p>
                 )}
                 <div
-                  ref={messagesRef}
+                  ref={messageListRef}
                   className="chat-messages"
                   onScroll={handleMessageScroll}
                 >
@@ -671,7 +746,10 @@ export default function ChatPage() {
                             messageDay(message.created_at);
 
                         return (
-                          <div key={message.public_id}>
+                          <div
+                            key={message.public_id}
+                            data-chat-message-id={message.public_id}
+                          >
                             {showDay && (
                               <p className="chat-day-divider">
                                 {messageDay(message.created_at)}
@@ -746,9 +824,10 @@ export default function ChatPage() {
                     </>
                   )}
                 </div>
-                <form className="chat-composer" onSubmit={handleSubmit}>
+                <form className="chat-composer loop-form" onSubmit={handleSubmit}>
                   <input
                     ref={composerInputRef}
+                    className="loop-form__control"
                     value={content}
                     onChange={handleTyping}
                     maxLength="10000"
@@ -760,7 +839,7 @@ export default function ChatPage() {
                     className="chat-composer__emoji-control"
                   >
                     <button
-                      className="chat-composer__emoji-button"
+                      className="chat-composer__emoji-button loop-icon-button"
                       type="button"
                       onClick={() =>
                         setIsComposerEmojiPickerOpen((current) => !current)
@@ -773,15 +852,13 @@ export default function ChatPage() {
                     {isComposerEmojiPickerOpen && (
                       <div className="chat-composer__emoji-picker">
                         <ChatEmojiPicker
-                          width={340}
-                          height={380}
                           onEmojiSelect={handleComposerEmojiSelect}
                         />
                       </div>
                     )}
                   </div>
                   <button
-                    className="chat-composer__send"
+                    className="chat-composer__send loop-button loop-button--primary"
                     type="submit"
                     disabled={isSending || !content.trim()}
                     aria-label="Send message"

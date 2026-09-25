@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PaperPlaneTilt, Smiley } from "@phosphor-icons/react";
 
 import { useToast } from "../../../shared/components/toast/useToast.js";
@@ -10,6 +10,7 @@ import {
 } from "../../../shared/utils/dateTime.js";
 import ChatEmojiPicker from "../../chat/components/ChatEmojiPicker.jsx";
 import MessageReactions from "../../chat/components/MessageReactions.jsx";
+import { useChatMessageScroll } from "../../chat/hooks/useChatMessageScroll.js";
 import { useChatRealtime } from "../../chat/realtime/useChatRealtime.js";
 import { useGroupChat } from "../hooks/useGroupChat.js";
 
@@ -98,9 +99,10 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
     updateMessage,
   } = useGroupChat(groupID);
   const typingTimerRef = useRef(null);
+  const hasPositionedInitialMessagesRef = useRef(false);
+  const shouldForceBottomOnNextMessageRef = useRef(false);
   const composerInputRef = useRef(null);
   const composerEmojiRef = useRef(null);
-  const messagesRef = useRef(null);
   const [content, setContent] = useState("");
   const [typers, setTypers] = useState([]);
   const [isComposerEmojiPickerOpen, setIsComposerEmojiPickerOpen] =
@@ -109,6 +111,39 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
   const [quickReactionTargetID, setQuickReactionTargetID] = useState("");
   const loading = status === "loading";
   const loadingMore = status === "loading-more";
+  const {
+    capturePrependAnchor,
+    discardPrependAnchor,
+    messageListRef,
+    queueBottomScroll,
+    queuePrependRestore,
+    scrollToBottom,
+  } = useChatMessageScroll(messages);
+
+  useEffect(() => {
+    hasPositionedInitialMessagesRef.current = false;
+    discardPrependAnchor();
+  }, [discardPrependAnchor, groupID]);
+
+  useLayoutEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    if (shouldForceBottomOnNextMessageRef.current) {
+      scrollToBottom();
+      shouldForceBottomOnNextMessageRef.current = false;
+      hasPositionedInitialMessagesRef.current = true;
+      return;
+    }
+
+    if (hasPositionedInitialMessagesRef.current) {
+      return;
+    }
+
+    scrollToBottom();
+    hasPositionedInitialMessagesRef.current = true;
+  }, [loading, messages, scrollToBottom]);
 
   useEffect(() => {
     if (!error) {
@@ -126,19 +161,13 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
     }
 
     if (event.type === "group-message:new") {
-      const shouldScroll = isNearBottom();
+      queueBottomScroll();
       addMessage(event.data);
 
       if (event.data.sender_id !== currentUserID) {
         sendEvent("group-message:read", {
           group_id: groupID,
           public_id: event.data.public_id,
-        });
-      }
-
-      if (shouldScroll) {
-        requestAnimationFrame(() => {
-          scrollToBottom();
         });
       }
 
@@ -164,11 +193,25 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
     }
 
     if (event.type === "group-typing") {
-      setTypers(
-        (event.data.typers ?? []).filter((user) => user.id !== currentUserID),
-      );
+      const timer = window.setTimeout(() => {
+        setTypers(
+          (event.data.typers ?? []).filter(
+            (user) => user.id !== currentUserID,
+          ),
+        );
+      }, 0);
+
+      return () => window.clearTimeout(timer);
     }
-  }, [events, groupID, currentUserID, addMessage, updateMessage, sendEvent]);
+  }, [
+    events,
+    groupID,
+    currentUserID,
+    addMessage,
+    queueBottomScroll,
+    updateMessage,
+    sendEvent,
+  ]);
 
   useEffect(() => {
     if (loading) {
@@ -235,16 +278,15 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
       return;
     }
 
+    shouldForceBottomOnNextMessageRef.current = true;
     const message = await sendMessage(text);
 
     if (!message) {
+      shouldForceBottomOnNextMessageRef.current = false;
       return;
     }
 
     setContent("");
-    requestAnimationFrame(() => {
-      scrollToBottom();
-    });
     window.clearTimeout(typingTimerRef.current);
 
     sendEvent("group-typing", {
@@ -326,64 +368,34 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
     await reactToMessage(messageID, emoji);
   }
 
-  function handleMessageScroll(event) {
-    if (event.currentTarget.scrollTop > 48 || !hasMore || loadingMore) {
+  async function handleMessageScroll() {
+    const container = messageListRef.current;
+
+    if (!container || container.scrollTop > 48 || !hasMore || loadingMore) {
       return;
     }
 
-    void loadMore();
-  }
+    capturePrependAnchor();
+    const loaded = await loadMore();
 
-  function scrollToBottom() {
-    const container = messagesRef.current;
-
-    if (!container) {
+    if (loaded) {
+      queuePrependRestore();
       return;
     }
 
-    container.scrollTop = container.scrollHeight;
-  }
-
-  useEffect(() => {
-    if (loading || messages.length === 0) {
-      return;
-    }
-
-    scrollToBottom();
-  }, [loading]);
-  useEffect(() => {
-    if (typers.length === 0 || !isNearBottom()) {
-      return;
-    }
-
-    requestAnimationFrame(() => {
-      scrollToBottom();
-    });
-  }, [typers]);
-
-  function isNearBottom() {
-    const container = messagesRef.current;
-
-    if (!container) {
-      return false;
-    }
-
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-
-    return distanceFromBottom <= 150;
+    discardPrependAnchor();
   }
 
   return (
     <section className="group-chat">
       <header className="group-chat-header">
         <div>
-          <span className="group-chat-label">GROUP CHAT</span>
+          <h2 title={groupTitle}>{groupTitle}</h2>
         </div>
       </header>
 
       <div
-        ref={messagesRef}
+        ref={messageListRef}
         className="chat-messages group-chat-messages"
         onScroll={handleMessageScroll}
       >
@@ -410,7 +422,10 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
                   messageDay(message.created_at);
 
               return (
-                <div key={message.public_id}>
+                <div
+                  key={message.public_id}
+                  data-chat-message-id={message.public_id}
+                >
                   {showDay && (
                     <p className="chat-day-divider">
                       {messageDay(message.created_at)}
@@ -475,11 +490,12 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
       </div>
 
       <form
-        className="chat-composer group-chat-composer"
+        className="chat-composer group-chat-composer loop-form"
         onSubmit={handleSubmit}
       >
         <input
           ref={composerInputRef}
+          className="loop-form__control"
           value={content}
           onChange={(event) => updateDraft(event.target.value)}
           maxLength="10000"
@@ -489,7 +505,7 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
 
         <div ref={composerEmojiRef} className="chat-composer__emoji-control">
           <button
-            className="chat-composer__emoji-button"
+            className="chat-composer__emoji-button loop-icon-button"
             type="button"
             onClick={() => setIsComposerEmojiPickerOpen((current) => !current)}
             aria-label="Choose an emoji"
@@ -510,7 +526,7 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
         </div>
 
         <button
-          className="chat-composer__send"
+          className="chat-composer__send loop-button loop-button--primary"
           type="submit"
           disabled={sending || !content.trim()}
           aria-label="Send message"

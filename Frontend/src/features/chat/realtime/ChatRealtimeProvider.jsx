@@ -69,6 +69,12 @@ export function ChatRealtimeProvider({ children }) {
   useEffect(() => {
     const typingTimers = typingTimersRef.current;
 
+    function refreshOnlineUsers() {
+      void getOnlineUsers()
+        .then((response) => setOnlineUsers(response.users ?? []))
+        .catch(() => {});
+    }
+
     function showRealtimeToast({ title, description, path }) {
       showToast({
         title,
@@ -102,9 +108,7 @@ export function ChatRealtimeProvider({ children }) {
 
         if (event.type === "presence:sync") {
           setOnlineUserIDs(event.data.user_ids ?? []);
-          getOnlineUsers()
-            .then((response) => setOnlineUsers(response.users ?? []))
-            .catch(() => {});
+          refreshOnlineUsers();
         }
         if (event.type === "presence:update") {
           setOnlineUserIDs((current) =>
@@ -112,27 +116,25 @@ export function ChatRealtimeProvider({ children }) {
               ? [...new Set([...current, event.data.user_id])]
               : current.filter((id) => id !== event.data.user_id),
           );
-          getOnlineUsers()
-            .then((response) => setOnlineUsers(response.users ?? []))
-            .catch(() => {});
+          refreshOnlineUsers();
         }
         if (event.type === "typing" && event.data.sender_id) {
           const senderID = event.data.sender_id;
           window.clearTimeout(typingTimers.get(senderID));
+          typingTimers.delete(senderID);
           setTypingUserIDs((current) =>
             event.data.is_typing
               ? [...new Set([...current, senderID])]
               : current.filter((id) => id !== senderID),
           );
           if (event.data.is_typing) {
-            typingTimers.set(
-              senderID,
-              window.setTimeout(() => {
-                setTypingUserIDs((current) =>
-                  current.filter((id) => id !== senderID),
-                );
-              }, 1500),
-            );
+            const timer = window.setTimeout(() => {
+              typingTimers.delete(senderID);
+              setTypingUserIDs((current) =>
+                current.filter((id) => id !== senderID),
+              );
+            }, 1500);
+            typingTimers.set(senderID, timer);
           }
         }
         const senderID = event.data?.sender_id;
@@ -174,6 +176,7 @@ export function ChatRealtimeProvider({ children }) {
     socket.connect();
     return () => {
       typingTimers.forEach((timer) => window.clearTimeout(timer));
+      typingTimers.clear();
       socket.close();
     };
   }, [refreshAttentionCounts, showToast]);

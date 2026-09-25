@@ -23,6 +23,59 @@
   padding: 36px;
 }
 
+.auth-status-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  width: min(100%, 30rem);
+  gap: 1.25rem;
+  padding: 2.5rem;
+  text-align: center;
+}
+
+.auth-status-card__icon {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  color: #b9cbff;
+  background: rgb(76 124 240 / 16%);
+  border: 1px solid rgb(137 170 255 / 34%);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 18%),
+    0 10px 28px rgb(30 69 157 / 22%);
+}
+
+.auth-status-card__icon svg {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.auth-status-card__icon--error {
+  color: #ffb5c4;
+  background: rgb(251 113 133 / 13%);
+  border-color: rgb(251 113 133 / 34%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 14%),
+    0 10px 28px rgb(150 35 63 / 18%);
+}
+
+.auth-status-card h1 {
+  margin-top: 0.45rem;
+  font-size: clamp(1.65rem, 5vw, 2.15rem);
+}
+
+.auth-status-card .auth-description {
+  max-width: 25rem;
+  margin-top: 0.65rem;
+}
+
+.auth-status-card .loop-button {
+  min-width: 8.75rem;
+}
+
 .auth-eyebrow {
   color: var(--color-primary);
   font-size: 0.8rem;
@@ -167,6 +220,10 @@
 @media (max-width: 480px) {
   .auth-card {
     padding: 24px;
+  }
+
+  .auth-status-card {
+    padding: 2rem 1.5rem;
   }
 
   .form-row {

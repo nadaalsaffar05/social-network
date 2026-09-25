@@ -80,7 +80,11 @@ export function useGroupPosts(groupID) {
   }, []);
 
   useEffect(() => {
-    loadPosts();
+    async function loadInitialPosts() {
+      await loadPosts();
+    }
+
+    void loadInitialPosts();
   }, [loadPosts]);
 
   return {

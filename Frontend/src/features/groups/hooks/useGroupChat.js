@@ -31,7 +31,6 @@ export function useGroupChat(groupID) {
   const [status, setStatus] = useState(PAGINATION_STATUS.LOADING);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
-  const [reactingMessageID, setReactingMessageID] = useState("");
 
   const refresh = useCallback(async () => {
     setStatus(PAGINATION_STATUS.LOADING);
@@ -56,7 +55,7 @@ export function useGroupChat(groupID) {
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || status === PAGINATION_STATUS.LOADING_MORE) {
-      return;
+      return false;
     }
 
     setStatus(PAGINATION_STATUS.LOADING_MORE);
@@ -81,9 +80,11 @@ export function useGroupChat(groupID) {
 
       setNextCursor(cursor);
       setStatus(PAGINATION_STATUS.READY);
+      return true;
     } catch (requestError) {
       setError(requestError.message);
       setStatus(PAGINATION_STATUS.READY);
+      return false;
     }
   }, [groupID, nextCursor, status]);
 
@@ -135,7 +136,6 @@ export function useGroupChat(groupID) {
 
   const reactToMessage = useCallback(
     async (publicID, emoji) => {
-      setReactingMessageID(publicID);
       setError(null);
 
       try {
@@ -150,8 +150,6 @@ export function useGroupChat(groupID) {
       } catch (requestError) {
         setError(requestError.message);
         return false;
-      } finally {
-        setReactingMessageID("");
       }
     },
     [groupID, updateMessage],
@@ -171,8 +169,6 @@ export function useGroupChat(groupID) {
     status,
     hasMore: Boolean(nextCursor),
     sending,
-    reactingMessageID,
-    refresh,
     loadMore,
     sendMessage,
     reactToMessage,

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { ArrowClockwise, CloudSlash } from "@phosphor-icons/react";
 import { getProfile } from "../../api/profile.js";
 import { ChatRealtimeProvider } from "../../features/chat/realtime/ChatRealtimeProvider.jsx";
 import HeaderNav from "../../shared/components/header-nav/HeaderNav.jsx";
@@ -10,10 +11,32 @@ const unauthenticatedErrors = new Set([
   "session expired or invalid",
 ]);
 
+const AuthBackground = lazy(
+  () => import("../../features/auth/components/AuthBackground.jsx"),
+);
+
+function AuthStatusBackground() {
+  return (
+    <Suspense fallback={<div className="auth-background" aria-hidden="true" />}>
+      <AuthBackground />
+    </Suspense>
+  );
+}
+
+function AuthStatusScreen({ children }) {
+  return (
+    <main className="auth-page">
+      <AuthStatusBackground />
+      {children}
+    </main>
+  );
+}
+
 export default function ProtectedRoute() {
   const location = useLocation();
   const [status, setStatus] = useState("checking");
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -39,13 +62,24 @@ export default function ProtectedRoute() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [retryCount]);
 
   if (status === "checking") {
     return (
-      <main className="auth-page">
-        <p>Checking your session…</p>
-      </main>
+      <AuthStatusScreen>
+        <section className="auth-status-card loop-glass-surface">
+          <span className="auth-status-card__icon" aria-hidden="true">
+            <ArrowClockwise weight="bold" />
+          </span>
+          <div>
+            <p className="auth-eyebrow">One moment</p>
+            <h1>Checking your session</h1>
+            <p className="auth-description">
+              Connecting you to Loop…
+            </p>
+          </div>
+        </section>
+      </AuthStatusScreen>
     );
   }
 
@@ -55,9 +89,32 @@ export default function ProtectedRoute() {
 
   if (status === "error") {
     return (
-      <main className="auth-page">
-        <p className="form-error">{error}</p>
-      </main>
+      <AuthStatusScreen>
+        <section
+          className="auth-status-card loop-glass-surface"
+          aria-labelledby="server-unavailable-title"
+        >
+          <span
+            className="auth-status-card__icon auth-status-card__icon--error"
+            aria-hidden="true"
+          >
+            <CloudSlash weight="duotone" />
+          </span>
+          <div>
+            <p className="auth-eyebrow">Connection problem</p>
+            <h1 id="server-unavailable-title">We can’t reach Loop</h1>
+            <p className="auth-description">{error}</p>
+          </div>
+          <button
+            className="loop-button loop-button--primary"
+            type="button"
+            onClick={() => setRetryCount((count) => count + 1)}
+          >
+            <ArrowClockwise weight="bold" />
+            Try again
+          </button>
+        </section>
+      </AuthStatusScreen>
     );
   }
 
