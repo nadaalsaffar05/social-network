@@ -40,18 +40,34 @@ func GetProfile(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		profile.Posts = []models.UserPost{}
-		if strings.EqualFold(r.URL.Query().Get("include_posts"), "false") {
-			helpers.WriteJSON(w, http.StatusOK, map[string]any{"user": profile})
+		limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
+		if err != nil {
+			helpers.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 50")
 			return
 		}
-
-		profile.Posts, err = feed.GetProfilePostsForViewer(db, currentUser.ID, currentUser.ID)
+		includePosts := !strings.EqualFold(r.URL.Query().Get("include_posts"), "false")
+		if !includePosts {
+			limit = 1
+		}
+		profile.Posts, profile.NextCursor, profile.PostsCount, err = feed.GetProfilePostsPageForViewer(
+			db,
+			currentUser.ID,
+			currentUser.ID,
+			strings.TrimSpace(r.URL.Query().Get("cursor")),
+			limit,
+		)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				helpers.WriteError(w, http.StatusBadRequest, "invalid cursor")
+				return
+			}
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile posts")
 			return
 		}
-		profile.PostsCount = len(profile.Posts)
+		if !includePosts {
+			profile.Posts = []models.UserPost{}
+			profile.NextCursor = ""
+		}
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{"user": profile})
 	}
 }
@@ -94,12 +110,34 @@ func GetPublicProfile(db *sql.DB) http.HandlerFunc {
 			FollowersCount: followersCount,
 			FollowingCount: followingCount,
 		}
-		result.Posts, err = feed.GetProfilePostsForViewer(db, result.ID, currentUser.ID)
+		limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
 		if err != nil {
+			helpers.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 50")
+			return
+		}
+		includePosts := !strings.EqualFold(r.URL.Query().Get("include_posts"), "false")
+		if !includePosts {
+			limit = 1
+		}
+		result.Posts, result.NextCursor, result.PostsCount, err = feed.GetProfilePostsPageForViewer(
+			db,
+			result.ID,
+			currentUser.ID,
+			strings.TrimSpace(r.URL.Query().Get("cursor")),
+			limit,
+		)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				helpers.WriteError(w, http.StatusBadRequest, "invalid cursor")
+				return
+			}
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to fetch profile posts")
 			return
 		}
-		result.PostsCount = len(result.Posts)
+		if !includePosts {
+			result.Posts = []models.UserPost{}
+			result.NextCursor = ""
+		}
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{"user": result})
 	}
 }

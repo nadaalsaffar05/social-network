@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { getGroupPosts } from "../../../api/groups.js";
 import { deletePost } from "../../../api/feed.js";
+import { mergePostsByID } from "../../feed/utils/post.js";
 
 const POSTS_LIMIT = 15;
 
@@ -44,7 +45,9 @@ export function useGroupPosts(groupID) {
         limit: POSTS_LIMIT,
       });
 
-      setPosts((currentPosts) => [...currentPosts, ...(response.posts || [])]);
+      setPosts((currentPosts) =>
+        mergePostsByID(currentPosts, response.posts || []),
+      );
 
       setNextCursor(response.next_cursor || "");
     } catch (requestError) {

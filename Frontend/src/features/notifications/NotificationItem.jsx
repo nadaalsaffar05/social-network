@@ -17,6 +17,7 @@ import {
 } from "../../shared/constants/enums";
 import { formatLocalDateTime } from "../../shared/utils/dateTime";
 import { getUserDisplayName } from "../../shared/utils/user";
+import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
 
 const dateOptions = {
   month: "short",
@@ -28,12 +29,7 @@ const dateOptions = {
 const details = {
   [NOTIFICATION_TYPE.FOLLOW_REQUEST]: {
     Icon: UserPlusIcon,
-    message: (actor, _, status) =>
-      status === REQUEST_STATUS.ACCEPTED
-        ? `You accepted ${actor}'s follow request`
-        : status === REQUEST_STATUS.DECLINED
-          ? `You declined ${actor}'s follow request`
-          : `${actor} requested to follow you`,
+    message: (actor) => `${actor} requested to follow you`,
   },
   [NOTIFICATION_TYPE.GROUP_INVITATION]: {
     Icon: UsersThreeIcon,
@@ -67,11 +63,11 @@ const details = {
   },
   [NOTIFICATION_TYPE.POST_REACTION]: {
     Icon: HeartIcon,
-    message: (actor) => `${actor} reacted to your post`,
+    message: (actor) => `${actor} liked your post`,
   },
   [NOTIFICATION_TYPE.COMMENT_REACTION]: {
     Icon: HeartIcon,
-    message: (actor) => `${actor} reacted to your comment`,
+    message: (actor) => `${actor} liked your comment`,
   },
   [NOTIFICATION_TYPE.COMMENT]: {
     Icon: ChatCircleIcon,
@@ -87,12 +83,43 @@ const details = {
   },
 };
 
+function getNotificationDestination(notification) {
+  const actorProfilePath = notification.actor?.id
+    ? `/profile/${notification.actor.id}`
+    : "";
+
+  switch (notification.type) {
+    case NOTIFICATION_TYPE.FOLLOW_REQUEST:
+      return "/follow-requests";
+    case NOTIFICATION_TYPE.GROUP_INVITATION:
+      return notification.group_id ? `/groups/${notification.group_id}` : "";
+    case NOTIFICATION_TYPE.GROUP_JOIN_REQUEST:
+      return notification.group_id
+        ? `/groups/${notification.group_id}?tab=requests`
+        : "";
+    case NOTIFICATION_TYPE.EVENT_CREATED:
+    case NOTIFICATION_TYPE.EVENT_REMINDER:
+      return notification.group_id
+        ? `/groups/${notification.group_id}?tab=events`
+        : "";
+    case NOTIFICATION_TYPE.POST_REACTION:
+    case NOTIFICATION_TYPE.COMMENT_REACTION:
+    case NOTIFICATION_TYPE.COMMENT:
+      return notification.post_id
+        ? `/posts/${notification.post_id}`
+        : actorProfilePath;
+    default:
+      return actorProfilePath;
+  }
+}
+
 export default function NotificationItem({
   notification,
   isProcessing,
   onRead,
   onRespond,
 }) {
+  const navigateTo = usePageNavigate();
   const actor = getUserDisplayName(notification.actor, "Someone");
   const group = notification.group_title || "your group";
   const { Icon, message } = details[notification.type] || {
@@ -100,16 +127,27 @@ export default function NotificationItem({
     message: () => "You have a new notification",
   };
   const responseLabel =
-    notification.action_status === REQUEST_STATUS.ACCEPTED
-      ? "Accepted"
-      : notification.action_status === REQUEST_STATUS.DECLINED
-        ? "Declined"
-        : "";
+    notification.type === NOTIFICATION_TYPE.FOLLOW_REQUEST
+      ? ""
+      : notification.action_status === REQUEST_STATUS.ACCEPTED
+        ? "Accepted"
+        : notification.action_status === REQUEST_STATUS.DECLINED
+          ? "Declined"
+          : "";
+
+  function handleOpen() {
+    onRead(notification);
+
+    const destination = getNotificationDestination(notification);
+    if (destination) {
+      navigateTo(destination);
+    }
+  }
 
   return (
     <article
       className={`notification-card${notification.is_read ? "" : " notification-card--unread"}`}
-      onClick={() => onRead(notification)}
+      onClick={handleOpen}
     >
       <div className="notification-card__icon" aria-hidden="true">
         <Icon size={21} weight="duotone" />

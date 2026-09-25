@@ -307,5 +307,9 @@ func (h *Handler) CancelJoinRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if group, groupErr := getGroupByID(h.DB, groupID); groupErr == nil {
+		notifications.SendRealtimeEvent(h.Hub, group.CreatorID, "notification:resolved")
+	}
+
 	helpers.WriteJSON(w, http.StatusOK, map[string]string{"message": "Join request cancelled"})
 }

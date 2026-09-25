@@ -343,8 +343,7 @@
 .feed-error {
   color: var(--color-secondary);
 }
-.feed-error button,
-.feed-load-more {
+.feed-error button {
   padding: 0.65rem 1rem;
   color: var(--color-text);
   font-weight: 700;
@@ -353,12 +352,16 @@
   border: 1px solid rgb(255 255 255 / 16%);
   border-radius: 999px;
 }
-.feed-load-more {
-  justify-self: center;
+.feed-scroll-trigger {
+  width: 100%;
+  height: 1px;
 }
-.feed-load-more:disabled {
-  cursor: wait;
-  opacity: 0.65;
+
+.feed-loading-more {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+  text-align: center;
 }
 
 @media (max-width: 1280px) {

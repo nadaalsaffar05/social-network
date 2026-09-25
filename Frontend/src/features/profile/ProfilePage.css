@@ -413,6 +413,18 @@
   gap: 16px;
 }
 
+.profile-posts-scroll-trigger {
+  width: 100%;
+  height: 1px;
+}
+
+.profile-posts-loading-more {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+  text-align: center;
+}
+
 .profile-feed-header {
   display: flex;
   align-items: center;

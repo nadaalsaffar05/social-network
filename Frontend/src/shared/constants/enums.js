@@ -16,6 +16,11 @@ export const REQUEST_STATUS = Object.freeze({
   DECLINED: 1020,
 });
 
+export const EVENT_RESPONSE = Object.freeze({
+  GOING: 1000,
+  NOT_GOING: 1010,
+});
+
 export const NOTIFICATION_TYPE = Object.freeze({
   FOLLOW_REQUEST: 1000,
   GROUP_INVITATION: 1010,

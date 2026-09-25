@@ -30,6 +30,7 @@ type ProfileResponse struct {
 	FollowingCount int                  `json:"following_count"`
 	PostsCount     int                  `json:"posts_count"`
 	Posts          []UserPost           `json:"posts"`
+	NextCursor     string               `json:"next_cursor,omitempty"`
 }
 
 type FollowUserItem struct {
@@ -66,6 +67,7 @@ type PublicProfileResponse struct {
 	FollowingCount int                  `json:"following_count"`
 	PostsCount     int                  `json:"posts_count"`
 	Posts          []UserPost           `json:"posts"`
+	NextCursor     string               `json:"next_cursor,omitempty"`
 }
 
 type UpdateProfileRequest struct {

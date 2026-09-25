@@ -22,6 +22,7 @@ import { useChatRealtime } from "../chat/realtime/useChatRealtime.js";
 import { getUserDisplayName } from "../../shared/utils/user.js";
 import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
 import { PROFILE_PRIVACY } from "../../shared/constants/enums.js";
+import { usePaginationObserver } from "../../shared/hooks/usePaginationObserver.js";
 
 export default function FeedPage() {
   const navigateTo = usePageNavigate();
@@ -35,6 +36,7 @@ export default function FeedPage() {
     removePost,
     updatePost,
   } = useFeed();
+  const loadMoreRef = usePaginationObserver({ hasMore, status, loadMore });
   const [currentUserID, setCurrentUserID] = useState("");
   const [currentProfile, setCurrentProfile] = useState(null);
   const [deletingPostID, setDeletingPostID] = useState("");
@@ -279,14 +281,15 @@ export default function FeedPage() {
             ))}
 
             {hasMore && (
-              <button
-                className="feed-load-more"
-                type="button"
-                onClick={loadMore}
-                disabled={status === "loading-more"}
-              >
-                {status === "loading-more" ? "Loading…" : "Load more"}
-              </button>
+              <div
+                ref={loadMoreRef}
+                className="feed-scroll-trigger"
+                aria-hidden="true"
+              />
+            )}
+
+            {status === "loading-more" && (
+              <p className="feed-loading-more">Loading more posts…</p>
             )}
           </section>
         </section>

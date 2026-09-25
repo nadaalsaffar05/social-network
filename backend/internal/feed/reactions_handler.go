@@ -6,8 +6,10 @@ import (
 	"net/http"
 
 	"social-network/internal/auth"
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
+	"social-network/internal/notifications"
 )
 
 func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +40,15 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusNotFound, "post not found")
 		return
 	}
+	postAuthorID, postExists, err := getActivePostAuthor(h.DB, postID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not load post")
+		return
+	}
+	if !postExists {
+		helpers.WriteError(w, http.StatusNotFound, "post not found")
+		return
+	}
 
 	var req models.ToggleReactionRequest
 
@@ -55,6 +66,7 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 	action := "added"
 	var reactionType *string
 	var likeCount, dislikeCount int
+	notificationRecipientID := ""
 	operationError := "could not start transaction"
 	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
 		var existingReaction string
@@ -111,11 +123,34 @@ func (h *Handler) TogglePostReaction(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		operationError = "could not save reaction"
+		if postAuthorID != currentUser.ID {
+			notificationInput := notifications.CreateInput{
+				RecipientID: postAuthorID,
+				ActorID:     currentUser.ID,
+				Type:        enums.NotificationTypePostReaction,
+				PostID:      &postID,
+			}
+			if reactionType != nil && *reactionType == string(enums.PostCommentReactionTypeLike) {
+				operationError = "could not create reaction notification"
+				if err := notifications.Create(tx, notificationInput); err != nil {
+					return err
+				}
+				notificationRecipientID = postAuthorID
+			} else {
+				operationError = "could not remove reaction notification"
+				if err := notifications.DeleteUnread(tx, notificationInput); err != nil {
+					return err
+				}
+			}
+		}
+
 		return nil
 	}); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
+	}
+	if notificationRecipientID != "" {
+		notifications.SendRealtimeEvent(h.Hub, notificationRecipientID, "notification:new")
 	}
 
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{
@@ -159,7 +194,7 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_, exists, err := getActiveCommentAuthor(h.DB, commentID, postID)
+	commentAuthorID, exists, err := getActiveCommentAuthor(h.DB, commentID, postID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not check comment")
 		return
@@ -186,6 +221,7 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 	action := "added"
 	var reactionType *string
 	var likeCount, dislikeCount int
+	notificationRecipientID := ""
 	operationError := "could not start transaction"
 	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
 		var existingReaction string
@@ -242,11 +278,35 @@ func (h *Handler) ToggleCommentReaction(w http.ResponseWriter, r *http.Request) 
 			return err
 		}
 
-		operationError = "could not save reaction"
+		if commentAuthorID != currentUser.ID {
+			notificationInput := notifications.CreateInput{
+				RecipientID: commentAuthorID,
+				ActorID:     currentUser.ID,
+				Type:        enums.NotificationTypeCommentReaction,
+				PostID:      &postID,
+				CommentID:   &commentID,
+			}
+			if reactionType != nil && *reactionType == string(enums.PostCommentReactionTypeLike) {
+				operationError = "could not create reaction notification"
+				if err := notifications.Create(tx, notificationInput); err != nil {
+					return err
+				}
+				notificationRecipientID = commentAuthorID
+			} else {
+				operationError = "could not remove reaction notification"
+				if err := notifications.DeleteUnread(tx, notificationInput); err != nil {
+					return err
+				}
+			}
+		}
+
 		return nil
 	}); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
+	}
+	if notificationRecipientID != "" {
+		notifications.SendRealtimeEvent(h.Hub, notificationRecipientID, "notification:new")
 	}
 
 	helpers.WriteJSON(w, http.StatusOK, map[string]any{

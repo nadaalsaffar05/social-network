@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { deletePost, getFeed } from "../../../api/feed";
+import { mergePostsByID } from "../utils/post.js";
 
 const INITIAL_CURSOR = "";
 const STATUS = {
@@ -44,7 +45,7 @@ export function useFeed() {
           cursor: nextCursor,
         });
 
-      setPosts((currentPosts) => [...currentPosts, ...nextPosts]);
+      setPosts((currentPosts) => mergePostsByID(currentPosts, nextPosts));
       setNextCursor(cursor);
       setStatus(STATUS.READY);
     } catch (requestError) {

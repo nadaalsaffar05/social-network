@@ -33,6 +33,8 @@ type CreateInput struct {
 	GroupInvitationID  *string
 	GroupJoinRequestID *string
 	GroupEventID       *string
+	PostID             *string
+	CommentID          *string
 }
 
 func Create(execer Execer, input CreateInput) error {
@@ -46,6 +48,20 @@ func CreateIgnoringDuplicate(execer Execer, input CreateInput) error {
 	return create(execer, input, "INSERT OR IGNORE")
 }
 
+// DeleteUnread removes outstanding interaction notifications once the action
+// that prompted them is no longer relevant. Read notifications remain history.
+func DeleteUnread(execer Execer, input CreateInput) error {
+	_, err := execer.Exec(`
+		DELETE FROM notifications
+		WHERE actor_id = ?
+			AND type = ?
+			AND post_id = ?
+			AND comment_id IS ?
+			AND is_read = 0
+	`, input.ActorID, input.Type, input.PostID, input.CommentID)
+	return err
+}
+
 func create(execer Execer, input CreateInput, statement string) error {
 	_, err := execer.Exec(`
 		`+statement+` INTO notifications (
@@ -56,9 +72,11 @@ func create(execer Execer, input CreateInput, statement string) error {
 			follow_request_id,
 			group_invitation_id,
 			group_join_request_id,
-			group_event_id
+			group_event_id,
+			post_id,
+			comment_id
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		uuid.NewString(),
 		input.RecipientID,
@@ -68,6 +86,8 @@ func create(execer Execer, input CreateInput, statement string) error {
 		input.GroupInvitationID,
 		input.GroupJoinRequestID,
 		input.GroupEventID,
+		input.PostID,
+		input.CommentID,
 	)
 	return err
 }
@@ -88,6 +108,8 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 			n.group_invitation_id,
 			n.group_join_request_id,
 			n.group_event_id,
+			n.post_id,
+			n.comment_id,
 			COALESCE(invitation.group_id, join_request.group_id, event.group_id),
 			group_record.title,
 			CASE
@@ -113,6 +135,8 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 		LEFT JOIN group_events event ON event.id = n.group_event_id
 		LEFT JOIN groups group_record ON group_record.id = COALESCE(invitation.group_id, join_request.group_id, event.group_id)
 		WHERE n.recipient_id = ?
+			AND (n.type <> ? OR follow_request.status = ?)
+			AND (n.type <> ? OR join_request.status <> ?)
 		ORDER BY n.created_at DESC, n.id DESC
 		LIMIT 100
 	`,
@@ -126,6 +150,10 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 		enums.NotificationTypeGroupInvitation,
 		enums.NotificationTypeGroupJoinRequest,
 		recipientID,
+		enums.NotificationTypeFollowRequest,
+		enums.FollowRequestStatusPending,
+		enums.NotificationTypeGroupJoinRequest,
+		enums.GroupJoinRequestStatusCancelled,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -151,6 +179,8 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 			&notification.GroupInvitationID,
 			&notification.GroupJoinRequestID,
 			&notification.GroupEventID,
+			&notification.PostID,
+			&notification.CommentID,
 			&notification.GroupID,
 			&notification.GroupTitle,
 			&actionable,
@@ -182,11 +212,20 @@ func list(db *sql.DB, recipientID string) ([]models.NotificationResponse, int, e
 
 	var unreadCount int
 	if err := db.QueryRow(`
-		SELECT COUNT(*)
+	SELECT COUNT(*)
 		FROM notifications n
+		LEFT JOIN follow_requests follow_request ON follow_request.id = n.follow_request_id
+		LEFT JOIN group_join_requests join_request ON join_request.id = n.group_join_request_id
 		WHERE n.recipient_id = ?
 			AND n.is_read = 0
-	`, recipientID).Scan(&unreadCount); err != nil {
+			AND (n.type <> ? OR follow_request.status = ?)
+			AND (n.type <> ? OR join_request.status <> ?)
+	`, recipientID,
+		enums.NotificationTypeFollowRequest,
+		enums.FollowRequestStatusPending,
+		enums.NotificationTypeGroupJoinRequest,
+		enums.GroupJoinRequestStatusCancelled,
+	).Scan(&unreadCount); err != nil {
 		return nil, 0, err
 	}
 
