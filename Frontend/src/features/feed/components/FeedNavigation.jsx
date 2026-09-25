@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { logoutUser } from "../../../api/auth.js";
 import { usePageNavigate } from "../../../shared/components/back-button/usePageBack.js";
 import Avatar from "../../../shared/components/avatar/Avatar.jsx";
+import { useChatRealtime } from "../../chat/realtime/useChatRealtime.js";
 import "./FeedNavigation.css";
 
 function DockItem({
@@ -32,6 +33,7 @@ function DockItem({
   distance,
   magnification,
   baseItemSize,
+  badgeCount = 0,
 }) {
   const ref = useRef(null);
   const isHovered = useMotionValue(0);
@@ -64,10 +66,10 @@ function DockItem({
       onBlur={() => isHovered.set(0)}
       onClick={onClick}
       className="feed-dock-item"
-      aria-label={label}
+      aria-label={badgeCount ? `${label}, ${badgeCount} unread` : label}
       disabled={disabled}
     >
-      <DockIcon>{icon}</DockIcon>
+      <DockIcon badgeCount={badgeCount}>{icon}</DockIcon>
       <DockLabel isHovered={isHovered}>{label}</DockLabel>
     </motion.button>
   );
@@ -100,13 +102,23 @@ function DockLabel({ children, isHovered }) {
   );
 }
 
-function DockIcon({ children }) {
-  return <div className="feed-dock-icon">{children}</div>;
+function DockIcon({ children, badgeCount }) {
+  return (
+    <div className="feed-dock-icon">
+      {children}
+      {badgeCount > 0 && (
+        <span className="feed-dock-badge" aria-hidden="true">
+          {badgeCount > 99 ? "99+" : badgeCount}
+        </span>
+      )}
+    </div>
+  );
 }
 
 export default function FeedNavigation({ onCreatePost, profile }) {
   const navigate = useNavigate();
   const navigateTo = usePageNavigate();
+  const { attentionCounts } = useChatRealtime();
 
   const spring = {
     mass: 0.1,
@@ -153,6 +165,7 @@ export default function FeedNavigation({ onCreatePost, profile }) {
       icon: <ChatCircle size={20} />,
       label: "Messages",
       onClick: () => navigateTo("/messages"),
+      badgeCount: attentionCounts.messages,
     },
     {
       icon: <Bell size={20} />,

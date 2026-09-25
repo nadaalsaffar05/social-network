@@ -12,12 +12,11 @@ import (
 )
 
 var (
-	errUserNotFound           = errors.New("user not found")
-	errCannotMessageSelf      = errors.New("cannot message yourself")
-	errInvalidCursor          = errors.New("invalid cursor")
-	errMessageRequestOpen     = errors.New("message request is pending")
-	errMessageRequestDeclined = errors.New("message request was declined")
-	errInvalidReactionEmoji   = errors.New("invalid emoji")
+	errUserNotFound         = errors.New("user not found")
+	errCannotMessageSelf    = errors.New("cannot message yourself")
+	errInvalidCursor        = errors.New("invalid cursor")
+	errMessageRequestOpen   = errors.New("message request is pending")
+	errInvalidReactionEmoji = errors.New("invalid emoji")
 )
 
 const (
@@ -258,6 +257,15 @@ func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, 
 			avatar_media.file_path,
 			CASE WHEN last_message.is_active THEN last_message.content ELSE 'This message was deleted' END,
 			last_message.created_at,
+			(
+				SELECT COUNT(*)
+				FROM private_messages unread_message
+				LEFT JOIN private_message_receipts unread_receipt ON unread_receipt.message_id = unread_message.id
+				WHERE unread_message.conversation_id = conversation.id
+					AND unread_message.sender_id != ?
+					AND unread_message.is_active = TRUE
+					AND unread_receipt.read_at IS NULL
+			),
 			COALESCE(request.status, ?),
 			CASE WHEN request.status = ? AND request.recipient_id = ? THEN 1 ELSE 0 END
 		FROM private_conversations conversation
@@ -279,8 +287,16 @@ func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, 
 			LIMIT 1
 		)
 		LEFT JOIN private_message_requests request ON request.conversation_id = conversation.id
+		WHERE request.status IS NULL OR request.status <> ?
 		ORDER BY last_message.created_at DESC, last_message.id DESC
-	`, messageRequestStatusAccepted, messageRequestStatusPending, userID, userID, userID)
+	`, userID,
+		messageRequestStatusAccepted,
+		messageRequestStatusPending,
+		userID,
+		userID,
+		userID,
+		messageRequestStatusDeclined,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -299,6 +315,7 @@ func getConversations(db *sql.DB, userID string) ([]models.ConversationSummary, 
 			&conversation.User.AvatarPath,
 			&conversation.LastMessage,
 			&conversation.LastMessageAt,
+			&conversation.UnreadCount,
 			&conversation.RequestStatus,
 			&incomingRequest,
 		); err != nil {
@@ -529,19 +546,29 @@ func prepareMessageRequest(tx *sql.Tx, conversationID, senderID, recipientID str
 	if err != nil {
 		return err
 	}
-	if status == messageRequestStatusAccepted {
-		return nil
-	}
 	if isFriends {
+		if status == messageRequestStatusAccepted {
+			return nil
+		}
+
 		_, err = tx.Exec(`
 			UPDATE private_message_requests
 			SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-			WHERE conversation_id = ? AND status = ?
-		`, messageRequestStatusAccepted, conversationID, messageRequestStatusPending)
+			WHERE conversation_id = ? AND status != ?
+		`, messageRequestStatusAccepted, conversationID, messageRequestStatusAccepted)
 		return err
 	}
+	if status == messageRequestStatusAccepted {
+		return nil
+	}
 	if status == messageRequestStatusDeclined {
-		return errMessageRequestDeclined
+		_, err = tx.Exec(`
+			UPDATE private_message_requests
+			SET requester_id = ?, recipient_id = ?, status = ?,
+				created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), responded_at = NULL
+			WHERE conversation_id = ? AND status = ?
+		`, senderID, recipientID, messageRequestStatusPending, conversationID, messageRequestStatusDeclined)
+		return err
 	}
 	return errMessageRequestOpen
 }
@@ -614,6 +641,7 @@ func getMessageRequests(db *sql.DB, recipientID string) ([]models.MessageRequest
 			FROM private_messages first_message
 			WHERE first_message.conversation_id = request.conversation_id
 			  AND first_message.is_active = TRUE
+			  AND first_message.created_at >= request.created_at
 			ORDER BY first_message.created_at ASC, first_message.id ASC
 			LIMIT 1
 		)

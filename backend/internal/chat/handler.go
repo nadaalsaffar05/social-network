@@ -463,7 +463,7 @@ func (h *Handler) createMessage(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if errors.Is(err, errMessageRequestOpen) || errors.Is(err, errMessageRequestDeclined) {
+	if errors.Is(err, errMessageRequestOpen) {
 		helpers.WriteError(w, http.StatusConflict, err.Error())
 		return
 	}
