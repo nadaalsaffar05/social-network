@@ -22,8 +22,8 @@ func newRouter(db *sql.DB) *http.ServeMux {
 
 func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	authHandler := &auth.Handler{DB: db}
-	feedHandler := feed.NewHandler(db)
 	chatHub := chat.NewHub()
+	feedHandler := feed.NewHandler(db, chatHub)
 	chatHandler := chat.NewHandler(db, chatHub)
 	groupHandler := groups.NewHandler(db, chatHub)
 	notificationHandler := notifications.NewHandler(db)
@@ -85,7 +85,6 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/api/groups/{group_id}/invites", protected(groupHandler.Invites))
 	mux.Handle("/api/groups/{group_id}/invites/{invite_id}/cancel", protected(groupHandler.CancelInvite))
 	mux.Handle("/api/groups/{group_id}/events", protected(groupHandler.Events))
-	mux.Handle("/api/groups/{group_id}/events/{event_id}", protected(groupHandler.GetEvent))
 	mux.Handle("/api/groups/{group_id}/events/{event_id}/respond", protected(groupHandler.RespondToEvent))
 	mux.Handle("/api/groups/{group_id}/messages", protected(groupHandler.GroupMessages))
 	mux.Handle("/api/groups/{group_id}/messages/{public_id}/reaction", protected(groupHandler.GroupMessageReaction))

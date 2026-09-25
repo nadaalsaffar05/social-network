@@ -5,7 +5,7 @@ import {
   getGroupEvents,
   respondToGroupEvent,
 } from "../../../api/groups.js";
-import { EVENT_RESPONSE } from "../constants.js";
+import { EVENT_RESPONSE } from "../../../shared/constants/enums.js";
 import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
 const EVENTS_LIMIT = 10;

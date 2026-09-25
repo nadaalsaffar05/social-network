@@ -61,8 +61,8 @@ func deactivatePost(db *sql.DB, postID, authorID string) (bool, error) {
 	return updated > 0, err
 }
 
-func deactivateComment(db *sql.DB, commentID, postID, authorID string) (bool, error) {
-	result, err := db.Exec(`
+func deactivateComment(tx *sql.Tx, commentID, postID, authorID string) (bool, error) {
+	result, err := tx.Exec(`
 		WITH RECURSIVE comment_thread(id) AS (
 			SELECT id
 			FROM comments
@@ -217,12 +217,25 @@ func GetPostForViewer(db *sql.DB, postID, viewerID string) (models.PostResponse,
 	return post, true, nil
 }
 
-// GetProfilePostsForViewer returns posts written by profileUserID that the
-// viewer is permitted to see. Group posts remain private to active members,
-// even when the viewer is the post author.
-func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]models.UserPost, error) {
+// GetProfilePostsPageForViewer returns one cursor-paginated page of posts
+// written by profileUserID that the viewer is permitted to see. Group posts
+// remain private to active members, even when the viewer is the post author.
+func GetProfilePostsPageForViewer(db *sql.DB, profileUserID, viewerID, cursor string, limit int) ([]models.UserPost, string, int, error) {
+	cursorCreatedAt := ""
+	if cursor != "" {
+		err := db.QueryRow(`
+			SELECT created_at
+			FROM posts
+			WHERE id = ? AND author_id = ? AND is_active = 1
+		`, cursor, profileUserID).Scan(&cursorCreatedAt)
+		if err != nil {
+			return nil, "", 0, err
+		}
+	}
+
 	rows, err := db.Query(`
 		SELECT
+			COUNT(*) OVER (),
 			p.id,
 			p.author_id,
 			p.content,
@@ -281,7 +294,13 @@ func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]mod
 					)
 				)
 			)
+			AND (
+				? = ''
+				OR p.created_at < ?
+				OR (p.created_at = ? AND p.id < ?)
+			)
 		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ?
 	`,
 		viewerID,
 		profileUserID,
@@ -297,16 +316,29 @@ func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]mod
 		enums.PostPrivacyGroup,
 		viewerID,
 		enums.GroupMembershipStatusActive,
+		cursor,
+		cursorCreatedAt,
+		cursorCreatedAt,
+		cursor,
+		limit+1,
 	)
 	if err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 	defer rows.Close()
 
-	posts := make([]models.UserPost, 0)
+	posts := make([]models.UserPost, 0, limit)
+	totalCount := 0
+	hasMore := false
 	for rows.Next() {
+		if len(posts) == limit {
+			hasMore = true
+			break
+		}
+
 		var post models.UserPost
 		if err := rows.Scan(
+			&totalCount,
 			&post.ID,
 			&post.AuthorID,
 			&post.Content,
@@ -318,12 +350,12 @@ func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]mod
 			&post.CommentCount,
 			&post.ViewerReaction,
 		); err != nil {
-			return nil, err
+			return nil, "", 0, err
 		}
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 
 	postIDs := make([]string, len(posts))
@@ -332,13 +364,18 @@ func GetProfilePostsForViewer(db *sql.DB, profileUserID, viewerID string) ([]mod
 	}
 	mediaByPost, err := getPostMediaForPosts(db, postIDs)
 	if err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 	for index := range posts {
 		posts[index].Media = mediaByPost[posts[index].ID]
 	}
 
-	return posts, nil
+	nextCursor := ""
+	if hasMore && len(posts) > 0 {
+		nextCursor = posts[len(posts)-1].ID
+	}
+
+	return posts, nextCursor, totalCount, nil
 }
 
 // canViewPost centralizes visibility rules for personal and group posts.
@@ -489,6 +526,23 @@ func isActiveGroupMember(db *sql.DB, groupID, userID string) (bool, error) {
 		)
 	`, groupID, userID, enums.GroupMembershipStatusActive).Scan(&active)
 	return active, err
+}
+
+func getActivePostAuthor(db *sql.DB, postID string) (string, bool, error) {
+	var authorID string
+	err := db.QueryRow(`
+		SELECT author_id
+		FROM posts
+		WHERE id = ? AND is_active = 1
+	`, postID).Scan(&authorID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+
+	return authorID, true, nil
 }
 
 func getActiveCommentAuthor(db *sql.DB, commentID, postID string) (string, bool, error) {

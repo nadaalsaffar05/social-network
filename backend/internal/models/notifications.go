@@ -13,6 +13,8 @@ type NotificationResponse struct {
 	GroupInvitationID  *string                `json:"group_invitation_id,omitempty"`
 	GroupJoinRequestID *string                `json:"group_join_request_id,omitempty"`
 	GroupEventID       *string                `json:"group_event_id,omitempty"`
+	PostID             *string                `json:"post_id,omitempty"`
+	CommentID          *string                `json:"comment_id,omitempty"`
 	GroupID            *string                `json:"group_id,omitempty"`
 	GroupTitle         *string                `json:"group_title,omitempty"`
 	Actionable         bool                   `json:"actionable"`

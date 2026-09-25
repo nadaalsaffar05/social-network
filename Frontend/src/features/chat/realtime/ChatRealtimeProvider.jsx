@@ -2,13 +2,28 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import { useToast } from "../../../shared/components/toast/useToast.js";
-import { getOnlineUsers } from "../../../api/chat.js";
+import {
+  getConversations,
+  getMessageRequests,
+  getOnlineUsers,
+} from "../../../api/chat.js";
 import { getFollowRequests, getPublicProfile } from "../../../api/profile.js";
 import { getNotifications } from "../../../api/notifications.js";
 import { createChatSocket } from "./chatSocket.js";
 import { ChatRealtimeContext } from "./chatRealtimeContext.js";
 import { getUserDisplayName } from "../../../shared/utils/user.js";
 import { usePageNavigate } from "../../../shared/components/back-button/usePageBack.js";
+
+const MESSAGE_ATTENTION_EVENT_TYPES = new Set([
+  "message:new",
+  "message-request:new",
+  "message-request:accepted",
+  "message-request:declined",
+]);
+
+function activeConversationUserID(pathname) {
+  return pathname.match(/^\/messages\/([^/]+)$/)?.[1];
+}
 
 export function ChatRealtimeProvider({ children }) {
   const location = useLocation();
@@ -17,6 +32,7 @@ export function ChatRealtimeProvider({ children }) {
   const socketRef = useRef(null);
   const typingTimersRef = useRef(new Map());
   const locationPathRef = useRef(location.pathname);
+  const hasInitializedAttentionRef = useRef(false);
   const navigateToRef = useRef(navigateTo);
   const [status, setStatus] = useState("disconnected");
   const [onlineUserIDs, setOnlineUserIDs] = useState([]);
@@ -24,6 +40,7 @@ export function ChatRealtimeProvider({ children }) {
   const [events, setEvents] = useState([]);
   const [typingUserIDs, setTypingUserIDs] = useState([]);
   const [attentionCounts, setAttentionCounts] = useState({
+    messages: 0,
     notifications: 0,
     followRequests: 0,
   });
@@ -33,13 +50,43 @@ export function ChatRealtimeProvider({ children }) {
     [],
   );
 
+  const refreshMessageAttention = useCallback(async () => {
+    const [conversations, messageRequests] = await Promise.allSettled([
+      getConversations(),
+      getMessageRequests(),
+    ]);
+    const activeUserID = activeConversationUserID(locationPathRef.current);
+    const unreadConversationCount =
+      conversations.status === "fulfilled"
+        ? (conversations.value.conversations ?? []).filter(
+            (conversation) =>
+              !conversation.is_incoming_request &&
+              conversation.user?.id !== activeUserID &&
+              conversation.unread_count > 0,
+          ).length
+        : null;
+    const pendingRequestCount =
+      messageRequests.status === "fulfilled"
+        ? (messageRequests.value.requests ?? []).length
+        : null;
+
+    if (unreadConversationCount === null || pendingRequestCount === null) return;
+
+    setAttentionCounts((current) => ({
+      ...current,
+      messages: unreadConversationCount + pendingRequestCount,
+    }));
+  }, []);
+
   const refreshAttentionCounts = useCallback(async () => {
+    const messageAttention = refreshMessageAttention();
     const [notifications, followRequests] = await Promise.allSettled([
       getNotifications(),
       getFollowRequests(),
     ]);
 
     setAttentionCounts((current) => ({
+      ...current,
       notifications:
         notifications.status === "fulfilled"
           ? notifications.value.unreadCount
@@ -49,18 +96,20 @@ export function ChatRealtimeProvider({ children }) {
           ? followRequests.value.length
           : current.followRequests,
     }));
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void refreshAttentionCounts();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [refreshAttentionCounts]);
+    await messageAttention;
+  }, [refreshMessageAttention]);
 
   useEffect(() => {
     locationPathRef.current = location.pathname;
-  }, [location.pathname]);
+
+    if (!hasInitializedAttentionRef.current) {
+      hasInitializedAttentionRef.current = true;
+      void refreshAttentionCounts();
+      return;
+    }
+
+    void refreshMessageAttention();
+  }, [location.pathname, refreshAttentionCounts, refreshMessageAttention]);
 
   useEffect(() => {
     navigateToRef.current = navigateTo;
@@ -148,6 +197,8 @@ export function ChatRealtimeProvider({ children }) {
         ) {
           void refreshAttentionCounts();
         }
+        if (MESSAGE_ATTENTION_EVENT_TYPES.has(event.type))
+          void refreshMessageAttention();
         if (event.type === "follow-request:new") {
           showRealtimeToast({
             title: "New follow request",
@@ -179,7 +230,7 @@ export function ChatRealtimeProvider({ children }) {
       typingTimers.clear();
       socket.close();
     };
-  }, [refreshAttentionCounts, showToast]);
+  }, [refreshAttentionCounts, refreshMessageAttention, showToast]);
 
   const value = useMemo(
     () => ({

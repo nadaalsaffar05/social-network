@@ -7,6 +7,7 @@ import { uploadAvatar } from "../../api/profile.js";
 import AvatarCropperModal from "../../shared/components/avatar-cropper/AvatarCropperModal.jsx";
 import { useToast } from "../../shared/components/toast/useToast.js";
 import AuthBackground from "./components/AuthBackground.jsx";
+import "../../shared/styles/components/Stepper.css";
 
 const initialForm = {
   email: "",
@@ -106,17 +107,18 @@ export default function RegisterPage() {
     if (isSubmitting || selectedImageSrc) return;
 
     if (step === 1) {
-      if (
-        form.date_of_birth < oldestAllowedBirthDate ||
-        form.date_of_birth > youngestAllowedBirthDate
-      ) {
-        showError(
-          "Date of birth is not eligible",
-          "You must be 18–65 years old to create an account.",
-        );
-        return;
-      }
       setStep(2);
+      return;
+    }
+
+    if (
+      form.date_of_birth < oldestAllowedBirthDate ||
+      form.date_of_birth > youngestAllowedBirthDate
+    ) {
+      showError(
+        "Date of birth is not eligible",
+        "You must be 18–65 years old to create an account.",
+      );
       return;
     }
 
@@ -165,7 +167,7 @@ export default function RegisterPage() {
       <AuthBackground />
 
       <section
-        className="auth-card loop-glass-surface"
+        className="auth-card auth-card--register loop-glass-surface"
         aria-labelledby="register-title"
       >
         <p className="auth-eyebrow">Join the conversation</p>
@@ -175,6 +177,30 @@ export default function RegisterPage() {
         </p>
 
         <form className="auth-form loop-form" onSubmit={handleSubmit}>
+          <ol
+            className="loop-stepper"
+            aria-label={`Registration step ${step} of 2`}
+          >
+            <li
+              className={`loop-stepper__step${
+                step === 2
+                  ? " loop-stepper__step--complete"
+                  : " loop-stepper__step--active"
+              }`}
+            >
+              <span aria-current={step === 1 ? "step" : undefined}>
+                {step === 2 ? "✓" : "1"}
+              </span>
+            </li>
+            <li
+              className={`loop-stepper__step${
+                step === 2 ? " loop-stepper__step--active" : ""
+              }`}
+            >
+              <span aria-current={step === 2 ? "step" : undefined}>2</span>
+            </li>
+          </ol>
+
           {step === 1 && (
             <>
               <div className="form-row">
@@ -203,33 +229,36 @@ export default function RegisterPage() {
                 </label>
               </div>
 
-              <label className="loop-form__field">
-                Email
-                <input
-                  type="email"
-                  name="email"
-                  className="loop-form__control"
-                  value={form.email}
-                  onChange={updateField}
-                  autoComplete="email"
-                  required
-                />
-              </label>
-              <label className="loop-form__field">
-                Password
-                <input
-                  type="password"
-                  name="password"
-                  className="loop-form__control"
-                  value={form.password}
-                  onChange={updateField}
-                  minLength={6}
-                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{6,}"
-                  title="Password must be at least 6 characters and contain uppercase, lowercase, number, and special character"
-                  autoComplete="new-password"
-                  required
-                />
-              </label>
+              <div className="form-row">
+                <label className="loop-form__field">
+                  Email
+                  <input
+                    type="email"
+                    name="email"
+                    className="loop-form__control"
+                    value={form.email}
+                    onChange={updateField}
+                    autoComplete="email"
+                    required
+                  />
+                </label>
+
+                <label className="loop-form__field">
+                  Password
+                  <input
+                    type="password"
+                    name="password"
+                    className="loop-form__control"
+                    value={form.password}
+                    onChange={updateField}
+                    minLength={6}
+                    pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{6,}"
+                    title="Password must be at least 6 characters and contain uppercase, lowercase, number, and special character"
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+              </div>
               <ul
                 className="password-requirements"
                 aria-label="Password requirements"
@@ -241,7 +270,11 @@ export default function RegisterPage() {
                   </li>
                 ))}
               </ul>
+            </>
+          )}
 
+          {step === 2 && (
+            <>
               <label className="loop-form__field">
                 Date of birth
                 <input
@@ -253,11 +286,7 @@ export default function RegisterPage() {
                   required
                 />
               </label>
-            </>
-          )}
 
-          {step === 2 && (
-            <>
               <div className="auth-avatar-field">
                 <label htmlFor="register-avatar">
                   Profile photo <span>(optional)</span>
@@ -315,27 +344,29 @@ export default function RegisterPage() {
                 />
               )}
 
-              <label className="loop-form__field">
-                Nickname <span>(optional)</span>
-                <input
-                  name="nickname"
-                  className="loop-form__control"
-                  value={form.nickname}
-                  onChange={updateField}
-                  autoComplete="nickname"
-                />
-              </label>
+              <div className="form-row">
+                <label className="loop-form__field">
+                  Nickname <span>(optional)</span>
+                  <input
+                    name="nickname"
+                    className="loop-form__control"
+                    value={form.nickname}
+                    onChange={updateField}
+                    autoComplete="nickname"
+                  />
+                </label>
 
-              <label className="loop-form__field">
-                About me <span>(optional)</span>
-                <textarea
-                  name="about_me"
-                  className="loop-form__control"
-                  value={form.about_me}
-                  onChange={updateField}
-                  rows="3"
-                />
-              </label>
+                <label className="loop-form__field">
+                  About me <span>(optional)</span>
+                  <textarea
+                    name="about_me"
+                    className="loop-form__control"
+                    value={form.about_me}
+                    onChange={updateField}
+                    rows="1"
+                  />
+                </label>
+              </div>
             </>
           )}
 
@@ -364,25 +395,6 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          <div
-            className="auth-steps"
-            role="group"
-            aria-label={`Registration step ${step} of 2`}
-          >
-            <span
-              aria-current={step === 1 ? "step" : undefined}
-              className="auth-step auth-step--complete"
-            >
-              {step === 1 ? "1" : "✓"}
-            </span>
-            <span className={`auth-step-line${step === 2 ? " auth-step-line--complete" : ""}`} aria-hidden="true" />
-            <span
-              aria-current={step === 2 ? "step" : undefined}
-              className={`auth-step${step === 2 ? " auth-step--complete" : ""}`}
-            >
-              2
-            </span>
-          </div>
         </form>
 
         <p className="auth-switch">

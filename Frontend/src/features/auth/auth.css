@@ -23,6 +23,10 @@
   padding: 36px;
 }
 
+.auth-card--register {
+  width: min(100%, 560px);
+}
+
 .auth-status-card {
   position: relative;
   z-index: 1;
@@ -130,6 +134,11 @@
   list-style: none;
 }
 
+.auth-card--register .password-requirements {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 0.75rem;
+}
+
 .password-requirements li {
   display: flex;
   gap: 7px;
@@ -182,41 +191,6 @@
   margin-left: auto;
 }
 
-.auth-steps {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.auth-step {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  color: var(--color-text-muted);
-  font-size: 0.82rem;
-  font-weight: 700;
-  background: rgb(255 255 255 / 8%);
-  border-radius: 50%;
-}
-
-.auth-step--complete {
-  color: white;
-  background: var(--color-primary);
-}
-
-.auth-step-line {
-  flex: 1;
-  height: 2px;
-  background: var(--color-border);
-  transition: background 250ms ease;
-}
-
-.auth-step-line--complete {
-  background: var(--color-primary);
-}
-
 @media (max-width: 480px) {
   .auth-card {
     padding: 24px;
@@ -227,6 +201,10 @@
   }
 
   .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-card--register .password-requirements {
     grid-template-columns: 1fr;
   }
 }

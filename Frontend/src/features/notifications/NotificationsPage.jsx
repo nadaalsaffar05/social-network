@@ -1,37 +1,13 @@
-import { useEffect, useState } from "react";
 import { BellIcon, SpinnerGapIcon } from "@phosphor-icons/react";
 
-import {
-  getNotifications,
-  markAllNotificationsRead,
-  markNotificationRead,
-  respondToGroupInvitation,
-  respondToGroupJoinRequest,
-} from "../../api/notifications";
-import { respondToFollowRequest } from "../../api/profile";
-import {
-  NOTIFICATION_TYPE,
-  REQUEST_STATUS,
-} from "../../shared/constants/enums";
+import { NOTIFICATION_TYPE } from "../../shared/constants/enums";
 import PageHeader from "../../shared/components/back-button/PageHeader.jsx";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants";
 import NotificationItem from "./NotificationItem";
 import { useChatRealtime } from "../chat/realtime/useChatRealtime.js";
+import { useNotifications } from "./hooks/useNotifications.js";
 import "./NotificationsPage.css";
-
-const responseHandlers = {
-  [NOTIFICATION_TYPE.FOLLOW_REQUEST]: (notification, action) =>
-    respondToFollowRequest(notification.follow_request_id, action),
-  [NOTIFICATION_TYPE.GROUP_INVITATION]: (notification, action) =>
-    respondToGroupInvitation(notification.group_invitation_id, action),
-  [NOTIFICATION_TYPE.GROUP_JOIN_REQUEST]: (notification, action) =>
-    respondToGroupJoinRequest(
-      notification.group_id,
-      notification.group_join_request_id,
-      action,
-    ),
-};
 
 const GROUP_NOTIFICATION_TYPES = new Set([
   NOTIFICATION_TYPE.GROUP_INVITATION,
@@ -48,145 +24,31 @@ const FOLLOW_NOTIFICATION_TYPES = new Set([
 
 export default function NotificationsPage() {
   const { events, refreshAttentionCounts } = useChatRealtime();
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [processingId, setProcessingId] = useState("");
-
-  async function loadNotifications() {
-    try {
-      const data = await getNotifications();
-      setNotifications(data.notifications);
-      setError("");
-    } catch (requestError) {
-      setError(requestError.message || "Failed to load notifications");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    let active = true;
-
-    async function load() {
-      try {
-        const data = await getNotifications();
-        if (active) setNotifications(data.notifications);
-      } catch (requestError) {
-        if (active)
-          setError(requestError.message || "Failed to load notifications");
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const latestEvent = events.at(-1);
-    if (
-      latestEvent?.type === "notification:new" ||
-    latestEvent?.type === "notification:resolved" ||
-      latestEvent?.type === "follow-request:resolved"
-    ) {
-      const timer = window.setTimeout(() => {
-        void loadNotifications();
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [events]);
-
-  async function handleRead(notification) {
-    if (notification.is_read) return;
-
-    setNotifications((current) =>
-      current.map((item) =>
-        item.id === notification.id ? { ...item, is_read: true } : item,
-      ),
-    );
-
-    try {
-      await markNotificationRead(notification.id);
-      await refreshAttentionCounts();
-    } catch (requestError) {
-      setNotifications((current) =>
-        current.map((item) =>
-          item.id === notification.id ? { ...item, is_read: false } : item,
-        ),
-      );
-      setError(requestError.message || "Failed to mark notification as read");
-    }
-  }
-
-  async function handleMarkAllRead() {
-    try {
-      await markAllNotificationsRead();
-      await refreshAttentionCounts();
-      setNotifications((current) =>
-        current.map((notification) => ({ ...notification, is_read: true })),
-      );
-    } catch (requestError) {
-      setError(requestError.message || "Failed to mark notifications as read");
-    }
-  }
-
-  async function handleResponse(notification, action) {
-    const respond = responseHandlers[notification.type];
-    if (!respond) return;
-
-    setProcessingId(notification.id);
-    setError("");
-
-    try {
-      await respond(notification, action);
-      setNotifications((current) =>
-        current.map((item) =>
-          item.id === notification.id
-            ? {
-                ...item,
-                actionable: false,
-                action_status:
-                  action === "accept"
-                    ? REQUEST_STATUS.ACCEPTED
-                    : REQUEST_STATUS.DECLINED,
-                is_read: true,
-              }
-            : item,
-        ),
-      );
-      try {
-        await markNotificationRead(notification.id);
-        await refreshAttentionCounts();
-      } catch (requestError) {
-        setError(
-          requestError.message || "The response was saved but could not be marked as read",
-        );
-      }
-    } catch (requestError) {
-      setError(requestError.message || `Failed to ${action} notification`);
-    } finally {
-      setProcessingId("");
-    }
-  }
+  const {
+    notifications,
+    loading,
+    error,
+    processingID,
+    markingAllRead,
+    markRead,
+    markAllRead,
+    respond,
+  } = useNotifications({ events, refreshAttentionCounts });
 
   const unreadCount = notifications.filter(
     (notification) => !notification.is_read,
   ).length;
   const groupedNotifications = [
     {
-      id: "requests",
-      title: "Follow requests",
+      id: "following",
+      title: "Following",
       items: notifications.filter((notification) =>
         FOLLOW_NOTIFICATION_TYPES.has(notification.type),
       ),
     },
     {
       id: "groups",
-      title: "Groups",
+      title: "Groups & events",
       items: notifications.filter((notification) =>
         GROUP_NOTIFICATION_TYPES.has(notification.type),
       ),
@@ -223,9 +85,10 @@ export default function NotificationsPage() {
               <button
                 type="button"
                 className="notifications-mark-all"
-                onClick={handleMarkAllRead}
+                onClick={markAllRead}
+                disabled={markingAllRead}
               >
-                Mark all as read
+                {markingAllRead ? "Marking as read…" : "Mark all as read"}
               </button>
             )
           }
@@ -278,9 +141,9 @@ export default function NotificationsPage() {
                     <NotificationItem
                       key={notification.id}
                       notification={notification}
-                      isProcessing={processingId === notification.id}
-                      onRead={handleRead}
-                      onRespond={handleResponse}
+                      isProcessing={processingID === notification.id}
+                      onRead={markRead}
+                      onRespond={respond}
                     />
                   ))}
                 </div>

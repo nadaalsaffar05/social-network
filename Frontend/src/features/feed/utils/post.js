@@ -46,3 +46,11 @@ export function formatPostTime(value, { detailed = false } = {}) {
     day: "numeric",
   }).format(date);
 }
+
+export function mergePostsByID(currentPosts, incomingPosts) {
+  const knownPostIDs = new Set(currentPosts.map((post) => post.id));
+  return [
+    ...currentPosts,
+    ...incomingPosts.filter((post) => !knownPostIDs.has(post.id)),
+  ];
+}

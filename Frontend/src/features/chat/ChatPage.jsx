@@ -123,7 +123,7 @@ export default function ChatPage() {
     messageListRef,
     queueBottomScroll,
     queuePrependRestore,
-  } = useChatMessageScroll(messages);
+  } = useChatMessageScroll(messages, typingUserIDs.includes(userId));
 
   const loadInbox = useCallback(async () => {
     try {

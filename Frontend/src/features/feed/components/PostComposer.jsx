@@ -22,6 +22,7 @@ import { getUserDisplayName } from "../../../shared/utils/user.js";
 import AnimatedContent from "./AnimatedContent.jsx";
 import ClickSpark from "./ClickSpark.jsx";
 import "../../../shared/styles/components/PostComposer.css";
+import "../../../shared/styles/components/Stepper.css";
 
 const privacyOptions = [
   {
@@ -269,20 +270,20 @@ export default function PostComposer({
             </header>
 
             {!isCommentComposer && !isGroupPostComposer && (
-              <ol className="post-composer__steps" aria-label="Post steps">
+              <ol className="loop-stepper" aria-label="Post steps">
                 <li
-                  className={`post-composer__step${
+                  className={`loop-stepper__step${
                     step === 2
-                      ? " post-composer__step--complete"
-                      : " post-composer__step--active"
+                      ? " loop-stepper__step--complete"
+                      : " loop-stepper__step--active"
                   }`}
                 >
                   <span>{step === 2 ? "✓" : "1"}</span>
                 </li>
 
                 <li
-                  className={`post-composer__step${
-                    step === 2 ? " post-composer__step--active" : ""
+                  className={`loop-stepper__step${
+                    step === 2 ? " loop-stepper__step--active" : ""
                   }`}
                 >
                   <span>2</span>

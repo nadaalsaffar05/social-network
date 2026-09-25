@@ -12,7 +12,6 @@ import PageHeader from "../../shared/components/back-button/PageHeader.jsx";
 import { useToast } from "../../shared/components/toast/useToast.js";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
-import EventDetails from "./components/EventDetails.jsx";
 import GroupDetails from "./components/GroupDetails.jsx";
 import GroupPosts from "./components/GroupPosts.jsx";
 import GroupChat from "./components/GroupChat.jsx";
@@ -33,7 +32,6 @@ export default function GroupPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
-  const [selectedEventID, setSelectedEventID] = useState(null);
   const activeSection = searchParams.get("tab") || "posts";
   const groupEvents = useGroupEvents(groupId);
 
@@ -79,8 +77,6 @@ export default function GroupPage() {
   }, [groupId, showError]);
 
   function handleSectionChange(section) {
-    setSelectedEventID(null);
-
     setSearchParams(section === "posts" ? {} : { tab: section }, {
       state: location.state,
       replace: true,
@@ -126,9 +122,6 @@ export default function GroupPage() {
 
   const isCreator = String(group.creator_id) === String(currentUser.id);
 
-  const selectedEvent =
-    groupEvents.events.find((event) => event.id === selectedEventID) || null;
-
   return (
     <main className="group-page">
       <div className="group-page-waves">
@@ -170,8 +163,6 @@ export default function GroupPage() {
                     <GroupEvents
                       currentUserID={currentUser.id}
                       eventsState={groupEvents}
-                      selectedEventID={selectedEventID}
-                      onSelectEvent={setSelectedEventID}
                     />
                   )}
 
@@ -201,15 +192,6 @@ export default function GroupPage() {
               onLeave={handleLeaveGroup}
             />
 
-            {activeSection === "events" && selectedEvent && (
-              <EventDetails
-                event={selectedEvent}
-                currentUserID={currentUser.id}
-                respondingEventID={groupEvents.respondingEventID}
-                onRespond={groupEvents.respond}
-                onClose={() => setSelectedEventID(null)}
-              />
-            )}
           </aside>
         </div>
       </div>

@@ -140,6 +140,7 @@
 }
 
 .feed-dock-icon {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -148,6 +149,25 @@
 .feed-dock-icon svg {
   width: 1.6rem;
   height: 1.6rem;
+}
+
+.feed-dock-badge {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.75rem;
+  display: grid;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.2rem;
+  place-items: center;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--color-primary);
+  border: 2px solid rgb(16 20 31 / 95%);
+  border-radius: 999px;
+  box-shadow: 0 0.2rem 0.65rem rgb(76 124 240 / 45%);
 }
 
 .feed-dock-label {

@@ -41,6 +41,8 @@ import {
   UserItemSkeleton,
 } from "../../shared/components/skeleton/PageSkeletons.jsx";
 import { PROFILE_PRIVACY } from "../../shared/constants/enums.js";
+import { usePaginationObserver } from "../../shared/hooks/usePaginationObserver.js";
+import { useProfilePosts } from "./hooks/useProfilePosts.js";
 import "./ProfilePage.css";
 
 export default function ProfilePage() {
@@ -71,6 +73,24 @@ export default function ProfilePage() {
     (currentUser?.id &&
       profile?.id &&
       String(currentUser.id) === String(profile.id));
+  const {
+    posts,
+    status: postsStatus,
+    error: postsError,
+    hasMore: hasMorePosts,
+    loadMore: loadMorePosts,
+    refresh: refreshPosts,
+    removePost,
+    updatePost,
+  } = useProfilePosts({
+    profileID: profile?.id,
+    isOwnProfile,
+  });
+  const loadMorePostsRef = usePaginationObserver({
+    hasMore: hasMorePosts,
+    status: postsStatus,
+    loadMore: loadMorePosts,
+  });
 
   function handleTabChange(newTab) {
     setSearchParams(newTab === "posts" ? {} : { tab: newTab }, {
@@ -84,8 +104,10 @@ export default function ProfilePage() {
     async function loadProfile() {
       try {
         setLoading(true);
-        const myProfile = await getProfile();
-        const userProfile = id ? await getPublicProfile(id) : myProfile;
+        const myProfile = await getProfile({ includePosts: false });
+        const userProfile = id
+          ? await getPublicProfile(id, { includePosts: false })
+          : myProfile;
         const isSelf =
           !id ||
           (myProfile?.id &&
@@ -194,13 +216,7 @@ export default function ProfilePage() {
 
   const followersCount = profile?.followers_count ?? 0;
   const followingCount = profile?.following_count ?? 0;
-  const postsCount = profile?.posts_count ?? profile?.posts?.length ?? 0;
-  const posts = profile?.posts ?? [];
-
-  async function refreshProfile() {
-    const nextProfile = id ? await getPublicProfile(id) : await getProfile();
-    setProfile(nextProfile);
-  }
+  const postsCount = profile?.posts_count ?? posts.length;
 
   async function handleFollowProfile() {
     try {
@@ -244,8 +260,12 @@ export default function ProfilePage() {
   async function handlePostReaction(postId) {
     setReactingPostID(postId);
     try {
-      await togglePostReaction(postId, "LIKE");
-      await refreshProfile();
+      const response = await togglePostReaction(postId, "LIKE");
+      updatePost(postId, {
+        viewer_reaction: response.reaction_type,
+        like_count: response.counts.LIKE,
+        dislike_count: response.counts.DISLIKE,
+      });
     } catch (requestError) {
       showError(
         "Failed to update reaction",
@@ -261,7 +281,15 @@ export default function ProfilePage() {
     setDeletingPostID(postId);
     try {
       await deletePost(postId);
-      await refreshProfile();
+      removePost(postId);
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              posts_count: Math.max(0, (current.posts_count ?? 1) - 1),
+            }
+          : current,
+      );
     } catch (requestError) {
       showError(
         "Failed to delete post",
@@ -605,26 +633,56 @@ export default function ProfilePage() {
 
             <div className="profile-feed-container">
               {activeTab === "posts" &&
-                (posts.length > 0 ? (
-                  posts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={{
-                        ...post,
-                        author_nickname: profile.nickname,
-                        author_first_name: profile.first_name,
-                        author_last_name: profile.last_name,
-                        author_avatar_path: profile.avatar_path,
-                      }}
-                      currentUserID={profile.id}
-                      isReacting={reactingPostID === post.id}
-                      isDeleting={deletingPostID === post.id}
-                      onLike={() => handlePostReaction(post.id)}
-                      onComment={() => navigateTo(`/posts/${post.id}`)}
-                      onDelete={() => handleDeletePost(post.id)}
-                      onOpen={() => navigateTo(`/posts/${post.id}`)}
-                    />
-                  ))
+                (postsStatus === "loading" ? (
+                  <div className="profile-empty-feed" role="status">
+                    <p>Loading posts…</p>
+                  </div>
+                ) : posts.length > 0 ? (
+                  <>
+                    {posts.map((post) => (
+                      <PostCard
+                        key={post.id}
+                        post={{
+                          ...post,
+                          author_nickname: profile.nickname,
+                          author_first_name: profile.first_name,
+                          author_last_name: profile.last_name,
+                          author_avatar_path: profile.avatar_path,
+                        }}
+                        currentUserID={currentUser?.id}
+                        isReacting={reactingPostID === post.id}
+                        isDeleting={deletingPostID === post.id}
+                        onLike={() => handlePostReaction(post.id)}
+                        onComment={() => navigateTo(`/posts/${post.id}`)}
+                        onDelete={() => handleDeletePost(post.id)}
+                        onOpen={() => navigateTo(`/posts/${post.id}`)}
+                      />
+                    ))}
+                    {hasMorePosts && (
+                      <div
+                        ref={loadMorePostsRef}
+                        className="profile-posts-scroll-trigger"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {postsStatus === "loading-more" && (
+                      <p className="profile-posts-loading-more">
+                        Loading more posts…
+                      </p>
+                    )}
+                    {postsError && (
+                      <p className="form-error" role="alert">
+                        {postsError}
+                      </p>
+                    )}
+                  </>
+                ) : postsError ? (
+                  <div className="profile-empty-feed">
+                    <p className="form-error">{postsError}</p>
+                    <button type="button" onClick={refreshPosts}>
+                      Try again
+                    </button>
+                  </div>
                 ) : (
                   <div className="profile-empty-feed">
                     <NotePencil

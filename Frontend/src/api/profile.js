@@ -2,9 +2,13 @@ import { request } from "./client";
 
 const getUser = (data) => data.user || data;
 
-export async function getProfile({ includePosts = true } = {}) {
+export async function getProfile({ includePosts = true, cursor = "", limit } = {}) {
   const data = await request(["api", "profile"], {
-    queryParams: includePosts ? {} : { include_posts: "false" },
+    queryParams: {
+      ...(includePosts ? {} : { include_posts: "false" }),
+      ...(cursor ? { cursor } : {}),
+      ...(limit ? { limit } : {}),
+    },
   });
   return getUser(data);
 }
@@ -80,8 +84,19 @@ export function unfollowUser(userId) {
 export const searchUsers = (query) =>
   request(["api", "users", "search"], { queryParams: { q: query } });
 
-export async function getPublicProfile(userId) {
-  return getUser(await request(["api", "users", userId, "profile"]));
+export async function getPublicProfile(
+  userId,
+  { includePosts = true, cursor = "", limit } = {},
+) {
+  return getUser(
+    await request(["api", "users", userId, "profile"], {
+      queryParams: {
+        ...(includePosts ? {} : { include_posts: "false" }),
+        ...(cursor ? { cursor } : {}),
+        ...(limit ? { limit } : {}),
+      },
+    }),
+  );
 }
 
 export const isFollowing = (userId) =>

@@ -9,7 +9,7 @@ import {
   formatLocalTime,
 } from "../../../shared/utils/dateTime.js";
 import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserver.js";
-import { EVENT_RESPONSE } from "../constants.js";
+import { EVENT_RESPONSE } from "../../../shared/constants/enums.js";
 import CreateEventModal from "./CreateEventModal.jsx";
 import EventDescription from "./EventDescription.jsx";
 import "./GroupEvents.css";
@@ -17,8 +17,6 @@ import "./GroupEvents.css";
 export default function GroupEvents({
   currentUserID,
   eventsState,
-  selectedEventID,
-  onSelectEvent,
 }) {
   const navigateTo = usePageNavigate();
   const { error: showError, success: showSuccess } = useToast();
@@ -109,17 +107,12 @@ export default function GroupEvents({
               String(event.creator_id) === String(currentUserID);
             const isGoing = event.my_response === EVENT_RESPONSE.GOING;
             const isNotGoing = event.my_response === EVENT_RESPONSE.NOT_GOING;
-            const isSelected = event.id === selectedEventID;
-
             const responding = respondingEventID === event.id;
 
             return (
               <article
                 key={event.id}
-                className={`group-event-card ${
-                  isSelected ? "group-event-card-selected" : ""
-                }`}
-                onClick={() => onSelectEvent(event.id)}
+                className="group-event-card"
               >
                 <time
                   className="group-event-date-block"
@@ -151,10 +144,7 @@ export default function GroupEvents({
                   <button
                     type="button"
                     className="group-event-creator"
-                    onClick={(clickEvent) => {
-                      clickEvent.stopPropagation();
-                      navigateTo(`/profile/${event.creator_id}`);
-                    }}
+                    onClick={() => navigateTo(`/profile/${event.creator_id}`)}
                   >
                     <Avatar
                       avatarPath={event.creator_avatar_path}
@@ -188,10 +178,7 @@ export default function GroupEvents({
                           isGoing ? "active" : ""
                         }`}
                         disabled={responding}
-                        onClick={(clickEvent) => {
-                          clickEvent.stopPropagation();
-                          void handleResponse(event, "going");
-                        }}
+                        onClick={() => void handleResponse(event, "going")}
                       >
                         <Check size={18} weight="bold" />
                         Going
@@ -203,10 +190,7 @@ export default function GroupEvents({
                           isNotGoing ? "active" : ""
                         }`}
                         disabled={responding}
-                        onClick={(clickEvent) => {
-                          clickEvent.stopPropagation();
-                          void handleResponse(event, "not_going");
-                        }}
+                        onClick={() => void handleResponse(event, "not_going")}
                       >
                         <X size={18} weight="bold" />
                         Not Going

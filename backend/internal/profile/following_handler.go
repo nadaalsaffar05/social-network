@@ -141,14 +141,27 @@ func FollowUser(db *sql.DB, hub *chat.Hub) http.HandlerFunc {
 		}
 
 		if privacy == enums.ProfilePrivacyPublic {
-			if _, err := db.Exec(`
-				INSERT INTO follows (follower_id, following_id)
-				VALUES (?, ?)
-				ON CONFLICT(follower_id, following_id) DO NOTHING
-			`, currentUser.ID, targetID); err != nil {
-				helpers.WriteError(w, http.StatusInternalServerError, "failed to follow user")
+			operationError := "failed to follow user"
+			if err := helpers.WithTx(db, func(tx *sql.Tx) error {
+				if _, err := tx.Exec(`
+					INSERT INTO follows (follower_id, following_id)
+					VALUES (?, ?)
+					ON CONFLICT(follower_id, following_id) DO NOTHING
+				`, currentUser.ID, targetID); err != nil {
+					return err
+				}
+
+				operationError = "failed to create follower notification"
+				return notifications.Create(tx, notifications.CreateInput{
+					RecipientID: targetID,
+					ActorID:     currentUser.ID,
+					Type:        enums.NotificationTypeNewFollower,
+				})
+			}); err != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, operationError)
 				return
 			}
+			notifications.SendRealtimeEvent(hub, targetID, "notification:new")
 			helpers.WriteJSON(w, http.StatusOK, map[string]any{
 				"message":      "successfully followed user",
 				"following_id": targetID,
@@ -283,12 +296,20 @@ func RespondToFollowRequest(db *sql.DB, hub *chat.Hub) http.HandlerFunc {
 				return nil
 			}
 			operationError = "failed to create follow relationship"
-			_, err = tx.Exec(`
+			if _, err = tx.Exec(`
 				INSERT INTO follows (follower_id, following_id)
 				VALUES (?, ?)
 				ON CONFLICT(follower_id, following_id) DO NOTHING
-			`, senderID, recipientID)
-			return err
+			`, senderID, recipientID); err != nil {
+				return err
+			}
+
+			operationError = "failed to create follower notification"
+			return notifications.Create(tx, notifications.CreateInput{
+				RecipientID: recipientID,
+				ActorID:     senderID,
+				Type:        enums.NotificationTypeNewFollower,
+			})
 		}); err != nil {
 			if errors.Is(err, errFollowRequestNotPending) {
 				helpers.WriteError(w, http.StatusConflict, err.Error())
@@ -299,6 +320,9 @@ func RespondToFollowRequest(db *sql.DB, hub *chat.Hub) http.HandlerFunc {
 		}
 
 		notifications.SendRealtimeEvent(hub, currentUser.ID, "follow-request:resolved")
+		if newStatus == enums.FollowRequestStatusAccepted {
+			notifications.SendRealtimeEvent(hub, currentUser.ID, "notification:new")
+		}
 		helpers.WriteJSON(w, http.StatusOK, map[string]any{"message": message, "status": responseStatus})
 	}
 }

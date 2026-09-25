@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 const NEAR_BOTTOM_THRESHOLD = 96;
 
@@ -8,20 +8,23 @@ function findMessageElement(container, messageID) {
   ).find((element) => element.dataset.chatMessageId === messageID);
 }
 
-export function useChatMessageScroll(messages) {
+export function useChatMessageScroll(messages, layoutVersion) {
   const messageListRef = useRef(null);
   const pendingBottomScrollRef = useRef(false);
   const prependAnchorRef = useRef(null);
   const pendingPrependRestoreRef = useRef(false);
+  const wasNearBottomRef = useRef(true);
+  const previousLayoutVersionRef = useRef(layoutVersion);
 
   const isNearBottom = useCallback(() => {
     const container = messageListRef.current;
     if (!container) return false;
 
-    return (
+    const nearBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight <=
-      NEAR_BOTTOM_THRESHOLD
-    );
+      NEAR_BOTTOM_THRESHOLD;
+    wasNearBottomRef.current = nearBottom;
+    return nearBottom;
   }, []);
 
   const queueBottomScroll = useCallback(({ force = false } = {}) => {
@@ -32,7 +35,10 @@ export function useChatMessageScroll(messages) {
 
   const scrollToBottom = useCallback(() => {
     const container = messageListRef.current;
-    if (container) container.scrollTop = container.scrollHeight;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+      wasNearBottomRef.current = true;
+    }
   }, []);
 
   const capturePrependAnchor = useCallback(() => {
@@ -55,9 +61,25 @@ export function useChatMessageScroll(messages) {
     if (prependAnchorRef.current) pendingPrependRestoreRef.current = true;
   }, []);
 
+  useEffect(() => {
+    const container = messageListRef.current;
+    if (!container) return undefined;
+
+    const updateNearBottom = () => {
+      isNearBottom();
+    };
+
+    updateNearBottom();
+    container.addEventListener("scroll", updateNearBottom, { passive: true });
+    return () => container.removeEventListener("scroll", updateNearBottom);
+  }, [isNearBottom]);
+
   useLayoutEffect(() => {
     const container = messageListRef.current;
     if (!container) return;
+
+    const layoutChanged = previousLayoutVersionRef.current !== layoutVersion;
+    previousLayoutVersionRef.current = layoutVersion;
 
     const prependAnchor = prependAnchorRef.current;
     if (pendingPrependRestoreRef.current && prependAnchor) {
@@ -70,11 +92,12 @@ export function useChatMessageScroll(messages) {
       return;
     }
 
-    if (pendingBottomScrollRef.current) {
+    if (pendingBottomScrollRef.current || (layoutChanged && wasNearBottomRef.current)) {
       container.scrollTop = container.scrollHeight;
       pendingBottomScrollRef.current = false;
+      wasNearBottomRef.current = true;
     }
-  }, [messages]);
+  }, [layoutVersion, messages]);
 
   return {
     capturePrependAnchor,

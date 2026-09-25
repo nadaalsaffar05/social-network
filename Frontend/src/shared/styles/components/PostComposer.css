@@ -32,52 +32,6 @@
   letter-spacing: normal;
 }
 
-.post-composer__steps {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: min(12rem, 100%);
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.post-composer__step {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.post-composer__step:not(:last-child)::after {
-  width: calc(100% - 2.4rem);
-  height: 2px;
-  margin-left: 0.4rem;
-  content: "";
-  background: rgb(255 255 255 / 20%);
-}
-
-.post-composer__step span {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  color: #a4aebb;
-  font-size: 0.82rem;
-  font-weight: 700;
-  background: rgb(255 255 255 / 8%);
-  border-radius: 50%;
-}
-
-.post-composer__step--active span,
-.post-composer__step--complete span {
-  color: white;
-  background: var(--color-primary);
-}
-
-.post-composer__step--complete::after {
-  background: var(--color-primary);
-}
-
 .post-composer__privacy-card,
 .post-composer__followers {
   background: rgb(255 255 255 / 3%);

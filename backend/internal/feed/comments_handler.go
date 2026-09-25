@@ -1,12 +1,15 @@
 package feed
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
 	"social-network/internal/auth"
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
+	"social-network/internal/notifications"
 
 	"github.com/google/uuid"
 )
@@ -34,7 +37,23 @@ func (h *Handler) Comment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleted, err := deactivateComment(h.DB, r.PathValue("comment_id"), r.PathValue("post_id"), currentUser.ID)
+	postID := r.PathValue("post_id")
+	commentID := r.PathValue("comment_id")
+	deleted := false
+	err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		var err error
+		deleted, err = deactivateComment(tx, commentID, postID, currentUser.ID)
+		if err != nil || !deleted {
+			return err
+		}
+
+		return notifications.DeleteUnread(tx, notifications.CreateInput{
+			ActorID:   currentUser.ID,
+			Type:      enums.NotificationTypeComment,
+			PostID:    &postID,
+			CommentID: &commentID,
+		})
+	})
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "could not delete comment")
 		return
@@ -73,6 +92,15 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !canView {
+		helpers.WriteError(w, http.StatusNotFound, "post not found")
+		return
+	}
+	postAuthorID, postExists, err := getActivePostAuthor(h.DB, postID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "could not load post")
+		return
+	}
+	if !postExists {
 		helpers.WriteError(w, http.StatusNotFound, "post not found")
 		return
 	}
@@ -122,28 +150,51 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	commentID := uuid.New().String()
 
 	var createdAt string
+	notificationRecipientID := ""
+	operationError := "could not create comment"
+	if err := helpers.WithTx(h.DB, func(tx *sql.Tx) error {
+		if err := tx.QueryRow(`
+			INSERT INTO comments (
+				id,
+				post_id,
+				author_id,
+				parent_comment_id,
+				content
+			)
+			VALUES (?, ?, ?, ?, ?)
+			RETURNING created_at
+		`,
+			commentID,
+			postID,
+			currentUser.ID,
+			req.ParentCommentID,
+			req.Content,
+		).Scan(&createdAt); err != nil {
+			return err
+		}
 
-	err = h.DB.QueryRow(`
-		INSERT INTO comments (
-			id,
-			post_id,
-			author_id,
-			parent_comment_id,
-			content
-		)
-		VALUES (?, ?, ?, ?, ?)
-		RETURNING created_at
-	`,
-		commentID,
-		postID,
-		currentUser.ID,
-		req.ParentCommentID,
-		req.Content,
-	).Scan(&createdAt)
+		if postAuthorID == currentUser.ID {
+			return nil
+		}
 
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "could not create comment")
+		operationError = "could not create comment notification"
+		if err := notifications.Create(tx, notifications.CreateInput{
+			RecipientID: postAuthorID,
+			ActorID:     currentUser.ID,
+			Type:        enums.NotificationTypeComment,
+			PostID:      &postID,
+			CommentID:   &commentID,
+		}); err != nil {
+			return err
+		}
+		notificationRecipientID = postAuthorID
+		return nil
+	}); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, operationError)
 		return
+	}
+	if notificationRecipientID != "" {
+		notifications.SendRealtimeEvent(h.Hub, notificationRecipientID, "notification:new")
 	}
 
 	helpers.WriteJSON(w, http.StatusCreated, models.CommentResponse{

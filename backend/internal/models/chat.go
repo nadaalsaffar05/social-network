@@ -57,6 +57,7 @@ type ConversationSummary struct {
 	User              ChatUser `json:"user"`
 	LastMessage       string   `json:"last_message"`
 	LastMessageAt     string   `json:"last_message_at"`
+	UnreadCount       int      `json:"unread_count"`
 	RequestStatus     string   `json:"request_status"`
 	IsIncomingRequest bool     `json:"is_incoming_request"`
 }

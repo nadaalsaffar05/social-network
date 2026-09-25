@@ -22,6 +22,7 @@ import PostComposer from "./components/PostComposer.jsx";
 import { GRADIENT_WAVE_PROPS } from "./constants.js";
 import { formatPostTime, getPostDisplayName } from "./utils/post.js";
 import { getMediaUrl } from "../../shared/utils/media.js";
+import { PostCardSkeleton } from "../../shared/components/skeleton/PageSkeletons.jsx";
 import "./PostPage.css";
 
 function CommentItem({
@@ -266,7 +267,14 @@ export default function PostPage() {
   if (status === "loading") {
     return (
       <main className="post-detail-page">
-        <p>Loading post…</p>
+        <div className="post-detail-waves">
+          <GradientWaves {...GRADIENT_WAVE_PROPS} />
+        </div>
+
+        <section className="post-detail-timeline">
+          <PageHeader title="Post" />
+          <PostCardSkeleton />
+        </section>
       </main>
     );
   }

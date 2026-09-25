@@ -79,39 +79,6 @@ export function respondToJoinRequest(groupID, requestID, action) {
   );
 }
 
-// Invitations
-export function inviteUser(groupID, invitedUserID) {
-  return request(["api", "groups", groupID, "invites"], {
-    method: "POST",
-    body: {
-      invited_user_id: invitedUserID,
-    },
-  });
-}
-
-export function getGroupInvites(groupID) {
-  return request(["api", "groups", groupID, "invites"]);
-}
-
-export function cancelGroupInvite(groupID, inviteID) {
-  return request(["api", "groups", groupID, "invites", inviteID, "cancel"], {
-    method: "DELETE",
-  });
-}
-
-export function getUserGroupInvites() {
-  return request(["api", "group-invites"]);
-}
-
-export function respondToGroupInvite(inviteID, action) {
-  return request(["api", "group-invites", inviteID, "respond"], {
-    method: "POST",
-    body: {
-      action,
-    },
-  });
-}
-
 // Events
 export function getGroupEvents(groupID, { cursor = "", limit = 10 } = {}) {
   return request(["api", "groups", groupID, "events"], {
@@ -120,11 +87,6 @@ export function getGroupEvents(groupID, { cursor = "", limit = 10 } = {}) {
       ...(cursor ? { cursor } : {}),
     },
   });
-}
-
-// unused atm, probably will delete
-export function getGroupEvent(groupID, eventID) {
-  return request(["api", "groups", groupID, "events", eventID]);
 }
 
 export function createGroupEvent(groupID, title, description, startsAt) {
