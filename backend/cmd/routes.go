@@ -9,6 +9,7 @@ import (
 	"social-network/internal/groups"
 	"social-network/internal/notifications"
 	"social-network/internal/profile"
+	"social-network/internal/search"
 )
 
 func newRouter(db *sql.DB) *http.ServeMux {
@@ -26,12 +27,14 @@ func registerRoutes(mux *http.ServeMux, db *sql.DB) {
 	chatHandler := chat.NewHandler(db, chatHub)
 	groupHandler := groups.NewHandler(db, chatHub)
 	notificationHandler := notifications.NewHandler(db)
+	searchHandler := search.NewHandler(db)
 	chatHandler.SetGroupSocketHandlers(groupHandler.HandleSocketEvent, groupHandler.HandleSocketDisconnect)
 	protected := func(handler http.HandlerFunc) http.Handler { return auth.Middleware(db, handler) }
 
 	mux.HandleFunc("/api/register", authHandler.Register)
 	mux.HandleFunc("/api/login", authHandler.Login)
 	mux.HandleFunc("/api/logout", authHandler.Logout)
+	mux.Handle("/api/search", protected(searchHandler.GlobalSearch))
 	mux.Handle("/api/profile", protected(profile.GetProfile(db)))
 	mux.Handle("/api/profile/update", protected(profile.UpdateProfile(db)))
 	mux.Handle("/api/profile/avatar", protected(profile.UpdateAvatar(db)))

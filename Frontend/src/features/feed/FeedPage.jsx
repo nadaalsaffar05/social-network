@@ -1,13 +1,11 @@
 import "./FeedPage.css";
 import "../../shared/styles/components/PostComposer.css";
 import { useEffect, useState } from "react";
-import { MagnifyingGlass } from "@phosphor-icons/react";
 import {
   cancelFollowRequest,
   followUser,
   getFollowing,
   getProfile,
-  searchUsers,
   unfollowUser,
 } from "../../api/profile.js";
 import { togglePostReaction } from "../../api/feed.js";
@@ -15,6 +13,7 @@ import FeedNavigation from "./components/FeedNavigation.jsx";
 import GradientWaves from "./components/GradientWaves.jsx";
 import PostComposer from "./components/PostComposer.jsx";
 import PostCard from "./components/PostCard.jsx";
+import GlobalSearchBar from "./components/GlobalSearchBar.jsx";
 import { GRADIENT_WAVE_PROPS } from "./constants.js";
 import { useFeed } from "./hooks/useFeed.js";
 import Avatar from "../../shared/components/avatar/Avatar.jsx";
@@ -42,8 +41,6 @@ export default function FeedPage() {
   const [reactingPostID, setReactingPostID] = useState("");
   const [followingIDs, setFollowingIDs] = useState(new Set());
   const [requestedIDs, setRequestedIDs] = useState(new Set());
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const { onlineUsers } = useChatRealtime();
 
@@ -77,23 +74,6 @@ export default function FeedPage() {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    const query = searchQuery.trim();
-    if (query.length < 2) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      searchUsers(query)
-        .then((response) => setSearchResults(response.users ?? []))
-        .catch(() => setSearchResults([]));
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [searchQuery]);
-
-  const visibleSearchResults =
-    searchQuery.trim().length >= 2 ? searchResults : [];
 
   async function handleDelete(postID) {
     if (!window.confirm("Delete this post?")) return;
@@ -176,33 +156,7 @@ export default function FeedPage() {
       </div>
       <header className="feed-topbar">
         <div className="feed-topbar__inner">
-          <div className="feed-search-wrap">
-            <label className="feed-search">
-              <MagnifyingGlass size={19} weight="bold" aria-hidden="true" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search users"
-                aria-label="Search users"
-              />
-            </label>
-            {visibleSearchResults.length > 0 && (
-              <ul className="feed-search-results" aria-label="Search results">
-                {visibleSearchResults.map((user) => (
-                  <li key={user.id}>
-                    <button
-                      type="button"
-                      onClick={() => navigateTo(`/profile/${user.id}`)}
-                    >
-                      <span>{getUserDisplayName(user, "Your profile")}</span>
-                      {user.nickname && <small>@{user.nickname}</small>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <GlobalSearchBar />
         </div>
       </header>
 
