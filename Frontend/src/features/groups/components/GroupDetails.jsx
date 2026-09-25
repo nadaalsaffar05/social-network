@@ -1,7 +1,7 @@
 import { UsersThree } from "@phosphor-icons/react";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
 
-import "./GroupDetails.css";
+import "./DetailsCard.css";
 
 export default function GroupDetails({
   group,
@@ -16,7 +16,7 @@ export default function GroupDetails({
 }) {
   if (loading) {
     return (
-      <aside className="group-details">
+      <aside className="details-card">
         <p>Loading group...</p>
       </aside>
     );
@@ -31,23 +31,26 @@ export default function GroupDetails({
     `${group.creator_first_name} ${group.creator_last_name}`;
 
   return (
-    <aside className="group-details border-glow">
-      <div className="group-details-field">
-        <h2>{group.title}</h2>
+    <aside className="details-card">
+      <div className="details-field details-heading">
+        <h2 className="details-title">{group.title}</h2>
+
         <div className="group-details-members">
           <UsersThree size={20} />
           <span>{group.member_count}</span>
         </div>
       </div>
 
-      <div className="group-details-field group-details-description">
-        <span className="group-details-label">Description</span>
-        <p>{group.description}</p>
+      <div className="details-field">
+        <span className="details-label">Description</span>
+        <p className="details-description">{group.description}</p>
       </div>
 
-      <div className="group-details-field">
-        <span className="group-details-label">Group Info</span>
+      <div className="details-field">
+        <span className="details-label">Group Info</span>
+
         <p>Created by {creatorName}</p>
+
         <p>
           {formatLocalDate(group.created_at, {
             day: "numeric",
@@ -56,7 +59,8 @@ export default function GroupDetails({
           })}
         </p>
       </div>
-      <div className="group-details-actions">
+
+      <div className="details-actions">
         {mode === "discover" && (
           <>
             {group.has_pending_request ? (

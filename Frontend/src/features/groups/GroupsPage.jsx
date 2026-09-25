@@ -338,6 +338,9 @@ export default function GroupsPage() {
                         group={group}
                         filter={filter}
                         currentUserID={currentUser?.id}
+                        selected={
+                          filter === "discover" && group.id === selectedGroupId
+                        }
                         onSelect={() => {
                           if (filter === "mine") {
                             navigateTo(`/groups/${group.id}`);

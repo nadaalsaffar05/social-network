@@ -1,0 +1,80 @@
+.group-chat {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  height: 680px;
+  min-height: 0;
+}
+
+.group-chat-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.group-chat-header > div {
+  min-width: 0;
+}
+
+.group-chat-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--color-text-faint);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+.group-chat-header h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-chat-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.group-chat-sender {
+  margin: 0.65rem 0 0.25rem 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.group-chat-typing-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: fit-content;
+}
+
+.group-chat-typing-row small {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.group-chat-composer {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 700px) {
+  .group-chat {
+    height: 620px;
+  }
+
+  .group-chat-header {
+    padding: 1rem;
+  }
+}

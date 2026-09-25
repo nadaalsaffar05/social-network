@@ -87,6 +87,7 @@ export default function ChatPage() {
   const typingTimerRef = useRef(null);
   const composerInputRef = useRef(null);
   const composerEmojiRef = useRef(null);
+  const messagesRef = useRef(null);
   const [conversations, setConversations] = useState([]);
   const [requests, setRequests] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -158,6 +159,14 @@ export default function ChatPage() {
   );
 
   useEffect(() => {
+    if (isLoadingThread || messages.length === 0) {
+      return;
+    }
+
+    scrollToBottom();
+  }, [isLoadingThread]);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadInbox();
     }, 0);
@@ -222,9 +231,23 @@ export default function ChatPage() {
       }
 
       if (event.type === "message:new" && event.data.sender_id === userId) {
+        const shouldScroll = isNearBottom();
+
         setMessages((current) => addMessages(current, [event.data]));
-        sendEvent("message:delivered", { public_id: event.data.public_id });
-        sendEvent("message:read", { public_id: event.data.public_id });
+
+        sendEvent("message:delivered", {
+          public_id: event.data.public_id,
+        });
+
+        sendEvent("message:read", {
+          public_id: event.data.public_id,
+        });
+
+        if (shouldScroll) {
+          requestAnimationFrame(() => {
+            scrollToBottom();
+          });
+        }
       }
 
       if (event.type === "message:deleted") {
@@ -279,6 +302,9 @@ export default function ChatPage() {
       const message = await sendPrivateMessage(userId, text);
       setMessages((current) => addMessages(current, [message]));
       setContent("");
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
       window.clearTimeout(typingTimerRef.current);
       sendEvent("typing", { recipient_id: userId, is_typing: false });
       await loadInbox();
@@ -314,11 +340,15 @@ export default function ChatPage() {
     const input = composerInputRef.current;
     const selectionStart = input?.selectionStart ?? content.length;
     const selectionEnd = input?.selectionEnd ?? content.length;
-    const nextContent = `${content.slice(0, selectionStart)}${emoji}${content.slice(selectionEnd)}`.slice(
-      0,
-      10000,
+    const nextContent =
+      `${content.slice(0, selectionStart)}${emoji}${content.slice(selectionEnd)}`.slice(
+        0,
+        10000,
+      );
+    const nextCaret = Math.min(
+      selectionStart + emoji.length,
+      nextContent.length,
     );
-    const nextCaret = Math.min(selectionStart + emoji.length, nextContent.length);
 
     updateDraft(nextContent);
     setIsComposerEmojiPickerOpen(false);
@@ -420,6 +450,29 @@ export default function ChatPage() {
     }
   }
 
+  function scrollToBottom() {
+    const container = messagesRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function isNearBottom() {
+    const container = messagesRef.current;
+
+    if (!container) {
+      return false;
+    }
+
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    return distanceFromBottom <= 150;
+  }
+
   const chats = conversations.filter(
     (conversation) => !conversation.is_incoming_request,
   );
@@ -432,6 +485,15 @@ export default function ChatPage() {
     chats.find((conversation) => conversation.user.id === userId)?.user ||
     requests.find((request) => request.requester_id === userId)?.requester;
   const isRemoteTyping = typingUserIDs.includes(userId);
+  useEffect(() => {
+    if (!isRemoteTyping || !isNearBottom()) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      scrollToBottom();
+    });
+  }, [isRemoteTyping]);
 
   return (
     <main className="chat-page">
@@ -586,7 +648,11 @@ export default function ChatPage() {
                     {error}
                   </p>
                 )}
-                <div className="chat-messages" onScroll={handleMessageScroll}>
+                <div
+                  ref={messagesRef}
+                  className="chat-messages"
+                  onScroll={handleMessageScroll}
+                >
                   {isLoadingThread ? (
                     <p className="chat-empty">Loading messages…</p>
                   ) : (

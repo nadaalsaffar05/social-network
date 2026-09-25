@@ -23,6 +23,15 @@
   margin-bottom: 1rem;
 }
 
+.post-detail-feed-card .post-card__content {
+  display: block;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
 .post-detail-comment {
   position: relative;
   display: flex;
@@ -67,6 +76,7 @@
 .post-detail-comment p {
   margin: 0.3rem 0 0;
   line-height: 1.55;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 

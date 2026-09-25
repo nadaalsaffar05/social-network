@@ -33,6 +33,16 @@
   transform: scale(0.995);
 }
 
+.group-card-selected {
+  background: rgb(26 30 41 / 72%);
+  border-color: rgb(255 255 255 / 24%);
+}
+
+.group-card-selected:hover {
+  background: rgb(26 30 41 / 72%);
+  border-color: rgb(255 255 255 / 24%);
+}
+
 .group-card-header {
   display: flex;
   align-items: center;
@@ -100,7 +110,6 @@
   outline-offset: 2px;
 }
 
-
 @media (max-width: 640px) {
   .group-card {
     padding: 1rem;
@@ -109,5 +118,4 @@
   .group-card-header {
     align-items: flex-start;
   }
-
 }

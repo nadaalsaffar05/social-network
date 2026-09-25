@@ -191,7 +191,7 @@
   align-self: start;
 }
 .chat-preview__typing {
-  color: #42d88d !important;
+  color: #4c78df !important;
 }
 
 .chat-empty {
@@ -266,6 +266,11 @@
 .chat-message {
   display: flex;
 }
+
+.chat-message > div > p {
+  color: white;
+}
+
 .chat-message--mine {
   justify-content: flex-end;
 }

@@ -1,31 +1,41 @@
 import { useEffect, useState } from "react";
-import { useLocation, useParams, useSearchParams } from "react-router-dom";
+import {
+  useLocation,
+  useParams,
+  useSearchParams,
+  useNavigate,
+} from "react-router-dom";
 
 import { getGroupById, leaveGroup } from "../../api/groups.js";
 import { getProfile } from "../../api/profile.js";
 import PageHeader from "../../shared/components/back-button/PageHeader.jsx";
-import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
 import { useToast } from "../../shared/components/toast/useToast.js";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
+import EventDetails from "./components/EventDetails.jsx";
 import GroupDetails from "./components/GroupDetails.jsx";
-import GroupNavigation from "./components/GroupNavigation.jsx";
-import GroupMembers from "./components/GroupMembers.jsx";
-import GroupJoinRequests from "./components/GroupJoinRequests.jsx";
+import GroupPosts from "./components/GroupPosts.jsx";
+import GroupChat from "./components/GroupChat.jsx";
 import GroupEvents from "./components/GroupEvents.jsx";
+import GroupJoinRequests from "./components/GroupJoinRequests.jsx";
+import GroupMembers from "./components/GroupMembers.jsx";
+import GroupNavigation from "./components/GroupNavigation.jsx";
+import { useGroupEvents } from "./hooks/useGroupEvents.js";
 import "./GroupPage.css";
 
 export default function GroupPage() {
   const { groupId } = useParams();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigateTo = usePageNavigate();
+  const navigate = useNavigate();
   const { error: showError, success: showSuccess } = useToast();
   const [group, setGroup] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  const [selectedEventID, setSelectedEventID] = useState(null);
   const activeSection = searchParams.get("tab") || "posts";
+  const groupEvents = useGroupEvents(groupId);
 
   useEffect(() => {
     let isMounted = true;
@@ -69,6 +79,8 @@ export default function GroupPage() {
   }, [groupId, showError]);
 
   function handleSectionChange(section) {
+    setSelectedEventID(null);
+
     setSearchParams(section === "posts" ? {} : { tab: section }, {
       state: location.state,
       replace: true,
@@ -93,7 +105,7 @@ export default function GroupPage() {
 
       showSuccess("You left the group");
 
-      navigateTo("/groups");
+      navigate("/groups", { replace: true });
     } catch (requestError) {
       showError(
         "Could not leave group",
@@ -113,6 +125,9 @@ export default function GroupPage() {
   }
 
   const isCreator = String(group.creator_id) === String(currentUser.id);
+
+  const selectedEvent =
+    groupEvents.events.find((event) => event.id === selectedEventID) || null;
 
   return (
     <main className="group-page">
@@ -136,18 +151,37 @@ export default function GroupPage() {
 
               <div className="group-content-card">
                 <div className="group-section-content">
-                  {activeSection === "events" && (
-                    <GroupEvents
+                  {activeSection === "posts" && (
+                    <GroupPosts
                       groupID={group.id}
                       currentUserID={currentUser.id}
                     />
                   )}
+
+                  {activeSection === "chat" && (
+                    <GroupChat
+                      groupID={group.id}
+                      groupTitle={group.title}
+                      currentUserID={currentUser.id}
+                    />
+                  )}
+
+                  {activeSection === "events" && (
+                    <GroupEvents
+                      currentUserID={currentUser.id}
+                      eventsState={groupEvents}
+                      selectedEventID={selectedEventID}
+                      onSelectEvent={setSelectedEventID}
+                    />
+                  )}
+
                   {activeSection === "members" && (
                     <GroupMembers
                       groupID={group.id}
                       memberCount={group.member_count}
                     />
                   )}
+
                   {activeSection === "requests" && isCreator && (
                     <GroupJoinRequests groupID={group.id} />
                   )}
@@ -166,6 +200,16 @@ export default function GroupPage() {
               actionLoading={leaving}
               onLeave={handleLeaveGroup}
             />
+
+            {activeSection === "events" && selectedEvent && (
+              <EventDetails
+                event={selectedEvent}
+                currentUserID={currentUser.id}
+                respondingEventID={groupEvents.respondingEventID}
+                onRespond={groupEvents.respond}
+                onClose={() => setSelectedEventID(null)}
+              />
+            )}
           </aside>
         </div>
       </div>

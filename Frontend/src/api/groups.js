@@ -122,6 +122,7 @@ export function getGroupEvents(groupID, { cursor = "", limit = 10 } = {}) {
   });
 }
 
+// unused atm, probably will delete
 export function getGroupEvent(groupID, eventID) {
   return request(["api", "groups", groupID, "events", eventID]);
 }

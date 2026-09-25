@@ -119,17 +119,6 @@ export default function GroupJoinRequests({ groupID }) {
                 <div className="group-join-request-actions">
                   <button
                     type="button"
-                    className="group-join-request-button decline"
-                    disabled={responding}
-                    title="Decline"
-                    aria-label={`Decline ${fullName}'s join request`}
-                    onClick={() => handleResponse(request, "decline")}
-                  >
-                    <X size={18} weight="bold" />
-                  </button>
-
-                  <button
-                    type="button"
                     className="group-join-request-button accept"
                     disabled={responding}
                     title="Accept"
@@ -137,6 +126,16 @@ export default function GroupJoinRequests({ groupID }) {
                     onClick={() => handleResponse(request, "accept")}
                   >
                     <Check size={18} weight="bold" />
+                  </button>
+                  <button
+                    type="button"
+                    className="group-join-request-button decline"
+                    disabled={responding}
+                    title="Decline"
+                    aria-label={`Decline ${fullName}'s join request`}
+                    onClick={() => handleResponse(request, "decline")}
+                  >
+                    <X size={18} weight="bold" />
                   </button>
                 </div>
               </div>
