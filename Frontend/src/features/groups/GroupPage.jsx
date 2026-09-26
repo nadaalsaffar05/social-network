@@ -20,6 +20,7 @@ import GroupMembers from "./components/GroupMembers.jsx";
 import GroupInvitations from "./components/GroupInvitations.jsx";
 import GroupJoinRequests from "./components/GroupJoinRequests.jsx";
 import GroupNavigation from "./components/GroupNavigation.jsx";
+import { GroupPageSkeleton } from "./components/GroupSectionSkeletons.jsx";
 import { useGroupEvents } from "./hooks/useGroupEvents.js";
 import "./GroupPage.css";
 
@@ -122,7 +123,7 @@ export default function GroupPage() {
   }
 
   if (loading) {
-    return <p>Loading group...</p>;
+    return <GroupPageSkeleton />;
   }
 
   if (!group || !currentUser) {

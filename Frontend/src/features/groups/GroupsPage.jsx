@@ -64,6 +64,7 @@ export default function GroupsPage() {
     filter === "discover" && selectedGroup?.id === selectedGroupId
       ? selectedGroup
       : null;
+  const hasGroupDetails = Boolean(displayedSelectedGroup);
 
   // Get current user
   useEffect(() => {
@@ -388,7 +389,7 @@ export default function GroupsPage() {
         <div
           className={`groups-layout ${
             filter === "invitations" ? "groups-layout--invitations" : ""
-          }`}
+          }${hasGroupDetails ? " groups-layout--with-details" : ""}`}
         >
           <section className="groups-browser">
             <div className="groups-tabs">
@@ -509,21 +510,19 @@ export default function GroupsPage() {
             </div>
           </section>
 
-          {filter !== "invitations" && (
+          {hasGroupDetails && (
             <aside className="groups-side-column">
-              {displayedSelectedGroup && (
-                <GroupDetails
-                  group={displayedSelectedGroup}
-                  loading={detailsLoading}
-                  error=""
-                  actionLoading={groupActionLoading}
-                  onJoin={handleJoinGroup}
-                  onCancelRequest={handleCancelJoinRequest}
-                  onAcceptInvite={() => handleInvitationResponse("accept")}
-                  onDeclineInvite={() => handleInvitationResponse("decline")}
-                  mode="discover"
-                />
-              )}
+              <GroupDetails
+                group={displayedSelectedGroup}
+                loading={detailsLoading}
+                error=""
+                actionLoading={groupActionLoading}
+                onJoin={handleJoinGroup}
+                onCancelRequest={handleCancelJoinRequest}
+                onAcceptInvite={() => handleInvitationResponse("accept")}
+                onDeclineInvite={() => handleInvitationResponse("decline")}
+                mode="discover"
+              />
             </aside>
           )}
         </div>

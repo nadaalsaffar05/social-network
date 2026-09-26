@@ -12,6 +12,7 @@ import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserv
 import { EVENT_RESPONSE } from "../../../shared/constants/enums.js";
 import CreateEventModal from "./CreateEventModal.jsx";
 import EventDescription from "./EventDescription.jsx";
+import { GroupEventsSkeleton } from "./GroupSectionSkeletons.jsx";
 import "./GroupEvents.css";
 
 export default function GroupEvents({
@@ -54,7 +55,7 @@ export default function GroupEvents({
   }
 
   if (loading) {
-    return <div className="group-events-state">Loading events...</div>;
+    return <GroupEventsSkeleton />;
   }
 
   if (status === "error" && events.length === 0) {
@@ -213,7 +214,7 @@ export default function GroupEvents({
       )}
 
       {loadingMore && (
-        <p className="group-events-loading-more">Loading more events...</p>
+        <GroupEventsSkeleton count={1} pagination />
       )}
 
       {showCreateModal && (

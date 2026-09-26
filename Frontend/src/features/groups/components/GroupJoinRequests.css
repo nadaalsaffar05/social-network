@@ -176,7 +176,6 @@
   cursor: default;
 }
 
-.group-join-requests-state,
 .group-join-requests-empty {
   display: grid;
   place-items: center;
@@ -192,14 +191,6 @@
 .group-join-requests-scroll-trigger {
   width: 100%;
   height: 1px;
-}
-
-.group-join-requests-loading-more {
-  margin: 0;
-  padding: 1rem 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-  text-align: center;
 }
 
 @media (max-width: 700px) {

@@ -57,12 +57,6 @@
   font-size: 0.86rem;
 }
 
-.group-chat .chat-loading-older {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-}
-
 .group-chat .group-chat-sender {
   margin: 0.65rem 0 0.25rem 0.5rem;
   color: var(--color-text-muted);

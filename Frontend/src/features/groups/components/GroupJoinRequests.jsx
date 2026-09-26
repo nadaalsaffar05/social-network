@@ -7,6 +7,7 @@ import Avatar from "../../../shared/components/avatar/Avatar.jsx";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
 import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserver.js";
 import { useGroupJoinRequests } from "../hooks/useGroupJoinRequests.js";
+import { GroupJoinRequestsSkeleton } from "./GroupSectionSkeletons.jsx";
 import "./GroupJoinRequests.css";
 
 export default function GroupJoinRequests({ groupID }) {
@@ -49,9 +50,7 @@ export default function GroupJoinRequests({ groupID }) {
   }
 
   if (loading) {
-    return (
-      <div className="group-join-requests-state">Loading join requests...</div>
-    );
+    return <GroupJoinRequestsSkeleton />;
   }
 
   if (status === "error" && requests.length === 0) {
@@ -153,9 +152,7 @@ export default function GroupJoinRequests({ groupID }) {
       )}
 
       {loadingMore && (
-        <p className="group-join-requests-loading-more">
-          Loading more requests...
-        </p>
+        <GroupJoinRequestsSkeleton count={1} pagination />
       )}
     </section>
   );

@@ -11,6 +11,7 @@ import {
   formatChatMessageTime,
 } from "../../chat/utils/messages.js";
 import { useGroupChat } from "../hooks/useGroupChat.js";
+import { GroupChatSkeleton } from "./GroupSectionSkeletons.jsx";
 
 import "../../chat/ChatPage.css";
 import "./GroupChat.css";
@@ -362,11 +363,11 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
         onScroll={handleMessageScroll}
       >
         {loading ? (
-          <p className="chat-empty">Loading messages…</p>
+          <GroupChatSkeleton pagination />
         ) : (
           <>
             {loadingMore && (
-              <p className="chat-loading-older">Loading older messages…</p>
+              <GroupChatSkeleton pagination />
             )}
 
             {messages.length === 0 && (

@@ -6,6 +6,7 @@ import { useToast } from "../../../shared/components/toast/useToast.js";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
 import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserver.js";
 import { useGroupMembers } from "../hooks/useGroupMembers.js";
+import { GroupMembersSkeleton } from "./GroupSectionSkeletons.jsx";
 import "./GroupMembers.css";
 
 export default function GroupMembers({ groupID, memberCount }) {
@@ -26,7 +27,7 @@ export default function GroupMembers({ groupID, memberCount }) {
   }, [error, showError]);
 
   if (loading) {
-    return <div className="group-members-state">Loading members...</div>;
+    return <GroupMembersSkeleton />;
   }
 
   if (status === "error" && members.length === 0) {
@@ -104,7 +105,7 @@ export default function GroupMembers({ groupID, memberCount }) {
       )}
 
       {loadingMore && (
-        <p className="group-members-loading-more">Loading more members...</p>
+        <GroupMembersSkeleton count={1} pagination />
       )}
     </section>
   );

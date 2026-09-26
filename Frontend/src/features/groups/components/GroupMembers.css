@@ -173,29 +173,9 @@
   transform: translateY(0);
 }
 
-.group-members-state {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  min-height: 430px;
-  padding: 2rem;
-  box-sizing: border-box;
-  color: var(--color-text-muted);
-  font-size: 0.88rem;
-  text-align: center;
-}
-
 .group-members-scroll-trigger {
   width: 100%;
   height: 1px;
-}
-
-.group-members-loading-more {
-  margin: 0;
-  padding: 1rem 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-  text-align: center;
 }
 
 @media (max-width: 700px) {

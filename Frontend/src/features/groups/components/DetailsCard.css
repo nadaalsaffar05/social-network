@@ -64,6 +64,14 @@
   overflow-wrap: anywhere;
 }
 
+.group-details-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-height: 15rem;
+  pointer-events: none;
+}
+
 .details-field p + p {
   margin-top: 0.3rem;
 }
