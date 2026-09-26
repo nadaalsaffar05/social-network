@@ -61,11 +61,10 @@ export default function GroupInvitations({ groupID }) {
 
   useEffect(() => {
     if (!hasSearchInput) {
-      setUsers([]);
-      setSearchLoading(false);
-      return;
+      return undefined;
     }
-    setSearchLoading(true);
+
+    let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
         const data = await globalSearch({
@@ -73,21 +72,42 @@ export default function GroupInvitations({ groupID }) {
           types: ["users"],
           groupID,
         });
+        if (cancelled) return;
+
         setUsers(data?.users || []);
       } catch (requestError) {
-        setUsers([]);
-        showError(
-          "Could not search users",
-          requestError.message || "Please try again.",
-        );
+        if (!cancelled) {
+          setUsers([]);
+          showError(
+            "Could not search users",
+            requestError.message || "Please try again.",
+          );
+        }
       } finally {
-        setSearchLoading(false);
+        if (!cancelled) {
+          setSearchLoading(false);
+        }
       }
     }, 250);
+
     return () => {
+      cancelled = true;
       window.clearTimeout(timer);
     };
   }, [groupID, hasSearchInput, trimmedQuery, showError]);
+
+  function handleSearchChange(nextQuery) {
+    setQuery(nextQuery);
+    setSearchOpen(true);
+
+    if (nextQuery.trim().length < 2) {
+      setUsers([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    setSearchLoading(true);
+  }
 
   async function handleInvite(user) {
     if (invitingUserID) {
@@ -147,10 +167,7 @@ export default function GroupInvitations({ groupID }) {
             placeholder="Search users to invite..."
             aria-label="Search users to invite"
             onFocus={() => setSearchOpen(true)}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setSearchOpen(true);
-            }}
+            onChange={(event) => handleSearchChange(event.target.value)}
           />
 
           {query && (
@@ -159,8 +176,7 @@ export default function GroupInvitations({ groupID }) {
               className="group-invitations-search-clear"
               aria-label="Clear search"
               onClick={() => {
-                setQuery("");
-                setUsers([]);
+                handleSearchChange("");
               }}
             >
               <X size={16} weight="bold" />

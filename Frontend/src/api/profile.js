@@ -81,9 +81,6 @@ export function unfollowUser(userId) {
   });
 }
 
-export const searchUsers = (query) =>
-  request(["api", "users", "search"], { queryParams: { q: query } });
-
 export async function getPublicProfile(
   userId,
   { includePosts = true, cursor = "", limit } = {},

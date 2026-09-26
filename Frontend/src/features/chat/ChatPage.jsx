@@ -38,14 +38,15 @@ import MessageReactions from "./components/MessageReactions.jsx";
 import ChatEmojiPicker from "./components/ChatEmojiPicker.jsx";
 import { useChatMessageScroll } from "./hooks/useChatMessageScroll.js";
 import {
-  formatLocalDate,
   formatLocalDateTime,
-  formatLocalTime,
-  isSameLocalDay,
-  parseAPITimestamp,
 } from "../../shared/utils/dateTime.js";
 import { getUserDisplayName } from "../../shared/utils/user.js";
 import { getPublicProfile } from "../../api/profile.js";
+import {
+  formatChatMessageDay,
+  formatChatMessageTime,
+  mergeMessagesByPublicID,
+} from "./utils/messages.js";
 import "../../shared/styles/components/PostComposer.css";
 import "./ChatPage.css";
 
@@ -57,33 +58,6 @@ function shortTime(value) {
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-function messageTime(value) {
-  return formatLocalTime(value, { hour: "numeric", minute: "2-digit" });
-}
-
-function messageDay(value) {
-  const date = parseAPITimestamp(value);
-  if (!date) return value;
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (isSameLocalDay(date, today)) return "Today";
-  if (isSameLocalDay(date, yesterday)) return "Yesterday";
-  return formatLocalDate(value, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function addMessages(current, incoming, { prepend = false } = {}) {
-  const knownIDs = new Set(current.map((message) => message.public_id));
-  const additions = incoming.filter(
-    (message) => !knownIDs.has(message.public_id),
-  );
-  return prepend ? [...additions, ...current] : [...current, ...additions];
 }
 
 export default function ChatPage() {
@@ -181,7 +155,9 @@ export default function ChatPage() {
         }
         setMessages((current) =>
           appendOlder
-            ? addMessages(current, chronologicalMessages, { prepend: true })
+            ? mergeMessagesByPublicID(current, chronologicalMessages, {
+                prepend: true,
+              })
             : chronologicalMessages,
         );
         setNextCursor(response.next_cursor ?? "");
@@ -330,7 +306,9 @@ export default function ChatPage() {
 
       if (event.type === "message:new" && event.data.sender_id === userId) {
         queueBottomScroll();
-        setMessages((current) => addMessages(current, [event.data]));
+        setMessages((current) =>
+          mergeMessagesByPublicID(current, [event.data]),
+        );
 
         sendEvent("message:delivered", {
           public_id: event.data.public_id,
@@ -393,7 +371,7 @@ export default function ChatPage() {
       const message = await sendPrivateMessage(userId, text);
       if (activeThreadUserIDRef.current !== userId) return;
       queueBottomScroll({ force: true });
-      setMessages((current) => addMessages(current, [message]));
+      setMessages((current) => mergeMessagesByPublicID(current, [message]));
       setContent("");
       window.clearTimeout(typingTimerRef.current);
       sendEvent("typing", { recipient_id: userId, is_typing: false });
@@ -740,8 +718,8 @@ export default function ChatPage() {
                         const isDeleted = message.is_active === false;
                         const showDay =
                           index === 0 ||
-                          messageDay(messages[index - 1].created_at) !==
-                            messageDay(message.created_at);
+                          formatChatMessageDay(messages[index - 1].created_at) !==
+                            formatChatMessageDay(message.created_at);
 
                         return (
                           <div
@@ -750,7 +728,7 @@ export default function ChatPage() {
                           >
                             {showDay && (
                               <p className="chat-day-divider">
-                                {messageDay(message.created_at)}
+                                {formatChatMessageDay(message.created_at)}
                               </p>
                             )}
                             <article
@@ -763,7 +741,9 @@ export default function ChatPage() {
                                     : message.content}
                                 </p>
                                 <footer>
-                                  <time>{messageTime(message.created_at)}</time>
+                                  <time>
+                                    {formatChatMessageTime(message.created_at)}
+                                  </time>
                                   {!isDeleted && isMine && (
                                     <span>
                                       {message.read_at

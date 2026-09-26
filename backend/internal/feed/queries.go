@@ -647,7 +647,7 @@ func getCommentMediaForComments(db *sql.DB, commentIDs []string) (map[string][]s
 		if err := rows.Scan(&commentID, &path); err != nil {
 			return nil, err
 		}
-		mediaByComment[commentID] = append(mediaByComment[commentID], "/"+path)
+		mediaByComment[commentID] = append(mediaByComment[commentID], helpers.PublicMediaURL(path))
 	}
 
 	return mediaByComment, rows.Err()
