@@ -8,6 +8,10 @@ import { useToast } from "../../../shared/components/toast/useToast.js";
 import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserver.js";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
 import { useGroupInvitations } from "../hooks/useGroupInvitations.js";
+import {
+  GroupInvitationSearchSkeleton,
+  GroupInvitationsSkeleton,
+} from "./GroupSectionSkeletons.jsx";
 import "./GroupInvitations.css";
 
 export default function GroupInvitations({ groupID }) {
@@ -61,11 +65,10 @@ export default function GroupInvitations({ groupID }) {
 
   useEffect(() => {
     if (!hasSearchInput) {
-      setUsers([]);
-      setSearchLoading(false);
-      return;
+      return undefined;
     }
-    setSearchLoading(true);
+
+    let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
         const data = await globalSearch({
@@ -73,21 +76,42 @@ export default function GroupInvitations({ groupID }) {
           types: ["users"],
           groupID,
         });
+        if (cancelled) return;
+
         setUsers(data?.users || []);
       } catch (requestError) {
-        setUsers([]);
-        showError(
-          "Could not search users",
-          requestError.message || "Please try again.",
-        );
+        if (!cancelled) {
+          setUsers([]);
+          showError(
+            "Could not search users",
+            requestError.message || "Please try again.",
+          );
+        }
       } finally {
-        setSearchLoading(false);
+        if (!cancelled) {
+          setSearchLoading(false);
+        }
       }
     }, 250);
+
     return () => {
+      cancelled = true;
       window.clearTimeout(timer);
     };
   }, [groupID, hasSearchInput, trimmedQuery, showError]);
+
+  function handleSearchChange(nextQuery) {
+    setQuery(nextQuery);
+    setSearchOpen(true);
+
+    if (nextQuery.trim().length < 2) {
+      setUsers([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    setSearchLoading(true);
+  }
 
   async function handleInvite(user) {
     if (invitingUserID) {
@@ -119,9 +143,7 @@ export default function GroupInvitations({ groupID }) {
     showSuccess("Invitation cancelled");
   }
   if (loading) {
-    return (
-      <div className="group-invitations-state">Loading invitations...</div>
-    );
+    return <GroupInvitationsSkeleton />;
   }
   if (status === "error" && invitations.length === 0) {
     return null;
@@ -147,10 +169,7 @@ export default function GroupInvitations({ groupID }) {
             placeholder="Search users to invite..."
             aria-label="Search users to invite"
             onFocus={() => setSearchOpen(true)}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setSearchOpen(true);
-            }}
+            onChange={(event) => handleSearchChange(event.target.value)}
           />
 
           {query && (
@@ -159,8 +178,7 @@ export default function GroupInvitations({ groupID }) {
               className="group-invitations-search-clear"
               aria-label="Clear search"
               onClick={() => {
-                setQuery("");
-                setUsers([]);
+                handleSearchChange("");
               }}
             >
               <X size={16} weight="bold" />
@@ -175,9 +193,7 @@ export default function GroupInvitations({ groupID }) {
                 Type at least 2 characters to search users
               </div>
             ) : searchLoading ? (
-              <div className="group-invitations-search-message">
-                Searching users...
-              </div>
+              <GroupInvitationSearchSkeleton />
             ) : users.length === 0 ? (
               <div className="group-invitations-search-message">
                 No users available to invite
@@ -342,9 +358,7 @@ export default function GroupInvitations({ groupID }) {
       )}
 
       {loadingMore && (
-        <p className="group-invitations-loading-more">
-          Loading more invitations...
-        </p>
+        <GroupInvitationsSkeleton count={1} pagination />
       )}
     </section>
   );

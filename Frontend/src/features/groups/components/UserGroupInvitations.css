@@ -236,7 +236,6 @@
   cursor: default;
 }
 
-.user-group-invitations-state,
 .user-group-invitations-empty {
   display: grid;
   place-items: center;
@@ -256,14 +255,6 @@
 .user-group-invitations-scroll-trigger {
   width: 100%;
   height: 1px;
-}
-
-.user-group-invitations-loading-more {
-  margin: 0;
-  padding: 1rem 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-  text-align: center;
 }
 
 @media (max-width: 800px) {

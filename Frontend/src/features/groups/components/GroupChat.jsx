@@ -2,54 +2,19 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PaperPlaneTilt, Smiley } from "@phosphor-icons/react";
 
 import { useToast } from "../../../shared/components/toast/useToast.js";
-import {
-  formatLocalDate,
-  formatLocalTime,
-  isSameLocalDay,
-  parseAPITimestamp,
-} from "../../../shared/utils/dateTime.js";
 import ChatEmojiPicker from "../../chat/components/ChatEmojiPicker.jsx";
 import MessageReactions from "../../chat/components/MessageReactions.jsx";
 import { useChatMessageScroll } from "../../chat/hooks/useChatMessageScroll.js";
 import { useChatRealtime } from "../../chat/realtime/useChatRealtime.js";
+import {
+  formatChatMessageDay,
+  formatChatMessageTime,
+} from "../../chat/utils/messages.js";
 import { useGroupChat } from "../hooks/useGroupChat.js";
+import { GroupChatSkeleton } from "./GroupSectionSkeletons.jsx";
 
 import "../../chat/ChatPage.css";
 import "./GroupChat.css";
-
-function messageTime(value) {
-  return formatLocalTime(value, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function messageDay(value) {
-  const date = parseAPITimestamp(value);
-
-  if (!date) {
-    return value;
-  }
-
-  const today = new Date();
-  const yesterday = new Date();
-
-  yesterday.setDate(today.getDate() - 1);
-
-  if (isSameLocalDay(date, today)) {
-    return "Today";
-  }
-
-  if (isSameLocalDay(date, yesterday)) {
-    return "Yesterday";
-  }
-
-  return formatLocalDate(value, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function senderName(message) {
   if (message.sender_nickname) {
@@ -398,11 +363,11 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
         onScroll={handleMessageScroll}
       >
         {loading ? (
-          <p className="chat-empty">Loading messages…</p>
+          <GroupChatSkeleton pagination />
         ) : (
           <>
             {loadingMore && (
-              <p className="chat-loading-older">Loading older messages…</p>
+              <GroupChatSkeleton pagination />
             )}
 
             {messages.length === 0 && (
@@ -416,8 +381,8 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
 
               const showDay =
                 index === 0 ||
-                messageDay(messages[index - 1].created_at) !==
-                  messageDay(message.created_at);
+                formatChatMessageDay(messages[index - 1].created_at) !==
+                  formatChatMessageDay(message.created_at);
 
               return (
                 <div
@@ -426,7 +391,7 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
                 >
                   {showDay && (
                     <p className="chat-day-divider">
-                      {messageDay(message.created_at)}
+                      {formatChatMessageDay(message.created_at)}
                     </p>
                   )}
 
@@ -443,7 +408,7 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
                       <p>{message.content}</p>
 
                       <footer>
-                        <time>{messageTime(message.created_at)}</time>
+                        <time>{formatChatMessageTime(message.created_at)}</time>
 
                         {isMine && (
                           <span>

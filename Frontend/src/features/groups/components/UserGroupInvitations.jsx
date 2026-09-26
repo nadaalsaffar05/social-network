@@ -6,6 +6,7 @@ import { useToast } from "../../../shared/components/toast/useToast.js";
 import { usePaginationObserver } from "../../../shared/hooks/usePaginationObserver.js";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
 import { useUserGroupInvitations } from "../hooks/useUserGroupInvitations.js";
+import { UserGroupInvitationsSkeleton } from "./GroupSectionSkeletons.jsx";
 import "./UserGroupInvitations.css";
 
 export default function UserGroupInvitations({ onInvitationAccepted }) {
@@ -49,9 +50,7 @@ export default function UserGroupInvitations({ onInvitationAccepted }) {
   }
 
   if (loading) {
-    return (
-      <div className="user-group-invitations-state">Loading invitations...</div>
-    );
+    return <UserGroupInvitationsSkeleton />;
   }
 
   if (status === "error" && invitations.length === 0) {
@@ -185,9 +184,7 @@ export default function UserGroupInvitations({ onInvitationAccepted }) {
       )}
 
       {loadingMore && (
-        <p className="user-group-invitations-loading-more">
-          Loading more invitations...
-        </p>
+        <UserGroupInvitationsSkeleton count={1} pagination />
       )}
     </section>
   );

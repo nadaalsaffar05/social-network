@@ -9,9 +9,11 @@ import { globalSearch } from "../../../api/search.js";
 
 import "./GroupSearchBar.css";
 
+const EMPTY_GROUPS = [];
+
 export default function GroupSearchBar({ onSelect }) {
   const [query, setQuery] = useState("");
-  const [groups, setGroups] = useState([]);
+  const [groups, setGroups] = useState(EMPTY_GROUPS);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -22,30 +24,34 @@ export default function GroupSearchBar({ onSelect }) {
   useEffect(() => {
     const trimmedQuery = query.trim();
     if (trimmedQuery.length < 2) {
-      setGroups([]);
-      setIsLoading(false);
-      return;
+      return undefined;
     }
-    setIsLoading(true);
+
+    let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
         const data = await globalSearch({
           query: trimmedQuery,
           types: ["groups"],
         });
+        if (cancelled) return;
+
         setGroups(data.groups ?? []);
-      } catch (error) {
-        console.error("Group search failed:", error);
-        setGroups([]);
+      } catch {
+        if (!cancelled) {
+          setGroups(EMPTY_GROUPS);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     }, 250);
-    return () => window.clearTimeout(timer);
-  }, [query]);
 
-  useEffect(() => {
-    setSelectedIndex(-1);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [query]);
   useEffect(() => {
     if (!selectedItemRef.current) {
@@ -78,6 +84,20 @@ export default function GroupSearchBar({ onSelect }) {
     setGroups([]);
     setSelectedIndex(-1);
     onSelect(group);
+  }
+
+  function handleQueryChange(nextQuery) {
+    setQuery(nextQuery);
+    setSelectedIndex(-1);
+    setIsOpen(true);
+
+    if (nextQuery.trim().length < 2) {
+      setGroups(EMPTY_GROUPS);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
   }
 
   function handleKeyDown(event) {
@@ -144,10 +164,7 @@ export default function GroupSearchBar({ onSelect }) {
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setIsOpen(true);
-          }}
+          onChange={(event) => handleQueryChange(event.target.value)}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search groups..."
@@ -170,8 +187,7 @@ export default function GroupSearchBar({ onSelect }) {
             className="group-search__clear"
             onClick={(event) => {
               event.stopPropagation();
-              setQuery("");
-              setGroups([]);
+              handleQueryChange("");
               inputRef.current?.focus();
             }}
             aria-label="Clear group search"

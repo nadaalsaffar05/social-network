@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getGroups } from "../../../api/groups.js";
 import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
@@ -8,8 +8,14 @@ export function useGroups(filter) {
   const [status, setStatus] = useState(PAGINATION_STATUS.LOADING);
   const [error, setError] = useState(null);
   const [loadedFilter, setLoadedFilter] = useState(null);
+  const requestIDRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestID = ++requestIDRef.current;
+
+    setGroups([]);
+    setNextCursor(INITIAL_CURSOR);
+    setLoadedFilter(null);
     setStatus(PAGINATION_STATUS.LOADING);
     setError(null);
 
@@ -20,13 +26,17 @@ export function useGroups(filter) {
           limit: 15,
         });
 
-      setGroups(nextGroups);
-      setNextCursor(cursor);
-      setLoadedFilter(filter);
-      setStatus(PAGINATION_STATUS.READY);
+      if (requestID === requestIDRef.current) {
+        setGroups(nextGroups);
+        setNextCursor(cursor);
+        setLoadedFilter(filter);
+        setStatus(PAGINATION_STATUS.READY);
+      }
     } catch (requestError) {
-      setError(requestError.message);
-      setStatus(PAGINATION_STATUS.ERROR);
+      if (requestID === requestIDRef.current) {
+        setError(requestError.message);
+        setStatus(PAGINATION_STATUS.ERROR);
+      }
     }
   }, [filter]);
 
@@ -35,6 +45,7 @@ export function useGroups(filter) {
       return;
     }
 
+    const requestID = ++requestIDRef.current;
     setStatus(PAGINATION_STATUS.LOADING_MORE);
     setError(null);
 
@@ -46,13 +57,16 @@ export function useGroups(filter) {
           cursor: nextCursor,
         });
 
-      setGroups((currentGroups) => [...currentGroups, ...nextGroups]);
-
-      setNextCursor(cursor);
-      setStatus(PAGINATION_STATUS.READY);
+      if (requestID === requestIDRef.current) {
+        setGroups((currentGroups) => [...currentGroups, ...nextGroups]);
+        setNextCursor(cursor);
+        setStatus(PAGINATION_STATUS.READY);
+      }
     } catch (requestError) {
-      setError(requestError.message);
-      setStatus(PAGINATION_STATUS.READY);
+      if (requestID === requestIDRef.current) {
+        setError(requestError.message);
+        setStatus(PAGINATION_STATUS.READY);
+      }
     }
   }, [filter, nextCursor, status]);
 

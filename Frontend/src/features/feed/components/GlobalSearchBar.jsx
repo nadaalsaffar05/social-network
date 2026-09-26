@@ -12,7 +12,7 @@ import {
 import { globalSearch } from "../../../api/search.js";
 import { usePageNavigate } from "../../../shared/components/back-button/usePageBack.js";
 import Avatar from "../../../shared/components/avatar/Avatar.jsx";
-import { getUserDisplayName, getUserFullName } from "../../../shared/utils/user.js";
+import { getUserFullName } from "../../../shared/utils/user.js";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
 import { PROFILE_PRIVACY, POST_PRIVACY } from "../../../shared/constants/enums.js";
 import "./GlobalSearchBar.css";
@@ -23,6 +23,8 @@ const ALL_FILTERS = [
   { id: "posts", label: "Posts", icon: Article },
 ];
 
+const EMPTY_RESULTS = { users: [], groups: [], posts: [] };
+
 export default function GlobalSearchBar() {
   const navigateTo = usePageNavigate();
   const [query, setQuery] = useState("");
@@ -32,7 +34,7 @@ export default function GlobalSearchBar() {
   const [showAddFilterMenu, setShowAddFilterMenu] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState({ users: [], groups: [], posts: [] });
+  const [results, setResults] = useState(EMPTY_RESULTS);
   const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const containerRef = useRef(null);
@@ -84,10 +86,6 @@ export default function GlobalSearchBar() {
   }, [selectedIndex]);
 
   useEffect(() => {
-    setSelectedIndex(-1);
-  }, [query, activeFilters]);
-
-  useEffect(() => {
     function handleClickOutside(event) {
       if (
         containerRef.current &&
@@ -104,31 +102,51 @@ export default function GlobalSearchBar() {
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2) {
-      setResults({ users: [], groups: [], posts: [] });
-      setIsLoading(false);
-      return;
+      return undefined;
     }
 
-    setIsLoading(true);
+    let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
         const types = Array.from(activeFilters);
         const data = await globalSearch({ query: trimmed, types });
+        if (cancelled) return;
+
         setResults({
           users: data.users || [],
           groups: data.groups || [],
           posts: data.posts || [],
         });
-      } catch (err) {
-        console.error("Global search failed:", err);
-        setResults({ users: [], groups: [], posts: [] });
+      } catch {
+        if (!cancelled) {
+          setResults(EMPTY_RESULTS);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     }, 250);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [query, activeFilters]);
+
+  function handleQueryChange(nextQuery) {
+    setQuery(nextQuery);
+    setSelectedIndex(-1);
+    setIsOpen(true);
+
+    if (nextQuery.trim().length < 2) {
+      setResults(EMPTY_RESULTS);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+  }
 
   function handleKeyDown(event) {
     if (event.key === "ArrowDown") {
@@ -178,6 +196,10 @@ export default function GlobalSearchBar() {
       }
       return next;
     });
+    setSelectedIndex(-1);
+    if (query.trim().length >= 2) {
+      setIsLoading(true);
+    }
   }
 
   function handleAddFilter(filterId) {
@@ -187,6 +209,10 @@ export default function GlobalSearchBar() {
       return next;
     });
     setShowAddFilterMenu(false);
+    setSelectedIndex(-1);
+    if (query.trim().length >= 2) {
+      setIsLoading(true);
+    }
   }
 
   function handleSelectResult(path) {
@@ -226,10 +252,7 @@ export default function GlobalSearchBar() {
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            if (!isOpen) setIsOpen(true);
-          }}
+          onChange={(event) => handleQueryChange(event.target.value)}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search users, groups, posts..."
@@ -250,10 +273,9 @@ export default function GlobalSearchBar() {
           <button
             type="button"
             className="global-search-bar__clear"
-            onClick={(e) => {
-              e.stopPropagation();
-              setQuery("");
-              setResults({ users: [], groups: [], posts: [] });
+            onClick={(event) => {
+              event.stopPropagation();
+              handleQueryChange("");
               inputRef.current?.focus();
             }}
             aria-label="Clear search query"

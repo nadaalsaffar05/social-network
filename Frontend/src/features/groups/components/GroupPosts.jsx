@@ -8,6 +8,7 @@ import { useToast } from "../../../shared/components/toast/useToast.js";
 import PostCard from "../../feed/components/PostCard.jsx";
 import PostComposer from "../../feed/components/PostComposer.jsx";
 import { useGroupPosts } from "../hooks/useGroupPosts.js";
+import { GroupPostsSkeleton } from "./GroupSectionSkeletons.jsx";
 
 import "./GroupPosts.css";
 
@@ -96,7 +97,7 @@ export default function GroupPosts({ groupID, currentUserID }) {
   }
 
   if (loading) {
-    return <div className="group-posts-state">Loading posts...</div>;
+    return <GroupPostsSkeleton />;
   }
 
   return (
@@ -143,7 +144,7 @@ export default function GroupPosts({ groupID, currentUserID }) {
       )}
 
       {loadingMore && (
-        <p className="group-posts-loading-more">Loading more posts...</p>
+        <GroupPostsSkeleton count={1} pagination />
       )}
 
       <PostComposer

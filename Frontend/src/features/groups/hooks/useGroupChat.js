@@ -5,25 +5,10 @@ import {
   sendGroupMessage,
   reactToGroupMessage,
 } from "../../../api/groups.js";
+import { mergeMessagesByPublicID } from "../../chat/utils/messages.js";
 import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
 const MESSAGES_LIMIT = 20;
-
-function addMessages(
-  currentMessages,
-  incomingMessages,
-  { prepend = false } = {},
-) {
-  const knownIDs = new Set(currentMessages.map((message) => message.public_id));
-
-  const newMessages = incomingMessages.filter(
-    (message) => !knownIDs.has(message.public_id),
-  );
-
-  return prepend
-    ? [...newMessages, ...currentMessages]
-    : [...currentMessages, ...newMessages];
-}
 
 export function useGroupChat(groupID) {
   const [messages, setMessages] = useState([]);
@@ -73,7 +58,7 @@ export function useGroupChat(groupID) {
       const chronologicalMessages = olderMessages.slice().reverse();
 
       setMessages((currentMessages) =>
-        addMessages(currentMessages, chronologicalMessages, {
+        mergeMessagesByPublicID(currentMessages, chronologicalMessages, {
           prepend: true,
         }),
       );
@@ -103,7 +88,7 @@ export function useGroupChat(groupID) {
         const message = await sendGroupMessage(groupID, trimmedContent);
 
         setMessages((currentMessages) =>
-          addMessages(currentMessages, [message]),
+          mergeMessagesByPublicID(currentMessages, [message]),
         );
 
         return message;
@@ -118,7 +103,9 @@ export function useGroupChat(groupID) {
   );
 
   const addMessage = useCallback((message) => {
-    setMessages((currentMessages) => addMessages(currentMessages, [message]));
+    setMessages((currentMessages) =>
+      mergeMessagesByPublicID(currentMessages, [message]),
+    );
   }, []);
 
   const updateMessage = useCallback((publicID, changes) => {

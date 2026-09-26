@@ -1,5 +1,6 @@
 import { UsersThree } from "@phosphor-icons/react";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
+import Skeleton from "../../../shared/components/skeleton/Skeleton.jsx";
 
 import "./DetailsCard.css";
 
@@ -19,7 +20,13 @@ export default function GroupDetails({
   if (loading) {
     return (
       <aside className="details-card">
-        <p>Loading group...</p>
+        <div className="group-details-skeleton" aria-label="Loading group">
+          <Skeleton variant="text" width="68%" height={22} />
+          <Skeleton variant="text" width="100%" height={12} />
+          <Skeleton variant="text" width="78%" height={12} />
+          <Skeleton variant="text" width="48%" height={12} />
+          <Skeleton variant="button" width="100%" height={42} />
+        </div>
       </aside>
     );
   }
