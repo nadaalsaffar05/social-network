@@ -2,13 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 const NEAR_BOTTOM_THRESHOLD = 96;
 
-export function useChatMessageScroll(messages, layoutVersion) {
+export function useChatMessageScroll(messages, layoutVersion, scrollKey) {
   const messageListRef = useRef(null);
   const pendingBottomScrollRef = useRef(false);
   const prependPositionRef = useRef(null);
   const pendingPrependRestoreRef = useRef(false);
   const wasNearBottomRef = useRef(true);
   const previousLayoutVersionRef = useRef(layoutVersion);
+  const previousScrollKeyRef = useRef(scrollKey);
 
   const isNearBottom = useCallback(() => {
     const container = messageListRef.current;
@@ -87,6 +88,18 @@ export function useChatMessageScroll(messages, layoutVersion) {
     if (!container) {
       return;
     }
+
+    const scrollTargetChanged = previousScrollKeyRef.current !== scrollKey;
+    previousScrollKeyRef.current = scrollKey;
+    if (scrollTargetChanged) {
+      pendingBottomScrollRef.current = false;
+      prependPositionRef.current = null;
+      pendingPrependRestoreRef.current = false;
+      wasNearBottomRef.current = true;
+      previousLayoutVersionRef.current = layoutVersion;
+      return;
+    }
+
     const layoutChanged = previousLayoutVersionRef.current !== layoutVersion;
     previousLayoutVersionRef.current = layoutVersion;
     const prependPosition = prependPositionRef.current;
@@ -98,15 +111,12 @@ export function useChatMessageScroll(messages, layoutVersion) {
       return;
     }
 
-    if (
-      pendingBottomScrollRef.current ||
-      (layoutChanged && wasNearBottomRef.current)
-    ) {
+    if (pendingBottomScrollRef.current || (layoutChanged && isNearBottom())) {
       container.scrollTop = container.scrollHeight;
       pendingBottomScrollRef.current = false;
       wasNearBottomRef.current = true;
     }
-  }, [layoutVersion, messages]);
+  }, [isNearBottom, layoutVersion, messages, scrollKey]);
 
   return {
     capturePrependAnchor,

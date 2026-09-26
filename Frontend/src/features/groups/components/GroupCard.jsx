@@ -1,5 +1,6 @@
 import { UsersThree } from "@phosphor-icons/react";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
+import Skeleton from "../../../shared/components/skeleton/Skeleton.jsx";
 
 import "./GroupCard.css";
 
@@ -44,4 +45,28 @@ export default function GroupCard({
       <p className="group-card-description">{group.description}</p>
     </button>
   );
+}
+
+export function GroupCardSkeleton({ count = 6, filter }) {
+  return Array.from({ length: count }).map((_, index) => (
+    <div
+      key={index}
+      className="group-card group-card--skeleton"
+      aria-hidden="true"
+    >
+      <div className="group-card-header">
+        <Skeleton variant="text" width="58%" height={17} />
+        <Skeleton variant="text" width={34} height={15} />
+      </div>
+
+      {filter === "mine" && (
+        <Skeleton variant="text" width="38%" height={12} />
+      )}
+
+      <div className="group-card-skeleton-description">
+        <Skeleton variant="text" width="92%" height={13} />
+        <Skeleton variant="text" width="68%" height={13} />
+      </div>
+    </div>
+  ));
 }

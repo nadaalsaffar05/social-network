@@ -110,6 +110,18 @@
   outline-offset: 2px;
 }
 
+.group-card--skeleton {
+  pointer-events: none;
+}
+
+.group-card-skeleton-description {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+  margin-top: auto;
+}
+
 @media (max-width: 640px) {
   .group-card {
     padding: 1rem;
