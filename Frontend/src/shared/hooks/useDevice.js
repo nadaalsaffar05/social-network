@@ -6,6 +6,9 @@ const MOBILE_REGEX =
 const TABLET_REGEX =
   /iPad|Android.*Tablet|Kindle|Silk/i;
 
+const isIPadSafari = () =>
+  /Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
+
 const BREAKPOINTS = {
   MOBILE_MAX: 767,
   TABLET_MAX: 1024,
@@ -14,6 +17,7 @@ const BREAKPOINTS = {
 function detectDeviceType() {
   const ua = navigator.userAgent;
 
+  if (isIPadSafari()) return "tablet";
   if (TABLET_REGEX.test(ua)) return "tablet";
   if (MOBILE_REGEX.test(ua)) return "mobile";
 
