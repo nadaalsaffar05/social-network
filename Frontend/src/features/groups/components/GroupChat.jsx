@@ -118,7 +118,7 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
     queueBottomScroll,
     queuePrependRestore,
     scrollToBottom,
-  } = useChatMessageScroll(messages);
+  } = useChatMessageScroll(messages, typers.length > 0);
 
   useEffect(() => {
     hasPositionedInitialMessagesRef.current = false;
@@ -195,9 +195,7 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
     if (event.type === "group-typing") {
       const timer = window.setTimeout(() => {
         setTypers(
-          (event.data.typers ?? []).filter(
-            (user) => user.id !== currentUserID,
-          ),
+          (event.data.typers ?? []).filter((user) => user.id !== currentUserID),
         );
       }, 0);
 

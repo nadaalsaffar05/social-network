@@ -158,15 +158,13 @@ func (h *Handler) GetGroupByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isMember, hasPendingRequest, hasPendingInvite, err := getGroupUserState(h.DB, groupID, currentUser.ID)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
-		return
-	}
+	isMember, hasPendingRequest, hasPendingInvite, pendingInviteID, err :=
+		getGroupUserState(h.DB, groupID, currentUser.ID)
 
 	group.IsMember = isMember
 	group.HasPendingRequest = hasPendingRequest
 	group.HasPendingInvite = hasPendingInvite
+	group.PendingInviteID = pendingInviteID
 	helpers.WriteJSON(w, http.StatusOK, group)
 }
 

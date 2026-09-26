@@ -64,6 +64,16 @@ export default function ProtectedRoute() {
     };
   }, [retryCount]);
 
+  useEffect(() => {
+    function handleSessionExpired() {
+      setStatus("unauthenticated");
+    }
+    window.addEventListener("session-expired", handleSessionExpired);
+    return () => {
+      window.removeEventListener("session-expired", handleSessionExpired);
+    };
+  }, []);
+
   if (status === "checking") {
     return (
       <AuthStatusScreen>
@@ -74,9 +84,7 @@ export default function ProtectedRoute() {
           <div>
             <p className="auth-eyebrow">One moment</p>
             <h1>Checking your session</h1>
-            <p className="auth-description">
-              Connecting you to Loop…
-            </p>
+            <p className="auth-description">Connecting you to Loop…</p>
           </div>
         </section>
       </AuthStatusScreen>

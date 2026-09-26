@@ -44,6 +44,7 @@ func (h *Handler) GlobalSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	typesParam := strings.TrimSpace(r.URL.Query().Get("types"))
+	groupID := strings.TrimSpace(r.URL.Query().Get("group_id"))
 	searchTypes := make(map[string]bool)
 	if typesParam == "" {
 		searchTypes["users"] = true
@@ -56,7 +57,13 @@ func (h *Handler) GlobalSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if searchTypes["users"] {
-		users, err := searchUsers(h.DB, currentUser.ID, query, 15)
+		var users []models.SearchUserResult
+		var err error
+		if groupID != "" {
+			users, err = searchInvitableUsers(h.DB, currentUser.ID, groupID, query, 15)
+		} else {
+			users, err = searchUsers(h.DB, currentUser.ID, query, 15)
+		}
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to search users")
 			return

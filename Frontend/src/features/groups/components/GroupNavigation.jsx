@@ -1,4 +1,4 @@
-import { UsersThree, UserPlus } from "@phosphor-icons/react";
+import { EnvelopeIcon, UsersThree, UserPlus } from "@phosphor-icons/react";
 
 import "./GroupNavigation.css";
 
@@ -46,6 +46,18 @@ export default function GroupNavigation({
           onClick={() => onSectionChange("members")}
         >
           <UsersThree size={20} />
+        </button>
+
+        <button
+          type="button"
+          className={`group-tab group-tab-icon ${
+            activeSection === "invitations" ? "active" : ""
+          }`}
+          title="Invitations"
+          aria-label="Invitations"
+          onClick={() => onSectionChange("invitations")}
+        >
+          <EnvelopeIcon size={20} />
         </button>
 
         {isCreator && (

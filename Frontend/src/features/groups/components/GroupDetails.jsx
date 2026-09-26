@@ -10,6 +10,8 @@ export default function GroupDetails({
   actionLoading,
   onJoin,
   onCancelRequest,
+  onAcceptInvite,
+  onDeclineInvite,
   mode,
   onLeave,
   isCreator,
@@ -63,7 +65,25 @@ export default function GroupDetails({
       <div className="details-actions">
         {mode === "discover" && (
           <>
-            {group.has_pending_request ? (
+            {group.has_pending_invite ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onAcceptInvite}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? "Responding..." : "Accept"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onDeclineInvite}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? "Responding..." : "Decline"}
+                </button>
+              </>
+            ) : group.has_pending_request ? (
               <button
                 type="button"
                 onClick={onCancelRequest}

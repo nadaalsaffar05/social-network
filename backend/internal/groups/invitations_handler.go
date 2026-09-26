@@ -7,7 +7,9 @@ import (
 	"social-network/internal/auth"
 	"social-network/internal/enums"
 	"social-network/internal/helpers"
+	"social-network/internal/models"
 	"social-network/internal/notifications"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -70,7 +72,7 @@ func (h *Handler) InviteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isUserMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
+	isUserMember, _, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
 		return
@@ -81,7 +83,7 @@ func (h *Handler) InviteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isInvitedUserMember, hasPendingRequest, hasPendingInvite, err := getGroupUserState(h.DB, groupID, req.InvitedUserID)
+	isInvitedUserMember, hasPendingRequest, hasPendingInvite, _, err := getGroupUserState(h.DB, groupID, req.InvitedUserID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
 		return
@@ -143,13 +145,26 @@ func (h *Handler) GetUserInvites(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	invites, err := getUserInvites(h.DB, currentUser.ID)
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
 	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
+		return
+	}
+
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+
+	invites, nextCursor, total, err := getUserInvites(h.DB, currentUser.ID, cursor, limit)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")
+			return
+		}
+
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch invites")
 		return
 	}
 
-	helpers.WriteJSON(w, http.StatusOK, invites)
+	helpers.WriteJSON(w, http.StatusOK, models.UserGroupInvitationsPageResponse{Invitations: invites, NextCursor: nextCursor, Total: total})
 }
 
 func (h *Handler) RespondToInvite(w http.ResponseWriter, r *http.Request) {
@@ -229,7 +244,7 @@ func (h *Handler) GetGroupInvites(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
+	isMember, _, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
 		return
@@ -242,13 +257,26 @@ func (h *Handler) GetGroupInvites(w http.ResponseWriter, r *http.Request) {
 
 	isCreator := group.CreatorID == currentUser.ID
 
-	invites, err := getGroupInvites(h.DB, groupID, currentUser.ID, isCreator)
+	limit, err := helpers.ParsePageLimit(r.URL.Query().Get("limit"), 10)
 	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Limit must be an integer between 1 and 50")
+		return
+	}
+
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+
+	invites, nextCursor, total, err := getGroupInvites(h.DB, groupID, currentUser.ID, isCreator, cursor, limit)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.WriteError(w, http.StatusBadRequest, "Invalid cursor")
+			return
+		}
+
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to fetch group invites")
 		return
 	}
 
-	helpers.WriteJSON(w, http.StatusOK, invites)
+	helpers.WriteJSON(w, http.StatusOK, models.GroupInvitationsPageResponse{Invitations: invites, NextCursor: nextCursor, Total: total})
 }
 
 func (h *Handler) CancelInvite(w http.ResponseWriter, r *http.Request) {
@@ -284,7 +312,7 @@ func (h *Handler) CancelInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
+	isMember, _, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
 		return

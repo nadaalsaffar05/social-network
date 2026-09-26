@@ -92,7 +92,9 @@ function getNotificationDestination(notification) {
     case NOTIFICATION_TYPE.FOLLOW_REQUEST:
       return "/follow-requests";
     case NOTIFICATION_TYPE.GROUP_INVITATION:
-      return notification.group_id ? `/groups/${notification.group_id}` : "";
+      return notification.group_id
+        ? `/groups?selected=${notification.group_id}`
+        : "";
     case NOTIFICATION_TYPE.GROUP_JOIN_REQUEST:
       return notification.group_id
         ? `/groups/${notification.group_id}?tab=requests`

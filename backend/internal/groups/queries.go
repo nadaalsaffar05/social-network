@@ -290,10 +290,11 @@ func getGroupMembers(db *sql.DB, groupID string, cursor string, limit int) ([]mo
 	return members, nextCursor, nil
 }
 
-func getGroupUserState(db *sql.DB, groupID string, userID string) (bool, bool, bool, error) {
+func getGroupUserState(db *sql.DB, groupID string, userID string) (bool, bool, bool, *string, error) {
 	var isMember bool
 	var hasPendingRequest bool
 	var hasPendingInvite bool
+	var pendingInviteID *string
 	err := db.QueryRow(`
 		SELECT
 			EXISTS (
@@ -316,10 +317,22 @@ func getGroupUserState(db *sql.DB, groupID string, userID string) (bool, bool, b
 				WHERE group_id = ?
 					AND invited_user_id = ?
 					AND status = ?
+			),
+			(
+				SELECT id
+				FROM group_invitations
+				WHERE group_id = ?
+					AND invited_user_id = ?
+					AND status = ?
+				LIMIT 1
 			)
-	`, groupID, userID, enums.GroupMembershipStatusActive, groupID, userID, enums.GroupJoinRequestStatusPending, groupID,
-		userID, enums.GroupInvitationStatusPending).Scan(&isMember, &hasPendingRequest, &hasPendingInvite)
-	return isMember, hasPendingRequest, hasPendingInvite, err
+	`, groupID, userID, enums.GroupMembershipStatusActive,
+		groupID, userID, enums.GroupJoinRequestStatusPending,
+		groupID, userID, enums.GroupInvitationStatusPending,
+		groupID, userID, enums.GroupInvitationStatusPending,
+	).Scan(&isMember, &hasPendingRequest, &hasPendingInvite, &pendingInviteID)
+
+	return isMember, hasPendingRequest, hasPendingInvite, pendingInviteID, err
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -519,68 +532,121 @@ func createInvite(db sqlExecer, inviteID string, groupID string, inviterID strin
 	return err
 }
 
-func getGroupInvites(db *sql.DB, groupID string, userID string, isCreator bool) ([]models.GroupInvitationResponse, error) {
-	rows, err := db.Query(`
+func getGroupInvites(db *sql.DB, groupID string, userID string, isCreator bool, cursor string, limit int) ([]models.GroupInvitationResponse, string, int, error) {
+	args := []any{groupID, enums.GroupInvitationStatusPending, isCreator, userID}
+	var total int
+	err := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM group_invitations
+		WHERE group_id = ?
+			AND status = ?
+			AND (? OR inviter_id = ?)
+	`, groupID, enums.GroupInvitationStatusPending, isCreator, userID).Scan(&total)
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	query := `
 		SELECT
 			gi.id,
 			gi.group_id,
-
 			gi.inviter_id,
 			inviter.first_name,
 			inviter.last_name,
 			inviter_profile.nickname,
-
+			inviter_avatar_media.file_path,
 			gi.invited_user_id,
 			invited.first_name,
 			invited.last_name,
 			invited_profile.nickname,
-
+			invited_avatar_media.file_path,
 			gi.status,
 			gi.created_at
 		FROM group_invitations gi
 		JOIN users inviter
 			ON inviter.id = gi.inviter_id
-		JOIN profiles inviter_profile
+		LEFT JOIN profiles inviter_profile
 			ON inviter_profile.user_id = inviter.id
+		LEFT JOIN profile_avatars inviter_avatar
+			ON inviter_avatar.user_id = inviter.id
+		LEFT JOIN media inviter_avatar_media
+			ON inviter_avatar_media.id = inviter_avatar.media_id
 		JOIN users invited
 			ON invited.id = gi.invited_user_id
-		JOIN profiles invited_profile
+		LEFT JOIN profiles invited_profile
 			ON invited_profile.user_id = invited.id
+		LEFT JOIN profile_avatars invited_avatar
+			ON invited_avatar.user_id = invited.id
+		LEFT JOIN media invited_avatar_media
+			ON invited_avatar_media.id = invited_avatar.media_id
 		WHERE gi.group_id = ?
-		  AND gi.status = ?
-		  AND (? OR gi.inviter_id = ?)
-		ORDER BY gi.created_at DESC
-	`,
-		groupID,
-		enums.GroupInvitationStatusPending,
-		isCreator,
-		userID,
-	)
+			AND gi.status = ?
+			AND (? OR gi.inviter_id = ?)
+	`
+	if cursor != "" {
+		var cursorCreatedAt string
+
+		err := db.QueryRow(`
+			SELECT created_at
+			FROM group_invitations
+			WHERE id = ?
+				AND group_id = ?
+				AND status = ?
+				AND (? OR inviter_id = ?)
+		`, cursor, groupID, enums.GroupInvitationStatusPending, isCreator, userID).Scan(&cursorCreatedAt)
+		if err != nil {
+			return nil, "", 0, err
+		}
+
+		query += `
+			AND (
+				gi.created_at < ?
+				OR (gi.created_at = ? AND gi.id < ?)
+			)
+		`
+
+		args = append(args, cursorCreatedAt, cursorCreatedAt, cursor)
+	}
+
+	query += `
+		ORDER BY gi.created_at DESC, gi.id DESC
+		LIMIT ?
+	`
+
+	args = append(args, limit+1)
+	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 	defer rows.Close()
 
 	invites := make([]models.GroupInvitationResponse, 0)
+
 	for rows.Next() {
 		var invite models.GroupInvitationResponse
-		err := rows.Scan(
-			&invite.InviteID, &invite.GroupID,
+
+		err := rows.Scan(&invite.InviteID, &invite.GroupID,
 			&invite.InviterID, &invite.InviterFirstName, &invite.InviterLastName, &invite.InviterNickname,
-			&invite.InvitedUserID, &invite.InvitedUserFirstName, &invite.InvitedUserLastName, &invite.InvitedUserNickname,
-			&invite.Status, &invite.CreatedAt)
+			&invite.InviterAvatarPath, &invite.InvitedUserID, &invite.InvitedUserFirstName, &invite.InvitedUserLastName,
+			&invite.InvitedUserNickname, &invite.InvitedUserAvatarPath, &invite.Status, &invite.CreatedAt)
 		if err != nil {
-			return nil, err
+			return nil, "", 0, err
 		}
 
 		invites = append(invites, invite)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 
-	return invites, nil
+	nextCursor := ""
+	if len(invites) > limit {
+		invites = invites[:limit]
+		nextCursor = invites[len(invites)-1].InviteID
+	}
+
+	return invites, nextCursor, total, nil
 }
 
 func getPendingInviteByID(db *sql.DB, inviteID string, groupID string) (models.GroupInvitationResponse, error) {
@@ -642,8 +708,21 @@ func getPendingInviteByIDForUser(db *sql.DB, inviteID string, userID string) (mo
 	return invite, err
 }
 
-func getUserInvites(db *sql.DB, userID string) ([]models.UserGroupInvitationResponse, error) {
-	rows, err := db.Query(`
+func getUserInvites(db *sql.DB, userID string, cursor string, limit int) ([]models.UserGroupInvitationResponse, string, int, error) {
+	var total int
+	err := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM group_invitations
+		WHERE invited_user_id = ?
+			AND status = ?
+	`, userID, enums.GroupInvitationStatusPending).Scan(&total)
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	args := []any{userID, enums.GroupInvitationStatusPending}
+
+	query := `
 		SELECT
 			gi.id,
 			gi.group_id,
@@ -652,6 +731,7 @@ func getUserInvites(db *sql.DB, userID string) ([]models.UserGroupInvitationResp
 			u.first_name,
 			u.last_name,
 			p.nickname,
+			avatar_media.file_path,
 			gi.status,
 			gi.created_at
 		FROM group_invitations gi
@@ -659,45 +739,74 @@ func getUserInvites(db *sql.DB, userID string) ([]models.UserGroupInvitationResp
 			ON g.id = gi.group_id
 		JOIN users u
 			ON u.id = gi.inviter_id
-		JOIN profiles p
+		LEFT JOIN profiles p
 			ON p.user_id = u.id
+		LEFT JOIN profile_avatars avatar
+			ON avatar.user_id = u.id
+		LEFT JOIN media avatar_media
+			ON avatar_media.id = avatar.media_id
 		WHERE gi.invited_user_id = ?
-		  AND gi.status = ?
-		ORDER BY gi.created_at DESC
-	`, userID, enums.GroupInvitationStatusPending,
-	)
+			AND gi.status = ?
+	`
+	if cursor != "" {
+		var cursorCreatedAt string
+		err := db.QueryRow(`
+			SELECT created_at
+			FROM group_invitations
+			WHERE id = ?
+				AND invited_user_id = ?
+				AND status = ?
+		`, cursor, userID, enums.GroupInvitationStatusPending).Scan(&cursorCreatedAt)
+		if err != nil {
+			return nil, "", 0, err
+		}
 
-	if err != nil {
-		return nil, err
+		query += `
+			AND (
+				gi.created_at < ?
+				OR (gi.created_at = ? AND gi.id < ?)
+			)
+		`
+
+		args = append(args, cursorCreatedAt, cursorCreatedAt, cursor)
 	}
 
+	query += `
+		ORDER BY gi.created_at DESC, gi.id DESC
+		LIMIT ?
+	`
+
+	args = append(args, limit+1)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, "", 0, err
+	}
 	defer rows.Close()
 
 	invites := make([]models.UserGroupInvitationResponse, 0)
 	for rows.Next() {
 		var invite models.UserGroupInvitationResponse
-		err := rows.Scan(&invite.InviteID,
-			&invite.GroupID,
-			&invite.GroupTitle,
-			&invite.InviterID,
-			&invite.InviterFirstName,
-			&invite.InviterLastName,
-			&invite.InviterNickname,
-			&invite.Status,
-			&invite.CreatedAt,
-		)
+		err := rows.Scan(&invite.InviteID, &invite.GroupID, &invite.GroupTitle, &invite.InviterID,
+			&invite.InviterFirstName, &invite.InviterLastName, &invite.InviterNickname,
+			&invite.InviterAvatarPath, &invite.Status, &invite.CreatedAt)
 		if err != nil {
-			return nil, err
+			return nil, "", 0, err
 		}
 
 		invites = append(invites, invite)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 
-	return invites, nil
+	nextCursor := ""
+	if len(invites) > limit {
+		invites = invites[:limit]
+		nextCursor = invites[len(invites)-1].InviteID
+	}
+
+	return invites, nextCursor, total, nil
 }
 
 func respondToInvite(db *sql.DB, action string, invite models.GroupInvitationResponse) error {

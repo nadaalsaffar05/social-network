@@ -25,6 +25,7 @@ type GroupDetailsResponse struct {
 	JoinedAt          *string `json:"joined_at,omitempty"`
 	HasPendingRequest bool    `json:"has_pending_request"`
 	HasPendingInvite  bool    `json:"has_pending_invite"`
+	PendingInviteID   *string `json:"pending_invite_id,omitempty"`
 }
 
 type GroupsPageResponse struct {
@@ -66,30 +67,45 @@ type GroupJoinRequestsPageResponse struct {
 }
 
 type GroupInvitationResponse struct {
-	InviteID             string                      `json:"invite_id"`
-	GroupID              string                      `json:"group_id"`
-	InviterID            string                      `json:"inviter_id"`
-	InviterFirstName     string                      `json:"inviter_first_name"`
-	InviterLastName      string                      `json:"inviter_last_name"`
-	InviterNickname      *string                     `json:"inviter_nickname,omitempty"`
-	InvitedUserID        string                      `json:"invited_user_id"`
-	InvitedUserFirstName string                      `json:"invited_user_first_name"`
-	InvitedUserLastName  string                      `json:"invited_user_last_name"`
-	InvitedUserNickname  *string                     `json:"invited_user_nickname,omitempty"`
-	Status               enums.GroupInvitationStatus `json:"status"`
-	CreatedAt            string                      `json:"created_at"`
+	InviteID              string                      `json:"invite_id"`
+	GroupID               string                      `json:"group_id"`
+	InviterID             string                      `json:"inviter_id"`
+	InviterFirstName      string                      `json:"inviter_first_name"`
+	InviterLastName       string                      `json:"inviter_last_name"`
+	InviterNickname       *string                     `json:"inviter_nickname,omitempty"`
+	InviterAvatarPath     *string                     `json:"inviter_avatar_path,omitempty"`
+	InvitedUserID         string                      `json:"invited_user_id"`
+	InvitedUserFirstName  string                      `json:"invited_user_first_name"`
+	InvitedUserLastName   string                      `json:"invited_user_last_name"`
+	InvitedUserNickname   *string                     `json:"invited_user_nickname,omitempty"`
+	InvitedUserAvatarPath *string                     `json:"invited_user_avatar_path,omitempty"`
+	Status                enums.GroupInvitationStatus `json:"status"`
+	CreatedAt             string                      `json:"created_at"`
+}
+
+type GroupInvitationsPageResponse struct {
+	Invitations []GroupInvitationResponse `json:"invitations"`
+	NextCursor  string                    `json:"next_cursor,omitempty"`
+	Total       int                       `json:"total"`
 }
 
 type UserGroupInvitationResponse struct {
-	InviteID         string                      `json:"invite_id"`
-	GroupID          string                      `json:"group_id"`
-	GroupTitle       string                      `json:"group_title"`
-	InviterID        string                      `json:"inviter_id"`
-	InviterFirstName string                      `json:"inviter_first_name"`
-	InviterLastName  string                      `json:"inviter_last_name"`
-	InviterNickname  *string                     `json:"inviter_nickname,omitempty"`
-	Status           enums.GroupInvitationStatus `json:"status"`
-	CreatedAt        string                      `json:"created_at"`
+	InviteID          string                      `json:"invite_id"`
+	GroupID           string                      `json:"group_id"`
+	GroupTitle        string                      `json:"group_title"`
+	InviterID         string                      `json:"inviter_id"`
+	InviterFirstName  string                      `json:"inviter_first_name"`
+	InviterLastName   string                      `json:"inviter_last_name"`
+	InviterNickname   *string                     `json:"inviter_nickname,omitempty"`
+	InviterAvatarPath *string                     `json:"inviter_avatar_path,omitempty"`
+	Status            enums.GroupInvitationStatus `json:"status"`
+	CreatedAt         string                      `json:"created_at"`
+}
+
+type UserGroupInvitationsPageResponse struct {
+	Invitations []UserGroupInvitationResponse `json:"invitations"`
+	NextCursor  string                        `json:"next_cursor,omitempty"`
+	Total       int                           `json:"total"`
 }
 
 type GroupEventResponse struct {

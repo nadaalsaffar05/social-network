@@ -53,13 +53,18 @@ export async function request(pathSegments, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       data?.error ||
         data?.message ||
         responseText ||
         response.statusText ||
         "Request failed",
     );
+    error.status = response.status;
+    if (response.status === 401) {
+      window.dispatchEvent(new Event("session-expired"));
+    }
+    throw error;
   }
 
   return data;

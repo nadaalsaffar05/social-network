@@ -150,7 +150,6 @@ export default function ChatPage() {
 
       try {
         if (appendOlder) {
-          capturePrependAnchor();
           isLoadingOlderRef.current = true;
           setIsLoadingOlder(true);
         } else {
@@ -340,7 +339,6 @@ export default function ChatPage() {
         sendEvent("message:read", {
           public_id: event.data.public_id,
         });
-
       }
 
       if (event.type === "message:deleted") {
@@ -824,7 +822,10 @@ export default function ChatPage() {
                     </>
                   )}
                 </div>
-                <form className="chat-composer loop-form" onSubmit={handleSubmit}>
+                <form
+                  className="chat-composer loop-form"
+                  onSubmit={handleSubmit}
+                >
                   <input
                     ref={composerInputRef}
                     className="loop-form__control"

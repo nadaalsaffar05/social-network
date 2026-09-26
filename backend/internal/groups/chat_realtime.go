@@ -41,7 +41,7 @@ func (h *Handler) handleGroupTyping(userID string, data json.RawMessage) {
 		return
 	}
 
-	isMember, _, _, err := getGroupUserState(h.DB, input.GroupID, userID)
+	isMember, _, _, _, err := getGroupUserState(h.DB, input.GroupID, userID)
 	if err != nil || !isMember {
 		return
 	}
@@ -71,7 +71,7 @@ func (h *Handler) handleGroupMessageRead(userID string, data json.RawMessage) {
 		return
 	}
 
-	isMember, _, _, err := getGroupUserState(h.DB, input.GroupID, userID)
+	isMember, _, _, _, err := getGroupUserState(h.DB, input.GroupID, userID)
 	if err != nil || !isMember {
 		return
 	}

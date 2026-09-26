@@ -1,23 +1,26 @@
 import { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
+import { EnvelopeSimple, Plus } from "@phosphor-icons/react";
 
 import {
   getGroupById,
   joinGroup,
   cancelJoinRequest,
+  respondToGroupInvitation,
 } from "../../api/groups.js";
 import { getProfile } from "../../api/profile.js";
-import GroupCard from "./components/GroupCard.jsx";
-import GroupDetails from "./components/GroupDetails.jsx";
-import CreateGroupModal from "./components/CreateGroupModal.jsx";
 import PageHeader from "../../shared/components/back-button/PageHeader.jsx";
 import { useToast } from "../../shared/components/toast/useToast.js";
 import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
 import { usePaginationObserver } from "../../shared/hooks/usePaginationObserver.js";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
+import GroupCard from "./components/GroupCard.jsx";
+import GroupDetails from "./components/GroupDetails.jsx";
+import GroupSearchBar from "./components/GroupSearchBar.jsx";
+import CreateGroupModal from "./components/CreateGroupModal.jsx";
+import UserGroupInvitations from "./components/UserGroupInvitations.jsx";
 import { useGroups } from "./hooks/useGroups.js";
-import { Plus } from "@phosphor-icons/react";
 import "./GroupsPage.css";
 
 export default function GroupsPage() {
@@ -25,11 +28,18 @@ export default function GroupsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigateTo = usePageNavigate();
   const { error: showError, success: showSuccess } = useToast();
-  const filter = searchParams.get("filter") === "mine" ? "mine" : "discover";
+  const filterParam = searchParams.get("filter");
+  const filter =
+    filterParam === "mine"
+      ? "mine"
+      : filterParam === "invitations"
+        ? "invitations"
+        : "discover";
+  const groupsFilter = filter === "mine" ? "mine" : "discover";
   const selectedGroupId =
     filter === "discover" ? searchParams.get("selected") : null;
   const { groups, setGroups, error, status, hasMore, refresh, loadMore } =
-    useGroups(filter);
+    useGroups(groupsFilter);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -37,13 +47,13 @@ export default function GroupsPage() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const loading = status === "loading";
   const loadingMore = status === "loading-more";
-  const loadMoreRef = usePaginationObserver({ hasMore, status, loadMore });
-  const selectedGroupIsVisible =
-    filter === "discover" &&
-    Boolean(selectedGroupId) &&
-    groups.some((group) => group.id === selectedGroupId);
+  const loadMoreRef = usePaginationObserver({
+    hasMore,
+    status,
+    loadMore,
+  });
   const displayedSelectedGroup =
-    selectedGroupIsVisible && selectedGroup?.id === selectedGroupId
+    filter === "discover" && selectedGroup?.id === selectedGroupId
       ? selectedGroup
       : null;
 
@@ -71,43 +81,37 @@ export default function GroupsPage() {
     };
   }, [showError]);
 
-  // make discover always have a selected group
+  // Make Discover always have a selected group
   useEffect(() => {
     if (filter !== "discover") {
       return;
     }
 
-    if (groups.length === 0) {
+    if (groups.length === 0 || selectedGroupId) {
       return;
     }
 
-    const selectedStillExists = groups.some(
-      (group) => group.id === selectedGroupId,
+    const firstGroupID = groups[0].id;
+
+    setSearchParams(
+      (currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+
+        nextParams.delete("filter");
+        nextParams.set("selected", firstGroupID);
+
+        return nextParams;
+      },
+      {
+        state: location.state,
+        replace: true,
+      },
     );
-
-    if (!selectedGroupId || !selectedStillExists) {
-      const firstGroupID = groups[0].id;
-
-      setSearchParams(
-        (currentParams) => {
-          const nextParams = new URLSearchParams(currentParams);
-
-          nextParams.delete("filter");
-          nextParams.set("selected", firstGroupID);
-
-          return nextParams;
-        },
-        {
-          state: location.state,
-          replace: true,
-        },
-      );
-    }
   }, [filter, groups, selectedGroupId, location.state, setSearchParams]);
 
   // Load selected Discover group details
   useEffect(() => {
-    if (!selectedGroupId || !selectedGroupIsVisible) {
+    if (filter !== "discover" || !selectedGroupId) {
       return;
     }
 
@@ -143,7 +147,7 @@ export default function GroupsPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedGroupId, selectedGroupIsVisible, showError]);
+  }, [filter, selectedGroupId, showError]);
 
   // Pagination errors
   useEffect(() => {
@@ -156,7 +160,6 @@ export default function GroupsPage() {
 
   function handleFilterChange(nextFilter) {
     setSelectedGroup(null);
-    setGroups([]);
 
     setSearchParams(
       (currentParams) => {
@@ -166,6 +169,8 @@ export default function GroupsPage() {
 
         if (nextFilter === "mine") {
           nextParams.set("filter", "mine");
+        } else if (nextFilter === "invitations") {
+          nextParams.set("filter", "invitations");
         } else {
           nextParams.delete("filter");
         }
@@ -274,6 +279,82 @@ export default function GroupsPage() {
     }
   }
 
+  async function handleInvitationResponse(action) {
+    if (!selectedGroup?.pending_invite_id || groupActionLoading) {
+      return;
+    }
+
+    try {
+      setGroupActionLoading(true);
+
+      await respondToGroupInvitation(selectedGroup.pending_invite_id, action);
+
+      if (action === "accept") {
+        showSuccess("Invitation accepted");
+
+        setGroups((currentGroups) =>
+          currentGroups.filter((group) => group.id !== selectedGroup.id),
+        );
+
+        setSelectedGroup(null);
+
+        setSearchParams(
+          (currentParams) => {
+            const nextParams = new URLSearchParams(currentParams);
+            nextParams.set("filter", "mine");
+            nextParams.delete("selected");
+            return nextParams;
+          },
+          {
+            state: location.state,
+            replace: true,
+          },
+        );
+
+        return;
+      }
+
+      setSelectedGroup((current) => ({
+        ...current,
+        has_pending_invite: false,
+        pending_invite_id: null,
+      }));
+
+      setGroups((currentGroups) =>
+        currentGroups.map((group) =>
+          group.id === selectedGroup.id
+            ? {
+                ...group,
+                has_pending_invite: false,
+              }
+            : group,
+        ),
+      );
+
+      showSuccess("Invitation declined");
+    } catch (requestError) {
+      showError(
+        `Could not ${action} invitation`,
+        requestError.message || "Please try again.",
+      );
+    } finally {
+      setGroupActionLoading(false);
+    }
+  }
+
+  function handleSearchSelection(group) {
+    if (group.is_member) {
+      navigateTo(`/groups/${group.id}`);
+      return;
+    }
+
+    handleDiscoverSelection(group.id);
+  }
+
+  async function handleInvitationAccepted() {
+    await refresh();
+  }
+
   return (
     <main className="groups-page">
       <div className="groups-waves">
@@ -285,7 +366,11 @@ export default function GroupsPage() {
           <PageHeader title="Groups" />
         </div>
 
-        <div className="groups-layout">
+        <div
+          className={`groups-layout ${
+            filter === "invitations" ? "groups-layout--invitations" : ""
+          }`}
+        >
           <section className="groups-browser">
             <div className="groups-tabs">
               <div className="groups-tabs-main">
@@ -308,82 +393,112 @@ export default function GroupsPage() {
                 </button>
               </div>
 
-              <button
-                type="button"
-                className="groups-tab create-group-tab"
-                onClick={() => setShowCreateGroup(true)}
-              >
-                <Plus size={18} weight="bold" />
-                Create Group
-              </button>
+              <div className="groups-tabs-actions">
+                <button
+                  type="button"
+                  className={`groups-tab groups-invitations-tab ${
+                    filter === "invitations" ? "active" : ""
+                  }`}
+                  onClick={() => handleFilterChange("invitations")}
+                  aria-label="Group invitations"
+                  title="Invitations"
+                >
+                  <EnvelopeSimple size={19} weight="bold" />
+                </button>
+
+                <button
+                  type="button"
+                  className="groups-tab create-group-tab"
+                  onClick={() => setShowCreateGroup(true)}
+                  aria-label="Create group"
+                  title="Create Group"
+                >
+                  <Plus size={19} weight="bold" />
+                </button>
+              </div>
             </div>
 
             <div className="groups-list-panel">
-              {loading && <p>Loading groups...</p>}
-
-              {!loading && groups.length === 0 && (
-                <p className="groups-empty">
-                  {filter === "discover"
-                    ? "No groups to discover."
-                    : "You haven't joined any groups yet."}
-                </p>
-              )}
-
-              {!loading && groups.length > 0 && (
+              {filter === "invitations" ? (
+                <UserGroupInvitations
+                  onInvitationAccepted={handleInvitationAccepted}
+                />
+              ) : (
                 <>
-                  <div className="groups-list">
-                    {groups.map((group) => (
-                      <GroupCard
-                        key={group.id}
-                        group={group}
-                        filter={filter}
-                        currentUserID={currentUser?.id}
-                        selected={
-                          filter === "discover" && group.id === selectedGroupId
-                        }
-                        onSelect={() => {
-                          if (filter === "mine") {
-                            navigateTo(`/groups/${group.id}`);
-                            return;
-                          }
+                  <GroupSearchBar onSelect={handleSearchSelection} />
 
-                          handleDiscoverSelection(group.id);
-                        }}
-                      />
-                    ))}
-                  </div>
+                  {loading && <p>Loading groups...</p>}
 
-                  {hasMore && (
-                    <div
-                      ref={loadMoreRef}
-                      className="groups-scroll-trigger"
-                      aria-hidden="true"
-                    />
+                  {!loading && groups.length === 0 && (
+                    <p className="groups-empty">
+                      {filter === "discover"
+                        ? "No groups to discover."
+                        : "You haven't joined any groups yet."}
+                    </p>
                   )}
 
-                  {loadingMore && (
-                    <p className="groups-loading-more">
-                      Loading more groups...
-                    </p>
+                  {!loading && groups.length > 0 && (
+                    <>
+                      <div className="groups-list">
+                        {groups.map((group) => (
+                          <GroupCard
+                            key={group.id}
+                            group={group}
+                            filter={filter}
+                            currentUserID={currentUser?.id}
+                            selected={
+                              filter === "discover" &&
+                              group.id === selectedGroupId
+                            }
+                            onSelect={() => {
+                              if (filter === "mine") {
+                                navigateTo(`/groups/${group.id}`);
+                                return;
+                              }
+
+                              handleDiscoverSelection(group.id);
+                            }}
+                          />
+                        ))}
+                      </div>
+
+                      {hasMore && (
+                        <div
+                          ref={loadMoreRef}
+                          className="groups-scroll-trigger"
+                          aria-hidden="true"
+                        />
+                      )}
+
+                      {loadingMore && (
+                        <p className="groups-loading-more">
+                          Loading more groups...
+                        </p>
+                      )}
+                    </>
                   )}
                 </>
               )}
             </div>
           </section>
 
-          <aside className="groups-side-column">
-            {displayedSelectedGroup && (
-              <GroupDetails
-                group={displayedSelectedGroup}
-                loading={detailsLoading}
-                error=""
-                actionLoading={groupActionLoading}
-                onJoin={handleJoinGroup}
-                onCancelRequest={handleCancelJoinRequest}
-                mode="discover"
-              />
-            )}
-          </aside>
+          {filter !== "invitations" && (
+            <aside className="groups-side-column">
+              {displayedSelectedGroup && (
+                <GroupDetails
+                  group={displayedSelectedGroup}
+                  loading={detailsLoading}
+                  error=""
+                  actionLoading={groupActionLoading}
+                  onJoin={handleJoinGroup}
+                  onCancelRequest={handleCancelJoinRequest}
+                  onAcceptInvite={() => handleInvitationResponse("accept")}
+                  onDeclineInvite={() => handleInvitationResponse("decline")}
+                  mode="discover"
+                />
+              )}
+            </aside>
+          )}
         </div>
       </div>
 

@@ -223,3 +223,101 @@ func searchAllowedPosts(db *sql.DB, currentUserID, query string, limit int) ([]m
 	}
 	return posts, rows.Err()
 }
+
+func searchInvitableUsers(db *sql.DB, currentUserID, groupID, query string, limit int) ([]models.SearchUserResult, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 15
+	}
+	pattern := "%" + strings.ToLower(query) + "%"
+	rows, err := db.Query(`
+		SELECT
+			u.id,
+			u.email,
+			u.first_name,
+			u.last_name,
+			pr.nickname,
+			am.file_path,
+			pr.privacy,
+			EXISTS(
+				SELECT 1
+				FROM follows
+				WHERE follower_id = ?
+					AND following_id = u.id
+			) AS is_following,
+			EXISTS(
+				SELECT 1
+				FROM follow_requests
+				WHERE sender_id = ?
+					AND recipient_id = u.id
+					AND status = 1000
+			) AS is_requested
+		FROM users u
+		JOIN profiles pr
+			ON pr.user_id = u.id
+		LEFT JOIN profile_avatars pa
+			ON pa.user_id = u.id
+		LEFT JOIN media am
+			ON am.id = pa.media_id
+		WHERE u.id != ?
+			AND (
+				LOWER(u.first_name) LIKE ?
+				OR LOWER(u.last_name) LIKE ?
+				OR LOWER(COALESCE(pr.nickname, '')) LIKE ?
+				OR LOWER(u.first_name || ' ' || u.last_name) LIKE ?
+			)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM group_members gm
+				WHERE gm.group_id = ?
+					AND gm.user_id = u.id
+					AND gm.status = 1000
+			)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM group_join_requests gjr
+				WHERE gjr.group_id = ?
+					AND gjr.user_id = u.id
+					AND gjr.status = 1000
+			)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM group_invitations gi
+				WHERE gi.group_id = ?
+					AND gi.invited_user_id = u.id
+					AND gi.status = 1000
+			)
+		ORDER BY
+			u.first_name ASC,
+			u.last_name ASC
+		LIMIT ?
+	`, currentUserID, currentUserID, currentUserID, pattern, pattern, pattern, pattern, groupID, groupID, groupID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]models.SearchUserResult, 0)
+	for rows.Next() {
+		var user models.SearchUserResult
+		if err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.FirstName,
+			&user.LastName,
+			&user.Nickname,
+			&user.AvatarPath,
+			&user.Privacy,
+			&user.IsFollowing,
+			&user.IsRequested,
+		); err != nil {
+			return nil, err
+		}
+		user.IsSelf = false
+		user.AvatarPath = helpers.PublicMediaPath(user.AvatarPath)
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return users, nil
+}

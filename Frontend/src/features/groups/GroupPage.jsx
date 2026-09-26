@@ -16,8 +16,9 @@ import GroupDetails from "./components/GroupDetails.jsx";
 import GroupPosts from "./components/GroupPosts.jsx";
 import GroupChat from "./components/GroupChat.jsx";
 import GroupEvents from "./components/GroupEvents.jsx";
-import GroupJoinRequests from "./components/GroupJoinRequests.jsx";
 import GroupMembers from "./components/GroupMembers.jsx";
+import GroupInvitations from "./components/GroupInvitations.jsx";
+import GroupJoinRequests from "./components/GroupJoinRequests.jsx";
 import GroupNavigation from "./components/GroupNavigation.jsx";
 import { useGroupEvents } from "./hooks/useGroupEvents.js";
 import "./GroupPage.css";
@@ -51,6 +52,14 @@ export default function GroupPage() {
           return;
         }
 
+        if (!groupData.is_member) {
+          navigate(`/groups?selected=${groupId}`, {
+            replace: true,
+            state: location.state,
+          });
+          return;
+        }
+
         setGroup(groupData);
         setCurrentUser(profileData);
       } catch (requestError) {
@@ -74,8 +83,8 @@ export default function GroupPage() {
     return () => {
       isMounted = false;
     };
-  }, [groupId, showError]);
-
+  }, [groupId, location.state, navigate, showError]);
+  
   function handleSectionChange(section) {
     setSearchParams(section === "posts" ? {} : { tab: section }, {
       state: location.state,
@@ -173,6 +182,10 @@ export default function GroupPage() {
                     />
                   )}
 
+                  {activeSection === "invitations" && (
+                    <GroupInvitations groupID={group.id} />
+                  )}
+
                   {activeSection === "requests" && isCreator && (
                     <GroupJoinRequests groupID={group.id} />
                   )}
@@ -191,7 +204,6 @@ export default function GroupPage() {
               actionLoading={leaving}
               onLeave={handleLeaveGroup}
             />
-
           </aside>
         </div>
       </div>

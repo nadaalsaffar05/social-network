@@ -37,7 +37,9 @@
 .global-search-bar--focused,
 .global-search-bar:focus-within {
   border-color: #4c7cf0;
-  box-shadow: 0 0 0 3px rgba(76, 124, 240, 0.25), 0 8px 30px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 3px rgba(76, 124, 240, 0.25),
+    0 8px 30px rgba(0, 0, 0, 0.35);
   background: rgba(15, 18, 28, 0.95);
 }
 
@@ -104,7 +106,9 @@
   background: rgba(14, 17, 26, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 1.25rem;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.45),
+    0 0 1px 1px rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(28px);
   overflow: hidden;
   display: flex;
@@ -442,8 +446,8 @@
 }
 
 .global-search-badge--active {
-  background: rgba(58, 220, 151, 0.15);
-  color: #3adc97;
+  background: rgba(76, 124, 240, 0.14);
+  color: #729bff;
 }
 
 .global-search-badge--warning {

@@ -124,7 +124,7 @@ func (h *Handler) GroupMessageReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isMember, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
+	isMember, _, _, _, err := getGroupUserState(h.DB, groupID, currentUser.ID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to check group membership")
 		return

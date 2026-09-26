@@ -79,6 +79,49 @@ export function respondToJoinRequest(groupID, requestID, action) {
   );
 }
 
+// Invitations
+export function getGroupInvitations(groupID, { cursor = "", limit = 10 } = {}) {
+  return request(["api", "groups", groupID, "invites"], {
+    queryParams: {
+      limit,
+      ...(cursor ? { cursor } : {}),
+    },
+  });
+}
+
+export function inviteUserToGroup(groupID, invitedUserID) {
+  return request(["api", "groups", groupID, "invites"], {
+    method: "POST",
+    body: {
+      invited_user_id: invitedUserID,
+    },
+  });
+}
+
+export function cancelGroupInvitation(groupID, inviteID) {
+  return request(["api", "groups", groupID, "invites", inviteID, "cancel"], {
+    method: "DELETE",
+  });
+}
+
+export function getUserGroupInvitations({ cursor = "", limit = 10 } = {}) {
+  return request(["api", "group-invites"], {
+    queryParams: {
+      limit,
+      ...(cursor ? { cursor } : {}),
+    },
+  });
+}
+
+export function respondToGroupInvitation(inviteID, action) {
+  return request(["api", "group-invites", inviteID, "respond"], {
+    method: "POST",
+    body: {
+      action,
+    },
+  });
+}
+
 // Events
 export function getGroupEvents(groupID, { cursor = "", limit = 10 } = {}) {
   return request(["api", "groups", groupID, "events"], {
