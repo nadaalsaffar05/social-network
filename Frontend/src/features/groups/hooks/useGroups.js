@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { getGroups } from "../../../api/groups.js";
 import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
-
 export function useGroups(filter) {
   const [groups, setGroups] = useState([]);
   const [nextCursor, setNextCursor] = useState(INITIAL_CURSOR);
   const [status, setStatus] = useState(PAGINATION_STATUS.LOADING);
   const [error, setError] = useState(null);
+  const [loadedFilter, setLoadedFilter] = useState(null);
 
   const refresh = useCallback(async () => {
     setStatus(PAGINATION_STATUS.LOADING);
@@ -22,6 +22,7 @@ export function useGroups(filter) {
 
       setGroups(nextGroups);
       setNextCursor(cursor);
+      setLoadedFilter(filter);
       setStatus(PAGINATION_STATUS.READY);
     } catch (requestError) {
       setError(requestError.message);
@@ -68,6 +69,7 @@ export function useGroups(filter) {
     setGroups,
     error,
     status,
+    loadedFilter,
     hasMore: Boolean(nextCursor),
     refresh,
     loadMore,

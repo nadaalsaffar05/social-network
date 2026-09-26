@@ -38,8 +38,16 @@ export default function GroupsPage() {
   const groupsFilter = filter === "mine" ? "mine" : "discover";
   const selectedGroupId =
     filter === "discover" ? searchParams.get("selected") : null;
-  const { groups, setGroups, error, status, hasMore, refresh, loadMore } =
-    useGroups(groupsFilter);
+  const {
+    groups,
+    setGroups,
+    error,
+    status,
+    loadedFilter,
+    hasMore,
+    refresh,
+    loadMore,
+  } = useGroups(groupsFilter);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -87,6 +95,10 @@ export default function GroupsPage() {
       return;
     }
 
+    if (loadedFilter !== "discover") {
+      return;
+    }
+
     if (groups.length === 0 || selectedGroupId) {
       return;
     }
@@ -107,7 +119,14 @@ export default function GroupsPage() {
         replace: true,
       },
     );
-  }, [filter, groups, selectedGroupId, location.state, setSearchParams]);
+  }, [
+    filter,
+    groups,
+    selectedGroupId,
+    loadedFilter,
+    location.state,
+    setSearchParams,
+  ]);
 
   // Load selected Discover group details
   useEffect(() => {
