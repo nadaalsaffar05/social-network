@@ -104,6 +104,30 @@
   margin-top: 28px;
 }
 
+.auth-skeleton__heading,
+.auth-skeleton__form,
+.auth-skeleton__field {
+  display: grid;
+}
+
+.auth-skeleton__heading {
+  gap: 0.7rem;
+}
+
+.auth-skeleton__form {
+  gap: 1rem;
+}
+
+.auth-skeleton__field {
+  gap: 0.45rem;
+}
+
+.auth-skeleton__stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
 .auth-form label span {
   font-weight: 400;
 }

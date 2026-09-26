@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import AuthPageSkeleton from "../../features/auth/components/AuthPageSkeleton.jsx";
 import ProtectedRoute from "./ProtectedRoute";
 
 const LoginPage = lazy(() => import("../../features/auth/LoginPage"));
@@ -25,8 +26,22 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={null}>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/login"
+          element={
+            <Suspense fallback={<AuthPageSkeleton />}>
+              <LoginPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <Suspense fallback={<AuthPageSkeleton register />}>
+              <RegisterPage />
+            </Suspense>
+          }
+        />
         <Route element={<ProtectedRoute />}>
           <Route path="/home" element={<FeedPage />} />
           <Route path="/posts/:postId" element={<PostPage />} />

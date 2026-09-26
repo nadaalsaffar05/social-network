@@ -118,7 +118,7 @@ export default function GroupChat({ groupID, groupTitle, currentUserID }) {
     queueBottomScroll,
     queuePrependRestore,
     scrollToBottom,
-  } = useChatMessageScroll(messages, typers.length > 0);
+  } = useChatMessageScroll(messages, typers.length > 0, groupID);
 
   useEffect(() => {
     hasPositionedInitialMessagesRef.current = false;

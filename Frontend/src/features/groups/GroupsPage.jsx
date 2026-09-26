@@ -15,7 +15,7 @@ import { usePageNavigate } from "../../shared/components/back-button/usePageBack
 import { usePaginationObserver } from "../../shared/hooks/usePaginationObserver.js";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
 import { GRADIENT_WAVE_PROPS } from "../feed/constants.js";
-import GroupCard from "./components/GroupCard.jsx";
+import GroupCard, { GroupCardSkeleton } from "./components/GroupCard.jsx";
 import GroupDetails from "./components/GroupDetails.jsx";
 import GroupSearchBar from "./components/GroupSearchBar.jsx";
 import CreateGroupModal from "./components/CreateGroupModal.jsx";
@@ -446,7 +446,15 @@ export default function GroupsPage() {
                 <>
                   <GroupSearchBar onSelect={handleSearchSelection} />
 
-                  {loading && <p>Loading groups...</p>}
+                  {loading && (
+                    <div
+                      className="groups-list"
+                      aria-label="Loading groups"
+                      aria-busy="true"
+                    >
+                      <GroupCardSkeleton filter={filter} />
+                    </div>
+                  )}
 
                   {!loading && groups.length === 0 && (
                     <p className="groups-empty">
