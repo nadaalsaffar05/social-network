@@ -424,6 +424,7 @@ export default function GroupsPage() {
                   title="Invitations"
                 >
                   <EnvelopeSimple size={19} weight="bold" />
+                  <span className="groups-tab-label">Invitations</span>
                 </button>
 
                 <button
@@ -434,6 +435,7 @@ export default function GroupsPage() {
                   title="Create Group"
                 >
                   <Plus size={19} weight="bold" />
+                  <span className="groups-tab-label">Create Group</span>
                 </button>
               </div>
             </div>

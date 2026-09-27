@@ -42,10 +42,12 @@ import {
 } from "../../shared/components/skeleton/PageSkeletons.jsx";
 import { PROFILE_PRIVACY } from "../../shared/constants/enums.js";
 import { usePaginationObserver } from "../../shared/hooks/usePaginationObserver.js";
+import { useDevice } from "../../shared/hooks/useDevice.js";
 import { useProfilePosts } from "./hooks/useProfilePosts.js";
 import "./ProfilePage.css";
 
 export default function ProfilePage() {
+  const { isMobile } = useDevice();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -380,13 +382,6 @@ export default function ProfilePage() {
               {unfollowingID === u.id ? "Unfollowing…" : "Unfollow"}
             </button>
           )}
-          <button
-            type="button"
-            className="user-item-btn view-btn"
-            onClick={() => navigateTo(`/profile/${u.id}`)}
-          >
-            View Profile
-          </button>
         </div>
       </div>
     );
@@ -451,62 +446,66 @@ export default function ProfilePage() {
             )}
 
             {/* Primary Action Button: "Edit profile" or "Follow" */}
-            <div className="profile-primary-actions">
-              {isOwnProfile ? (
-                <button
-                  type="button"
-                  className="profile-edit-profile-btn"
-                  onClick={() => setIsEditModalOpen(true)}
-                >
-                  Edit profile
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={
-                    isFollowingProfile
-                      ? "profile-edit-profile-btn secondary"
-                      : "profile-edit-profile-btn primary"
-                  }
-                  onClick={
-                    isFollowingProfile
-                      ? handleUnfollowProfile
-                      : handleFollowProfile
-                  }
-                >
-                  {isFollowingProfile ? "Unfollow" : "Follow"}
-                </button>
-              )}
-            </div>
+            {(!isMobile || !isOwnProfile) && (
+              <div className="profile-primary-actions">
+                {isOwnProfile ? (
+                  <button
+                    type="button"
+                    className="profile-edit-profile-btn"
+                    onClick={() => setIsEditModalOpen(true)}
+                  >
+                    Edit profile
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={
+                      isFollowingProfile
+                        ? "profile-edit-profile-btn secondary"
+                        : "profile-edit-profile-btn primary"
+                    }
+                    onClick={
+                      isFollowingProfile
+                        ? handleUnfollowProfile
+                        : handleFollowProfile
+                    }
+                  >
+                    {isFollowingProfile ? "Unfollow" : "Follow"}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Meta Details List with Phosphor Icons */}
             <div className="profile-meta-list">
-              <div className="profile-meta-item">
-                <Users
-                  size={18}
-                  weight="regular"
-                  className="profile-meta-icon"
-                />
-                <span className="profile-followers-following">
-                  <button
-                    type="button"
-                    className="profile-meta-stat-btn"
-                    onClick={() => handleTabChange("followers")}
-                  >
-                    <strong>{followersCount}</strong> followers
-                  </button>
-                  {" · "}
-                  <button
-                    type="button"
-                    className="profile-meta-stat-btn"
-                    onClick={() => handleTabChange("following")}
-                  >
-                    <strong>{followingCount}</strong> following
-                  </button>
-                </span>
-              </div>
-              {isOwnProfile && profile?.email && (
-                <div className="profile-meta-item">
+              {!isMobile && (
+                <div className="profile-meta-item profile-followers-following-meta">
+                  <Users
+                    size={18}
+                    weight="regular"
+                    className="profile-meta-icon"
+                  />
+                  <span className="profile-followers-following">
+                    <button
+                      type="button"
+                      className="profile-meta-stat-btn"
+                      onClick={() => handleTabChange("followers")}
+                    >
+                      <strong>{followersCount}</strong> followers
+                    </button>
+                    {" · "}
+                    <button
+                      type="button"
+                      className="profile-meta-stat-btn"
+                      onClick={() => handleTabChange("following")}
+                    >
+                      <strong>{followingCount}</strong> following
+                    </button>
+                  </span>
+                </div>
+              )}
+              {!isMobile && isOwnProfile && profile?.email && (
+                <div className="profile-meta-item profile-email-meta">
                   <EnvelopeSimple
                     size={18}
                     weight="regular"
@@ -535,14 +534,14 @@ export default function ProfilePage() {
               )}
 
               <div className="profile-meta-item">
-                <ShieldCheck
-                  size={18}
-                  weight="regular"
-                  className="profile-meta-icon"
-                />
                 <span
                   className={`profile-badge ${profile?.privacy === PROFILE_PRIVACY.PRIVATE ? "private" : ""}`}
                 >
+                  <ShieldCheck
+                    size={16}
+                    weight="regular"
+                    className="profile-badge-icon"
+                  />
                   {profile?.privacy === PROFILE_PRIVACY.PRIVATE
                     ? "Private Account"
                     : "Public Account"}
@@ -553,13 +552,15 @@ export default function ProfilePage() {
             {/* Secondary Actions (Requests / Logout / Message) */}
             {isOwnProfile ? (
               <div className="profile-secondary-actions">
-                <button
-                  type="button"
-                  className="profile-secondary-btn"
-                  onClick={() => navigateTo("/follow-requests")}
-                >
-                  Follow requests
-                </button>
+                {!isMobile && (
+                  <button
+                    type="button"
+                    className="profile-secondary-btn profile-follow-requests-btn"
+                    onClick={() => navigateTo("/follow-requests")}
+                  >
+                    Follow requests
+                  </button>
+                )}
                 <button
                   type="button"
                   className="profile-secondary-btn danger"

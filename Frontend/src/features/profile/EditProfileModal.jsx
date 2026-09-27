@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   FloppyDisk,
@@ -114,7 +115,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
         ? `@${profile.email.split("@")[0]}`
         : "@username";
 
-  return (
+  return createPortal(
     <div className="edit-profile-modal-backdrop loop-glass-backdrop" onClick={onClose}>
       <div
         className="edit-profile-modal-card loop-glass-surface"
@@ -312,6 +313,7 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
           />
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

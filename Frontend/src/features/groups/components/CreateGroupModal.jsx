@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, UsersThree } from "@phosphor-icons/react";
 import { createGroup } from "../../../api/groups";
 import { useToast } from "../../../shared/components/toast/useToast.js";
@@ -41,7 +42,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="loop-glass-backdrop"
       onMouseDown={(event) => {
@@ -122,6 +123,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
           </footer>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

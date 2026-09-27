@@ -11,6 +11,7 @@ import {
   usePageBack,
   usePageNavigate,
 } from "../../shared/components/back-button/usePageBack.js";
+import { useDevice } from "../../shared/hooks/useDevice.js";
 import {
   ArrowLeft,
   MagnifyingGlass,
@@ -62,6 +63,7 @@ function shortTime(value) {
 
 export default function ChatPage() {
   const { userId } = useParams();
+  const { isMobile } = useDevice();
   const location = useLocation();
   const navigateTo = usePageNavigate();
   const backToChats = usePageBack("/messages", { preferFallback: true });
@@ -547,16 +549,22 @@ export default function ChatPage() {
   const isRemoteTyping = typingUserIDs.includes(userId);
 
   return (
-    <main className="chat-page">
+    <main className={`chat-page${isMobile ? " chat-page--mobile" : ""}`}>
       <div className="chat-page__backdrop" aria-hidden="true">
         <GradientWaves {...GRADIENT_WAVE_PROPS} />
         <span className="chat-page__backdrop-card chat-page__backdrop-card--one" />
         <span className="chat-page__backdrop-card chat-page__backdrop-card--two" />
         <span className="chat-page__backdrop-card chat-page__backdrop-card--three" />
       </div>
-      <div className="chat-page__overlay loop-glass-backdrop">
+      <div
+        className={`chat-page__overlay loop-glass-backdrop${
+          isMobile ? " chat-page__overlay--mobile" : ""
+        }`}
+      >
         <section
-          className={`chat-shell loop-glass-surface${userId ? " chat-shell--thread-open" : ""}`}
+          className={`chat-shell loop-glass-surface${
+            userId ? " chat-shell--thread-open" : ""
+          }${isMobile ? " chat-shell--mobile" : ""}`}
         >
           <aside className="chat-inbox" aria-label="Message inbox">
             <PageHeader

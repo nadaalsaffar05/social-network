@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import {
   X,
@@ -34,7 +35,7 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="cropper-modal-backdrop loop-glass-backdrop" onClick={onClose}>
       <div className="cropper-modal-card loop-glass-surface" onClick={(e) => e.stopPropagation()}>
         <div className="cropper-modal-header">
@@ -100,6 +101,7 @@ export default function AvatarCropperModal({ imageSrc, onClose, onCropSave }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

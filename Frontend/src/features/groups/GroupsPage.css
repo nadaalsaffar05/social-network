@@ -114,16 +114,69 @@
 
 .groups-invitations-tab,
 .create-group-tab {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  padding: 0;
+  width: auto;
+  min-width: 46px;
+  padding: 0 13.5px;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.groups-invitations-tab:hover,
+.groups-invitations-tab:focus-visible,
+.groups-invitations-tab.active,
+.create-group-tab:hover,
+.create-group-tab:focus-visible,
+.create-group-tab.active {
+  padding: 0 16px;
 }
 
 .groups-invitations-tab svg,
 .create-group-tab svg {
   flex: 0 0 auto;
+  transition: transform 0.2s ease;
+}
+
+.groups-invitations-tab:hover svg,
+.create-group-tab:hover svg {
+  transform: scale(1.08);
+}
+
+.groups-tab-label {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition:
+    max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease,
+    margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 0;
+  pointer-events: none;
+}
+
+.groups-invitations-tab:hover .groups-tab-label,
+.groups-invitations-tab:focus-visible .groups-tab-label,
+.groups-invitations-tab.active .groups-tab-label,
+.create-group-tab:hover .groups-tab-label,
+.create-group-tab:focus-visible .groups-tab-label,
+.create-group-tab.active .groups-tab-label {
+  max-width: 150px;
+  opacity: 1;
+  margin-left: 8px;
 }
 
 .groups-tab:focus-visible {
@@ -227,9 +280,19 @@
     font-size: 0.8rem;
   }
 
-  .groups-invitations-tab {
-    width: 42px;
-    padding: 0;
+  .groups-invitations-tab,
+  .create-group-tab {
+    min-width: 42px;
+    padding: 0 11.5px;
+  }
+
+  .groups-invitations-tab:hover,
+  .groups-invitations-tab:focus-visible,
+  .groups-invitations-tab.active,
+  .create-group-tab:hover,
+  .create-group-tab:focus-visible,
+  .create-group-tab.active {
+    padding: 0 14px;
   }
 
   .groups-list-panel {
@@ -238,9 +301,5 @@
 
   .groups-list {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .create-group-tab {
-    gap: 5px;
   }
 }
