@@ -235,6 +235,20 @@
   border-radius: 0.65rem;
 }
 
+.feed-dock-mobile-avatar {
+  width: 1.65rem;
+  height: 1.65rem;
+  object-fit: cover;
+  border: 1.5px solid rgb(255 255 255 / 35%);
+  border-radius: 50%;
+  transition: border-color var(--transition-fast);
+}
+
+.feed-dock-item--mobile:hover .feed-dock-mobile-avatar,
+.feed-dock-item--mobile:focus-visible .feed-dock-mobile-avatar {
+  border-color: var(--color-primary);
+}
+
 /* ─── Profile card (below the glass panel) ───────────────────────────────── */
 
 .feed-dock-profile-card {

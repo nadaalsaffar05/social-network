@@ -157,6 +157,39 @@
   border-radius: var(--radius-sm);
 }
 
+@media (max-width: 767px) {
+  .post-card__media--multi {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 0.6rem;
+    padding-bottom: 0.45rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 25%) transparent;
+  }
+
+  .post-card__media--multi::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .post-card__media--multi::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .post-card__media--multi::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 25%);
+    border-radius: 4px;
+  }
+
+  .post-card__media--multi img {
+    flex: 0 0 85%;
+    width: 85%;
+    max-height: 380px;
+    scroll-snap-align: start;
+  }
+}
+
 .post-card__actions {
   gap: 0.45rem;
   margin-top: 1rem;

@@ -94,7 +94,11 @@ export default function PostCard({
 
       {post.content && <p className="post-card__content">{post.content}</p>}
       {post.media?.length > 0 && (
-        <div className="post-card__media">
+        <div
+          className={`post-card__media${
+            post.media.length > 1 ? " post-card__media--multi" : ""
+          }`}
+        >
           {post.media.map((path, index) => (
             <img
               key={`${post.id}-${path}`}

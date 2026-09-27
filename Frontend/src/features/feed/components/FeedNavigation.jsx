@@ -164,10 +164,41 @@ export default function FeedNavigation({ onCreatePost, profile, isMobile = false
 
 
   if (isMobile) {
+    const mobileItems = [
+      {
+        icon: <House size={20} weight="fill" />,
+        label: "Home",
+        onClick: () => navigateTo("/home"),
+      },
+      {
+        icon: <UsersThree size={20} />,
+        label: "Groups",
+        onClick: () => navigateTo("/groups"),
+      },
+      {
+        icon: <ChatCircle size={20} />,
+        label: "Messages",
+        onClick: () => navigateTo("/messages"),
+        badgeCount: attentionCounts.messages,
+      },
+      {
+        icon: (
+          <Avatar
+            avatarPath={profile?.avatar_path}
+            seed={profile?.id}
+            alt="Profile"
+            className="feed-dock-mobile-avatar"
+          />
+        ),
+        label: "Profile",
+        onClick: () => navigateTo("/profile"),
+      },
+    ];
+
     return (
       <nav className="feed-dock feed-dock--mobile" aria-label="Main navigation">
         <div className="feed-dock-panel feed-dock-panel--mobile border-glow">
-          {primaryItems.map((item) => (
+          {mobileItems.map((item) => (
             <button
               key={item.label}
               type="button"
