@@ -45,6 +45,22 @@
   margin: 0 auto;
 }
 
+.feed-topbar__site-name {
+  position: absolute;
+  top: 0.9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-text);
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
 .feed-search {
   position: absolute;
   left: 50%;
@@ -148,11 +164,15 @@
 .feed-left-sidebar {
   position: fixed;
   z-index: 4;
-  top: 6.6rem;
+  /* align logo top with the centre of the topbar (topbar min-height = 82px) */
+  top: 0;
   left: 2rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  height: 100vh;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
 }
 .feed-main {
   grid-column: 1;
@@ -418,8 +438,54 @@
   .feed-layout {
     width: min(100% - 2rem, 680px);
     padding-top: 1.25rem;
+    padding-bottom: 5.5rem;
   }
   .feed-left-sidebar {
     display: none;
+  }
+}
+
+
+
+.feed-fab {
+  position: fixed;
+  z-index: 8;
+  right: 2rem;
+  bottom: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  background: var(--color-primary);
+  border: 0;
+  border-radius: 50%;
+}
+
+.feed-fab svg {
+  transition: transform 0.25s ease;
+}
+
+.feed-fab:hover {
+  transform: scale(1.1);
+
+}
+
+.feed-fab:hover svg {
+  transform: rotate(90deg);
+}
+
+.feed-fab:active {
+  transform: scale(0.94);
+}
+
+@media (max-width: 720px) {
+  .feed-fab {
+    right: 1.25rem;
+    bottom: 5.75rem;
   }
 }

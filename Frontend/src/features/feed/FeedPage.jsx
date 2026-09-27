@@ -1,6 +1,7 @@
 import "./FeedPage.css";
 import "../../shared/styles/components/PostComposer.css";
 import { useEffect, useState } from "react";
+import { PlusCircle } from "@phosphor-icons/react";
 import {
   cancelFollowRequest,
   followUser,
@@ -22,6 +23,7 @@ import { getUserDisplayName } from "../../shared/utils/user.js";
 import { usePageNavigate } from "../../shared/components/back-button/usePageBack.js";
 import { PROFILE_PRIVACY } from "../../shared/constants/enums.js";
 import { usePaginationObserver } from "../../shared/hooks/usePaginationObserver.js";
+import { useDevice } from "../../shared/hooks/useDevice.js";
 
 export default function FeedPage() {
   const navigateTo = usePageNavigate();
@@ -36,6 +38,7 @@ export default function FeedPage() {
     updatePost,
   } = useFeed();
   const loadMoreRef = usePaginationObserver({ hasMore, status, loadMore });
+  const { isMobile } = useDevice();
   const [currentUserID, setCurrentUserID] = useState("");
   const [currentProfile, setCurrentProfile] = useState(null);
   const [deletingPostID, setDeletingPostID] = useState("");
@@ -158,16 +161,27 @@ export default function FeedPage() {
       </div>
       <header className="feed-topbar">
         <div className="feed-topbar__inner">
+          {isMobile && (
+            <span className="feed-topbar__site-name">Loop</span>
+          )}
           <GlobalSearchBar />
         </div>
       </header>
 
-      <aside className="feed-left-sidebar">
+      {!isMobile ? (
+        <aside className="feed-left-sidebar">
+          <FeedNavigation
+            onCreatePost={() => setIsComposerOpen(true)}
+            profile={currentProfile}
+          />
+        </aside>
+      ) : (
         <FeedNavigation
           onCreatePost={() => setIsComposerOpen(true)}
           profile={currentProfile}
+          isMobile
         />
-      </aside>
+      )}
 
       <div className="feed-layout">
         <section className="feed-main">
@@ -303,6 +317,15 @@ export default function FeedPage() {
         onOpenChange={setIsComposerOpen}
         onCreated={refresh}
       />
+
+      <button
+        type="button"
+        className="feed-fab"
+        onClick={() => setIsComposerOpen(true)}
+        aria-label="Create post"
+      >
+        <PlusCircle size={28} weight="fill" />
+      </button>
     </main>
   );
 }

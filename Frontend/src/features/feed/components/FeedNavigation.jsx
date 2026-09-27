@@ -9,10 +9,9 @@ import {
   Bell,
   ChatCircle,
   House,
-  PlusCircle,
   SignOut,
-  User,
   UsersThree,
+  ArrowsDownUp,
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -115,7 +114,7 @@ function DockIcon({ children, badgeCount }) {
   );
 }
 
-export default function FeedNavigation({ onCreatePost, profile }) {
+export default function FeedNavigation({ onCreatePost, profile, isMobile = false }) {
   const navigate = useNavigate();
   const navigateTo = usePageNavigate();
   const { attentionCounts } = useChatRealtime();
@@ -147,16 +146,6 @@ export default function FeedNavigation({ onCreatePost, profile }) {
       onClick: () => navigateTo("/home"),
     },
     {
-      icon: <PlusCircle size={20} weight="fill" />,
-      label: "Create post",
-      onClick: onCreatePost,
-    },
-    {
-      icon: <User size={20} />,
-      label: "Profile",
-      onClick: () => navigateTo("/profile"),
-    },
-    {
       icon: <UsersThree size={20} />,
       label: "Groups",
       onClick: () => navigateTo("/groups"),
@@ -174,8 +163,44 @@ export default function FeedNavigation({ onCreatePost, profile }) {
     },
   ];
 
+
+  if (isMobile) {
+    return (
+      <nav className="feed-dock feed-dock--mobile" aria-label="Main navigation">
+        <div className="feed-dock-panel feed-dock-panel--mobile border-glow">
+          {primaryItems.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              className="feed-dock-item feed-dock-item--mobile"
+              onClick={item.onClick}
+              aria-label={
+                item.badgeCount
+                  ? `${item.label}, ${item.badgeCount} unread`
+                  : item.label
+              }
+            >
+              <DockIcon badgeCount={item.badgeCount || 0}>{item.icon}</DockIcon>
+            </button>
+          ))}
+        </div>
+      </nav>
+    );
+  }
+
   return (
     <nav className="feed-dock" aria-label="Main navigation">
+      {/* Brand — outside the glass box, pinned to top */}
+      <button
+        type="button"
+        className="feed-dock-brand"
+        onClick={() => navigateTo("/home")}
+        aria-label="Loop home"
+      >
+        <img src="/loop-wordmark.png" alt="" />
+      </button>
+
+      {/* Glass panel — nav items only */}
       <div
         className="feed-dock-panel border-glow"
         onMouseMove={({ clientY }) => {
@@ -183,15 +208,6 @@ export default function FeedNavigation({ onCreatePost, profile }) {
         }}
         onMouseLeave={() => mouseY.set(Infinity)}
       >
-        <button
-          type="button"
-          className="feed-dock-brand"
-          onClick={() => navigateTo("/home")}
-          aria-label="Loop home"
-        >
-          <img src="/loop-wordmark.png" alt="" />
-        </button>
-
         <div className="feed-dock-items">
           {primaryItems.map((item) => (
             <DockItem
@@ -205,35 +221,30 @@ export default function FeedNavigation({ onCreatePost, profile }) {
             />
           ))}
         </div>
-
-        <div className="feed-dock-footer">
-          <DockItem
-            icon={<SignOut size={20} />}
-            label="Log out"
-            onClick={handleLogout}
-            mouseY={mouseY}
-            spring={spring}
-            distance={distance}
-            magnification={magnification}
-            baseItemSize={baseItemSize}
-          />
-
-          {profile && (
-            <button
-              type="button"
-              className="feed-dock-profile"
-              onClick={() => navigateTo("/profile")}
-              aria-label="Open your profile"
-            >
-              <Avatar
-                avatarPath={profile.avatar_path}
-                seed={profile.id}
-                alt=""
-              />
-            </button>
-          )}
-        </div>
       </div>
+
+      {/* Profile card — outside the glass box, pinned to bottom */}
+      {profile && (
+        <div className="feed-dock-profile-card">
+          <button
+            type="button"
+            className="feed-dock-profile-name-btn"
+            onClick={() => navigateTo("/profile")}
+            aria-label="Open your profile"
+          >
+            <Avatar avatarPath={profile.avatar_path} seed={profile.id} alt="" />
+            <span>{profile.first_name ? `${profile.first_name} ${profile.last_name || ""}`.trim() : "Profile"}</span>
+          </button>
+          <button
+            type="button"
+            className="feed-dock-logout-btn"
+            onClick={handleLogout}
+            aria-label="Log out"
+          >
+            <ArrowsDownUp size={14} weight="bold" />
+          </button>
+        </div>
+      )}
     </nav>
   );
 }
