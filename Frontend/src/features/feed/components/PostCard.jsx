@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { ChatCircle, DotsThree, Trash } from "@phosphor-icons/react";
 
 import Avatar from "../../../shared/components/avatar/Avatar.jsx";
+import ImageModal from "../../../shared/components/image-modal/ImageModal.jsx";
 import { getMediaUrl } from "../../../shared/utils/media.js";
 import LikeButton from "./LikeButton.jsx";
 import { formatPostTime, getPostDisplayName } from "../utils/post.js";
@@ -22,9 +24,10 @@ export default function PostCard({
   detailedTime = false,
 }) {
   const isOwner = post.author_id === currentUserID;
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(null);
 
   function handleCardClick(event) {
-    if (!onOpen || event.target.closest("button, summary")) return;
+    if (!onOpen || event.target.closest("button, summary, .post-card__media img")) return;
     onOpen();
   }
 
@@ -104,9 +107,21 @@ export default function PostCard({
               key={`${post.id}-${path}`}
               src={getMediaUrl(path)}
               alt={`Post media ${index + 1}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setSelectedMediaIndex(index);
+              }}
             />
           ))}
         </div>
+      )}
+
+      {selectedMediaIndex !== null && post.media?.length > 0 && (
+        <ImageModal
+          images={post.media.map((path) => getMediaUrl(path))}
+          initialIndex={selectedMediaIndex}
+          onClose={() => setSelectedMediaIndex(null)}
+        />
       )}
       <footer className="post-card__actions">
         <LikeButton

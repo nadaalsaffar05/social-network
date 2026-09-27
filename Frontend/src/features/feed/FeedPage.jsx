@@ -320,7 +320,7 @@ export default function FeedPage() {
 
       <button
         type="button"
-        className="feed-fab"
+        className="feed-fab  border-glow"
         onClick={() => setIsComposerOpen(true)}
         aria-label="Create post"
       >

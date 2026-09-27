@@ -22,6 +22,7 @@ import PostComposer from "./components/PostComposer.jsx";
 import { GRADIENT_WAVE_PROPS } from "./constants.js";
 import { formatPostTime, getPostDisplayName } from "./utils/post.js";
 import { getMediaUrl } from "../../shared/utils/media.js";
+import ImageModal from "../../shared/components/image-modal/ImageModal.jsx";
 import { PostCardSkeleton } from "../../shared/components/skeleton/PageSkeletons.jsx";
 import "./PostPage.css";
 
@@ -38,6 +39,7 @@ function CommentItem({
   const authorHandle = comment.author_nickname
     ? `@${comment.author_nickname} · `
     : "";
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(null);
 
   return (
     <article
@@ -79,9 +81,18 @@ function CommentItem({
                 key={path}
                 src={getMediaUrl(path)}
                 alt={`Comment media ${index + 1}`}
+                onClick={() => setSelectedMediaIndex(index)}
               />
             ))}
           </div>
+        )}
+
+        {selectedMediaIndex !== null && comment.media?.length > 0 && (
+          <ImageModal
+            images={comment.media.map((path) => getMediaUrl(path))}
+            initialIndex={selectedMediaIndex}
+            onClose={() => setSelectedMediaIndex(null)}
+          />
         )}
 
         <footer>

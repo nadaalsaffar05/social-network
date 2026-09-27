@@ -155,6 +155,13 @@
   max-height: 520px;
   object-fit: cover;
   border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: filter var(--transition-fast), transform var(--transition-fast);
+}
+
+.post-card__media img:hover {
+  filter: brightness(1.08);
+  transform: scale(1.005);
 }
 
 @media (max-width: 767px) {
