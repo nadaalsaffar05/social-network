@@ -266,10 +266,6 @@
     color var(--transition-fast);
 }
 
-.feed-dock-profile-name-btn:hover {
-  background: rgb(255 255 255 / 8%);
-  color: var(--color-primary);
-}
 
 .feed-dock-profile-name-btn img,
 .feed-dock-profile-name-btn canvas {

@@ -468,21 +468,36 @@
   border-radius: 50%;
 }
 
+.feed-fab::before {
+  content: "Create New Post";
+  position: absolute;
+  right: calc(100% + 0.75rem);
+  top: 50%;
+  transform: translateY(-50%) translateX(6px);
+  white-space: nowrap;
+  padding: 0.3rem 0.7rem;
+  background: rgb(15 18 27 / 92%);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 0.5rem;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.feed-fab:hover::before {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
 .feed-fab svg {
   transition: transform 0.25s ease;
-}
-
-.feed-fab:hover {
-  transform: scale(1.1);
-
-}
-
-.feed-fab:hover svg {
-  transform: rotate(90deg);
-}
-
-.feed-fab:active {
-  transform: scale(0.94);
 }
 
 @media (max-width: 720px) {

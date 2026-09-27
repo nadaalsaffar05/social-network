@@ -232,7 +232,7 @@ export default function FeedNavigation({ onCreatePost, profile, isMobile = false
             aria-label="Open your profile"
           >
             <Avatar avatarPath={profile.avatar_path} seed={profile.id} alt="" />
-            <span>{profile.first_name || "Profile"}</span>
+            {/*<span>{profile.first_name || "Profile"}</span>*/}
           </button>
           <button
             type="button"
