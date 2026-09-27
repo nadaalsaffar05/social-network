@@ -219,10 +219,14 @@
   min-height: unset;
   padding: 0.65rem 0.5rem;
   padding-bottom: max(0.65rem, env(safe-area-inset-bottom));
+  background: rgb(10 13 22 / 92%);
+  border-top: 1px solid rgb(255 255 255 / 10%);
   border-radius: 1.25rem 1.25rem 0 0;
   border-right: 0;
   border-bottom: 0;
   border-left: 0;
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
 }
 
 .feed-dock-item--mobile {

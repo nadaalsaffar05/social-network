@@ -159,7 +159,7 @@ export default function FeedPage() {
       <div className="feed-waves">
         <GradientWaves {...GRADIENT_WAVE_PROPS} />
       </div>
-      <header className="feed-topbar">
+      <header className={`feed-topbar${isMobile ? " feed-topbar--mobile" : ""}`}>
         <div className="feed-topbar__inner">
           {isMobile && (
             <span className="feed-topbar__site-name">Loop</span>
