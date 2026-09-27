@@ -182,7 +182,7 @@
 
 @media (max-width: 620px) {
   .post-composer-overlay {
-    place-items: end center;
+    place-items: center;
     padding: 1rem;
   }
 
