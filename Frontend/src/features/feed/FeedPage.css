@@ -416,10 +416,15 @@
   .feed-main {
     grid-column: 1;
   }
-  .feed-left-sidebar {
+  /* hide right sidebar on medium screens — not enough room */
+  .feed-right-sidebar {
     display: none;
   }
-  .feed-right-sidebar {
+}
+
+/* hide the left sidebar only at phone widths (tablets still get desktop nav) */
+@media (max-width: 767px) {
+  .feed-left-sidebar {
     display: none;
   }
 }
@@ -439,9 +444,6 @@
     width: min(100% - 2rem, 680px);
     padding-top: 1.25rem;
     padding-bottom: 5.5rem;
-  }
-  .feed-left-sidebar {
-    display: none;
   }
 }
 

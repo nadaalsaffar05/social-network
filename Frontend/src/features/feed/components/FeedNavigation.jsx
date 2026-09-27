@@ -11,7 +11,6 @@ import {
   House,
   SignOut,
   UsersThree,
-  ArrowsDownUp,
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -202,13 +201,13 @@ export default function FeedNavigation({ onCreatePost, profile, isMobile = false
 
       {/* Glass panel — nav items only */}
       <div
-        className="feed-dock-panel border-glow"
+        className="feed-dock-panel"
         onMouseMove={({ clientY }) => {
           mouseY.set(clientY);
         }}
         onMouseLeave={() => mouseY.set(Infinity)}
       >
-        <div className="feed-dock-items">
+        <div className="feed-dock-items border-glow">
           {primaryItems.map((item) => (
             <DockItem
               key={item.label}
@@ -233,7 +232,7 @@ export default function FeedNavigation({ onCreatePost, profile, isMobile = false
             aria-label="Open your profile"
           >
             <Avatar avatarPath={profile.avatar_path} seed={profile.id} alt="" />
-            <span>{profile.first_name ? `${profile.first_name} ${profile.last_name || ""}`.trim() : "Profile"}</span>
+            <span>{profile.first_name || "Profile"}</span>
           </button>
           <button
             type="button"
@@ -241,7 +240,7 @@ export default function FeedNavigation({ onCreatePost, profile, isMobile = false
             onClick={handleLogout}
             aria-label="Log out"
           >
-            <ArrowsDownUp size={14} weight="bold" />
+            <SignOut size={16} />
           </button>
         </div>
       )}
