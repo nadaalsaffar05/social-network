@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  api_path: "http://localhost:8080",
+  api_path: import.meta.env.VITE_API_URL || "http://localhost:8080",
 };

@@ -22,7 +22,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8080",
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "emoji-picker-react": "^4.22.2",
