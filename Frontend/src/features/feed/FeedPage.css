@@ -174,7 +174,7 @@
 
 .feed-left-sidebar {
   position: fixed;
-  z-index: 4;
+  z-index: 6;
   /* align logo top with the centre of the topbar (topbar min-height = 82px) */
   top: 0;
   left: 2rem;

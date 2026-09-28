@@ -3,6 +3,7 @@ package chat
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 
 	"social-network/internal/helpers"
@@ -25,12 +26,13 @@ const (
 	messageRequestStatusDeclined = "DECLINED"
 )
 
-func createPrivateMessage(db *sql.DB, senderID, recipientID, content string) (models.PrivateMessage, error) {
+func createPrivateMessage(db *sql.DB, senderID, recipientID, content string) (models.PrivateMessage, bool, error) {
 	if senderID == recipientID {
-		return models.PrivateMessage{}, errCannotMessageSelf
+		return models.PrivateMessage{}, false, errCannotMessageSelf
 	}
 
 	var message models.PrivateMessage
+	requestCreated := false
 	err := helpers.WithTx(db, func(tx *sql.Tx) error {
 		if err := requireUser(tx, recipientID); err != nil {
 			return err
@@ -45,9 +47,17 @@ func createPrivateMessage(db *sql.DB, senderID, recipientID, content string) (mo
 		if err != nil {
 			return err
 		}
-		if err := prepareMessageRequest(tx, conversationID, senderID, recipientID, isFriends); err != nil {
+		created, err := prepareMessageRequest(
+			tx,
+			conversationID,
+			senderID,
+			recipientID,
+			isFriends,
+		)
+		if err != nil {
 			return err
 		}
+		requestCreated = created
 
 		message = models.PrivateMessage{
 			PublicID:       uuid.NewString(),
@@ -65,10 +75,10 @@ func createPrivateMessage(db *sql.DB, senderID, recipientID, content string) (mo
 		`, message.PublicID, message.ConversationID, message.SenderID, message.Content).Scan(&message.CreatedAt)
 	})
 	if err != nil {
-		return models.PrivateMessage{}, err
+		return models.PrivateMessage{}, false, err
 	}
 
-	return message, nil
+	return message, requestCreated, nil
 }
 
 func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit int) ([]models.PrivateMessage, string, error) {
@@ -165,12 +175,47 @@ func getPrivateMessages(db *sql.DB, userID, otherUserID, cursor string, limit in
 }
 
 func attachMessageReactions(db *sql.DB, messages []models.PrivateMessage) error {
-	for index := range messages {
-		reactions, err := getMessageReactions(db, messages[index].PublicID)
-		if err != nil {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, len(messages))
+	arguments := make([]any, len(messages))
+	for index, message := range messages {
+		placeholders[index] = "?"
+		arguments[index] = message.PublicID
+	}
+
+	rows, err := db.Query(fmt.Sprintf(`
+		SELECT message.public_id, reaction.emoji, reaction.user_id
+		FROM private_message_reactions reaction
+		JOIN private_messages message ON message.id = reaction.message_id
+		WHERE message.public_id IN (%s)
+		ORDER BY message.public_id, reaction.created_at
+	`, strings.Join(placeholders, ", ")), arguments...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	reactionsByMessageID := make(map[string][]models.MessageReaction, len(messages))
+	for rows.Next() {
+		var messageID string
+		var reaction models.MessageReaction
+		if err := rows.Scan(&messageID, &reaction.Emoji, &reaction.UserID); err != nil {
 			return err
 		}
-		messages[index].Reactions = reactions
+		reactionsByMessageID[messageID] = append(
+			reactionsByMessageID[messageID],
+			reaction,
+		)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for index := range messages {
+		messages[index].Reactions = reactionsByMessageID[messages[index].PublicID]
 	}
 	return nil
 }
@@ -530,25 +575,33 @@ func areFriends(queryer interface{ QueryRow(string, ...any) *sql.Row }, userID, 
 	return followsBothWays == 1, err
 }
 
-func prepareMessageRequest(tx *sql.Tx, conversationID, senderID, recipientID string, isFriends bool) error {
-	var status string
-	err := tx.QueryRow(`SELECT status FROM private_message_requests WHERE conversation_id = ?`, conversationID).Scan(&status)
+func prepareMessageRequest(
+	tx *sql.Tx,
+	conversationID, senderID, recipientID string,
+	isFriends bool,
+) (bool, error) {
+	var requesterID, status string
+	err := tx.QueryRow(`
+		SELECT requester_id, status
+		FROM private_message_requests
+		WHERE conversation_id = ?
+	`, conversationID).Scan(&requesterID, &status)
 	if errors.Is(err, sql.ErrNoRows) {
 		if isFriends {
-			return nil
+			return false, nil
 		}
-		_, err = tx.Exec(`
+		_, err := tx.Exec(`
 			INSERT INTO private_message_requests (conversation_id, requester_id, recipient_id)
 			VALUES (?, ?, ?)
 		`, conversationID, senderID, recipientID)
-		return err
+		return err == nil, err
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	if isFriends {
 		if status == messageRequestStatusAccepted {
-			return nil
+			return false, nil
 		}
 
 		_, err = tx.Exec(`
@@ -556,10 +609,10 @@ func prepareMessageRequest(tx *sql.Tx, conversationID, senderID, recipientID str
 			SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 			WHERE conversation_id = ? AND status != ?
 		`, messageRequestStatusAccepted, conversationID, messageRequestStatusAccepted)
-		return err
+		return false, err
 	}
 	if status == messageRequestStatusAccepted {
-		return nil
+		return false, nil
 	}
 	if status == messageRequestStatusDeclined {
 		_, err = tx.Exec(`
@@ -568,9 +621,15 @@ func prepareMessageRequest(tx *sql.Tx, conversationID, senderID, recipientID str
 				created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), responded_at = NULL
 			WHERE conversation_id = ? AND status = ?
 		`, senderID, recipientID, messageRequestStatusPending, conversationID, messageRequestStatusDeclined)
-		return err
+		return err == nil, err
 	}
-	return errMessageRequestOpen
+
+	// A pending request belongs to its original requester. They can continue
+	// the same conversation, but the recipient must accept it before replying.
+	if requesterID == senderID {
+		return false, nil
+	}
+	return false, errMessageRequestOpen
 }
 
 func respondToMessageRequest(db *sql.DB, recipientID, requesterID, status string) (models.MessageRequestResponse, bool, error) {
@@ -637,12 +696,12 @@ func getMessageRequests(db *sql.DB, recipientID string) ([]models.MessageRequest
 		LEFT JOIN profile_avatars requester_avatar ON requester_avatar.user_id = requester.id
 		LEFT JOIN media requester_avatar_media ON requester_avatar_media.id = requester_avatar.media_id
 		JOIN private_messages message ON message.id = (
-			SELECT first_message.id
-			FROM private_messages first_message
-			WHERE first_message.conversation_id = request.conversation_id
-			  AND first_message.is_active = TRUE
-			  AND first_message.created_at >= request.created_at
-			ORDER BY first_message.created_at ASC, first_message.id ASC
+			SELECT latest_message.id
+			FROM private_messages latest_message
+			WHERE latest_message.conversation_id = request.conversation_id
+			  AND latest_message.is_active = TRUE
+			  AND latest_message.created_at >= request.created_at
+			ORDER BY latest_message.created_at DESC, latest_message.id DESC
 			LIMIT 1
 		)
 		LEFT JOIN private_message_receipts receipt ON receipt.message_id = message.id
@@ -686,18 +745,6 @@ func getMessageRequests(db *sql.DB, recipientID string) ([]models.MessageRequest
 		requests = append(requests, request)
 	}
 	return requests, rows.Err()
-}
-
-func isPendingMessageRequest(db *sql.DB, conversationID string) (bool, error) {
-	var pending int
-	err := db.QueryRow(`
-		SELECT EXISTS(
-			SELECT 1
-			FROM private_message_requests
-			WHERE conversation_id = ? AND status = ?
-		)
-	`, conversationID, messageRequestStatusPending).Scan(&pending)
-	return pending == 1, err
 }
 
 func ValidateMessageContent(content string) (string, error) {

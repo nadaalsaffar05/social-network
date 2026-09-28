@@ -38,7 +38,7 @@ export default function GroupNavigation({
       <div className="group-tabs-management">
         <button
           type="button"
-          className={`group-tab group-tab-icon ${
+          className={`group-tab group-tab-icon group-tab-icon--expandable ${
             activeSection === "members" ? "active" : ""
           }`}
           title="Members"
@@ -46,11 +46,12 @@ export default function GroupNavigation({
           onClick={() => onSectionChange("members")}
         >
           <UsersThree size={20} />
+          <span className="group-tab-icon__label">Members</span>
         </button>
 
         <button
           type="button"
-          className={`group-tab group-tab-icon ${
+          className={`group-tab group-tab-icon group-tab-icon--expandable ${
             activeSection === "invitations" ? "active" : ""
           }`}
           title="Invitations"
@@ -58,12 +59,13 @@ export default function GroupNavigation({
           onClick={() => onSectionChange("invitations")}
         >
           <EnvelopeIcon size={20} />
+          <span className="group-tab-icon__label">Invitations</span>
         </button>
 
         {isCreator && (
           <button
             type="button"
-            className={`group-tab group-tab-icon ${
+            className={`group-tab group-tab-icon group-tab-icon--expandable ${
               activeSection === "requests" ? "active" : ""
             }`}
             title="Join Requests"
@@ -71,6 +73,7 @@ export default function GroupNavigation({
             onClick={() => onSectionChange("requests")}
           >
             <UserPlus size={20} />
+            <span className="group-tab-icon__label">Join Requests</span>
           </button>
         )}
       </div>

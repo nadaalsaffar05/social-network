@@ -31,7 +31,7 @@ float plasma(vec3 r, vec2 freq, vec4 tc) {
 }
 float raymarch(vec3 pos, vec3 dir, vec2 freq, vec4 tc) {
   float dist = 0.0;
-  for (int i = 0; i < 128; i++) {
+  for (int i = 0; i < 96; i++) {
     if (float(i) >= uSteps) break;
     float d = plasma(pos + dist * dir, freq, tc);
     if (abs(d) < 0.1) break;
@@ -87,13 +87,13 @@ export default function GradientWaves({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
-    const steps = detail === "low" ? 40 : detail === "high" ? 110 : 70;
+    const steps = detail === "low" ? 28 : detail === "high" ? 72 : 48;
     const renderer = new Renderer({
       webgl: 2,
       alpha: true,
       premultipliedAlpha: true,
       antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      dpr: Math.min(window.devicePixelRatio || 1, 1.5),
     });
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
@@ -125,6 +125,57 @@ export default function GradientWaves({
     const canvas = gl.canvas;
     canvas.className = "gradient-waves__canvas";
     container.appendChild(canvas);
+    const startedAt = performance.now();
+    let frame = 0;
+    let isIntersecting = true;
+    let lastFrameTime = 0;
+    const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const canAnimate = () =>
+      !reduceMotionQuery.matches &&
+      isIntersecting &&
+      document.visibilityState === "visible";
+
+    const renderStatic = () => {
+      program.uniforms.iTime.value = 0;
+      renderer.render({ scene: mesh });
+    };
+
+    const stopAnimation = () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    };
+
+    const render = (time) => {
+      if (!canAnimate()) {
+        frame = 0;
+        return;
+      }
+
+      // The waves remain smooth while halving the amount of fragment work.
+      if (time - lastFrameTime >= 1000 / 30) {
+        program.uniforms.iTime.value = (time - startedAt) / 1000;
+        renderer.render({ scene: mesh });
+        lastFrameTime = time;
+      }
+      frame = requestAnimationFrame(render);
+    };
+
+    const updateAnimation = () => {
+      stopAnimation();
+      if (canAnimate()) {
+        lastFrameTime = 0;
+        frame = requestAnimationFrame(render);
+      } else if (
+        isIntersecting &&
+        document.visibilityState === "visible"
+      ) {
+        renderStatic();
+      }
+    };
+
     const resize = () => {
       const { width, height: containerHeight } =
         container.getBoundingClientRect();
@@ -134,21 +185,33 @@ export default function GradientWaves({
       );
       program.uniforms.iResolution.value[0] = gl.drawingBufferWidth;
       program.uniforms.iResolution.value[1] = gl.drawingBufferHeight;
+      if (!frame && isIntersecting && document.visibilityState === "visible") {
+        renderStatic();
+      }
     };
-    const observer = new ResizeObserver(resize);
-    observer.observe(container);
+
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(container);
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        isIntersecting = entry.isIntersecting;
+        updateAnimation();
+      },
+      { threshold: 0 },
+    );
+    visibilityObserver.observe(container);
+    const handleVisibilityChange = () => updateAnimation();
+    const handleReducedMotionChange = () => updateAnimation();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    reduceMotionQuery.addEventListener("change", handleReducedMotionChange);
     resize();
-    const startedAt = performance.now();
-    let frame = 0;
-    const render = (time) => {
-      program.uniforms.iTime.value = (time - startedAt) / 1000;
-      renderer.render({ scene: mesh });
-      frame = requestAnimationFrame(render);
-    };
-    frame = requestAnimationFrame(render);
+    updateAnimation();
     return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
+      stopAnimation();
+      resizeObserver.disconnect();
+      visibilityObserver.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      reduceMotionQuery.removeEventListener("change", handleReducedMotionChange);
       canvas.remove();
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };

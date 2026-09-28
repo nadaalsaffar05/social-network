@@ -107,6 +107,8 @@ export default function PostCard({
               key={`${post.id}-${path}`}
               src={getMediaUrl(path)}
               alt={`Post media ${index + 1}`}
+              loading="lazy"
+              decoding="async"
               onClick={(event) => {
                 event.stopPropagation();
                 setSelectedMediaIndex(index);

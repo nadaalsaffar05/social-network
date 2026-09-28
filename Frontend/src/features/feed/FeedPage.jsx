@@ -1,12 +1,12 @@
 import "./FeedPage.css";
 import "../../shared/styles/components/PostComposer.css";
 import { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { PlusCircle } from "@phosphor-icons/react";
 import {
   cancelFollowRequest,
   followUser,
   getFollowing,
-  getProfile,
   unfollowUser,
 } from "../../api/profile.js";
 import { togglePostReaction } from "../../api/feed.js";
@@ -26,6 +26,7 @@ import { usePaginationObserver } from "../../shared/hooks/usePaginationObserver.
 import { useDevice } from "../../shared/hooks/useDevice.js";
 
 export default function FeedPage() {
+  const { currentProfile } = useOutletContext();
   const navigateTo = usePageNavigate();
   const {
     posts,
@@ -39,8 +40,6 @@ export default function FeedPage() {
   } = useFeed();
   const loadMoreRef = usePaginationObserver({ hasMore, status, loadMore });
   const { isMobile } = useDevice();
-  const [currentUserID, setCurrentUserID] = useState("");
-  const [currentProfile, setCurrentProfile] = useState(null);
   const [deletingPostID, setDeletingPostID] = useState("");
   const [operationError, setOperationError] = useState("");
   const [reactingPostID, setReactingPostID] = useState("");
@@ -48,18 +47,6 @@ export default function FeedPage() {
   const [requestedIDs, setRequestedIDs] = useState(new Set());
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const { onlineUsers } = useChatRealtime();
-
-  useEffect(() => {
-    getProfile({ includePosts: false })
-      .then((profile) => {
-        setCurrentUserID(profile.id);
-        setCurrentProfile(profile);
-      })
-      .catch(() => {
-        setCurrentUserID("");
-        setCurrentProfile(null);
-      });
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -171,13 +158,11 @@ export default function FeedPage() {
       {!isMobile ? (
         <aside className="feed-left-sidebar">
           <FeedNavigation
-            onCreatePost={() => setIsComposerOpen(true)}
             profile={currentProfile}
           />
         </aside>
       ) : (
         <FeedNavigation
-          onCreatePost={() => setIsComposerOpen(true)}
           profile={currentProfile}
           isMobile
         />
@@ -221,7 +206,7 @@ export default function FeedPage() {
               <PostCard
                 key={post.id}
                 post={post}
-                currentUserID={currentUserID}
+                currentUserID={currentProfile?.id ?? ""}
                 isReacting={reactingPostID === post.id}
                 isDeleting={deletingPostID === post.id}
                 onLike={() => handlePostReaction(post.id, "LIKE")}

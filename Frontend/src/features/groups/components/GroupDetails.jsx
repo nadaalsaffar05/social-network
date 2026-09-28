@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { UsersThree } from "@phosphor-icons/react";
 import { formatLocalDate } from "../../../shared/utils/dateTime.js";
 import Skeleton from "../../../shared/components/skeleton/Skeleton.jsx";
@@ -17,6 +18,9 @@ export default function GroupDetails({
   onLeave,
   isCreator,
 }) {
+  const [expandedDescriptionGroupID, setExpandedDescriptionGroupID] =
+    useState("");
+
   if (loading) {
     return (
       <aside className="details-card">
@@ -38,6 +42,8 @@ export default function GroupDetails({
   const creatorName =
     group.creator_nickname ||
     `${group.creator_first_name} ${group.creator_last_name}`;
+  const hasLongDescription = group.description?.length > 180;
+  const isDescriptionExpanded = expandedDescriptionGroupID === group.id;
 
   return (
     <aside className="details-card">
@@ -52,7 +58,29 @@ export default function GroupDetails({
 
       <div className="details-field">
         <span className="details-label">Description</span>
-        <p className="details-description">{group.description}</p>
+        <p
+          className={`details-description${
+            hasLongDescription && !isDescriptionExpanded
+              ? " details-description--collapsed"
+              : ""
+          }`}
+        >
+          {group.description}
+        </p>
+        {hasLongDescription && (
+          <button
+            type="button"
+            className="details-description-toggle"
+            onClick={() =>
+              setExpandedDescriptionGroupID((expandedGroupID) =>
+                expandedGroupID === group.id ? "" : group.id,
+              )
+            }
+            aria-expanded={isDescriptionExpanded}
+          >
+            {isDescriptionExpanded ? "Show less" : "Read more"}
+          </button>
+        )}
       </div>
 
       <div className="details-field">

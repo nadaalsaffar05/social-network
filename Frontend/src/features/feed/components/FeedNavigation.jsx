@@ -113,7 +113,7 @@ function DockIcon({ children, badgeCount }) {
   );
 }
 
-export default function FeedNavigation({ onCreatePost, profile, isMobile = false }) {
+export default function FeedNavigation({ profile, isMobile = false }) {
   const navigate = useNavigate();
   const navigateTo = usePageNavigate();
   const { attentionCounts } = useChatRealtime();
@@ -227,7 +227,7 @@ export default function FeedNavigation({ onCreatePost, profile, isMobile = false
         onClick={() => navigateTo("/home")}
         aria-label="Loop home"
       >
-        <img src="/loop-wordmark.png" alt="" />
+        <img src="/loop-wordmark.svg" alt="" />
       </button>
 
       {/* Glass panel — nav items only */}

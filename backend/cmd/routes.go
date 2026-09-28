@@ -14,10 +14,17 @@ import (
 
 func newRouter(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.Handle("/tmp/", http.StripPrefix("/tmp/", http.FileServer(http.Dir("tmp"))))
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+	mux.Handle("/tmp/", cacheStaticMedia(http.StripPrefix("/tmp/", http.FileServer(http.Dir("tmp")))))
+	mux.Handle("/uploads/", cacheStaticMedia(http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads")))))
 	registerRoutes(mux, db)
 	return mux
+}
+
+func cacheStaticMedia(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func registerRoutes(mux *http.ServeMux, db *sql.DB) {

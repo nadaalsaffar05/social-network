@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"social-network/internal/enums"
 	"social-network/internal/helpers"
 	"social-network/internal/models"
 )
@@ -69,6 +70,9 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	request.DateOfBirth = strings.TrimSpace(request.DateOfBirth)
 	request.Nickname = trimOptionalString(request.Nickname)
 	request.AboutMe = trimOptionalString(request.AboutMe)
+	if request.Privacy == 0 {
+		request.Privacy = enums.ProfilePrivacyPublic
+	}
 
 	if request.Email == "" ||
 		request.Password == "" ||
@@ -81,6 +85,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest,
 			"missing required fields",
 		)
+		return
+	}
+
+	if !enums.IsValidProfilePrivacy(request.Privacy) {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid privacy setting")
 		return
 	}
 

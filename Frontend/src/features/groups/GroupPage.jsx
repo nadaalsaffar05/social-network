@@ -4,10 +4,10 @@ import {
   useParams,
   useSearchParams,
   useNavigate,
+  useOutletContext,
 } from "react-router-dom";
 
 import { getGroupById, leaveGroup } from "../../api/groups.js";
-import { getProfile } from "../../api/profile.js";
 import PageHeader from "../../shared/components/back-button/PageHeader.jsx";
 import { useToast } from "../../shared/components/toast/useToast.js";
 import GradientWaves from "../feed/components/GradientWaves.jsx";
@@ -26,16 +26,18 @@ import "./GroupPage.css";
 
 export default function GroupPage() {
   const { groupId } = useParams();
+  const { currentProfile: currentUser } = useOutletContext();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { error: showError, success: showSuccess } = useToast();
   const [group, setGroup] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
   const activeSection = searchParams.get("tab") || "posts";
-  const groupEvents = useGroupEvents(groupId);
+  const groupEvents = useGroupEvents(groupId, {
+    enabled: activeSection === "events",
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -44,10 +46,7 @@ export default function GroupPage() {
       try {
         setLoading(true);
 
-        const [groupData, profileData] = await Promise.all([
-          getGroupById(groupId),
-          getProfile({ includePosts: false }),
-        ]);
+        const groupData = await getGroupById(groupId);
 
         if (!isMounted) {
           return;
@@ -62,7 +61,6 @@ export default function GroupPage() {
         }
 
         setGroup(groupData);
-        setCurrentUser(profileData);
       } catch (requestError) {
         if (!isMounted) {
           return;

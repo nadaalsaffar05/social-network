@@ -250,13 +250,22 @@
   }
 
   .groups-layout--with-details {
-    display: block;
+    display: grid;
+    grid-template-areas:
+      "details"
+      "browser";
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .groups-layout--with-details .groups-browser {
+    grid-area: browser;
   }
 
   .groups-side-column {
+    grid-area: details;
     position: static;
     width: 100%;
-    margin-top: 24px;
     padding-top: 0;
   }
 }

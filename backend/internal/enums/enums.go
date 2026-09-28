@@ -41,6 +41,10 @@ const (
 	ProfilePrivacyPrivate ProfilePrivacy = 1010
 )
 
+func IsValidProfilePrivacy(privacy ProfilePrivacy) bool {
+	return privacy == ProfilePrivacyPublic || privacy == ProfilePrivacyPrivate
+}
+
 type PostPrivacy int
 
 const (

@@ -288,11 +288,12 @@ h4 {
     linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: border-glow 8s linear infinite;
   transition: opacity var(--transition-fast);
 }
-.border-glow:hover::after {
+.border-glow:hover::after,
+.border-glow:focus-within::after {
   opacity: 0.95;
+  animation: border-glow 8s linear infinite;
 }
 
 @keyframes border-glow {

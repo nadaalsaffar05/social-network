@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { ArrowClockwise, CloudSlash } from "@phosphor-icons/react";
 import { getProfile } from "../../api/profile.js";
@@ -37,14 +37,18 @@ export default function ProtectedRoute() {
   const [status, setStatus] = useState("checking");
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [currentProfile, setCurrentProfile] = useState(null);
 
   useEffect(() => {
     let active = true;
 
     async function checkSession() {
       try {
-        await getProfile({ includePosts: false });
-        if (active) setStatus("authenticated");
+        const profile = await getProfile({ includePosts: false });
+        if (active) {
+          setCurrentProfile(profile);
+          setStatus("authenticated");
+        }
       } catch (requestError) {
         if (!active) return;
 
@@ -66,6 +70,7 @@ export default function ProtectedRoute() {
 
   useEffect(() => {
     function handleSessionExpired() {
+      setCurrentProfile(null);
       setStatus("unauthenticated");
     }
     window.addEventListener("session-expired", handleSessionExpired);
@@ -73,6 +78,8 @@ export default function ProtectedRoute() {
       window.removeEventListener("session-expired", handleSessionExpired);
     };
   }, []);
+
+  const outletContext = useMemo(() => ({ currentProfile }), [currentProfile]);
 
   if (status === "checking") {
     return (
@@ -129,7 +136,7 @@ export default function ProtectedRoute() {
   return (
     <ChatRealtimeProvider>
       <HeaderNav />
-      <Outlet />
+      <Outlet context={outletContext} />
     </ChatRealtimeProvider>
   );
 }

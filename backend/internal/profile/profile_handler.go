@@ -224,7 +224,7 @@ func UpdateProfile(db *sql.DB) http.HandlerFunc {
 			helpers.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if req.Privacy != enums.ProfilePrivacyPublic && req.Privacy != enums.ProfilePrivacyPrivate {
+		if !enums.IsValidProfilePrivacy(req.Privacy) {
 			helpers.WriteError(w, http.StatusBadRequest, "invalid privacy setting")
 			return
 		}

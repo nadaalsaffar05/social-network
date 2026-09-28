@@ -6,6 +6,7 @@ import { registerUser } from "../../api/auth.js";
 import { uploadAvatar } from "../../api/profile.js";
 import AvatarCropperModal from "../../shared/components/avatar-cropper/AvatarCropperModal.jsx";
 import { useToast } from "../../shared/components/toast/useToast.js";
+import { PROFILE_PRIVACY } from "../../shared/constants/enums.js";
 import AuthBackground from "./components/AuthBackground.jsx";
 import "../../shared/styles/components/Stepper.css";
 
@@ -17,6 +18,7 @@ const initialForm = {
   date_of_birth: "",
   nickname: "",
   about_me: "",
+  privacy: PROFILE_PRIVACY.PUBLIC,
 };
 
 const MINIMUM_REGISTRATION_AGE = 18;
@@ -128,6 +130,7 @@ export default function RegisterPage() {
       ...form,
       nickname: form.nickname || null,
       about_me: form.about_me || null,
+      privacy: Number(form.privacy),
     };
 
     try {
@@ -275,17 +278,32 @@ export default function RegisterPage() {
 
           {step === 2 && (
             <>
-              <label className="loop-form__field">
-                Date of birth
-                <input
-                  type="date"
-                  name="date_of_birth"
-                  className="loop-form__control"
-                  value={form.date_of_birth}
-                  onChange={updateField}
-                  required
-                />
-              </label>
+              <div className="form-row">
+                <label className="loop-form__field">
+                  Date of birth
+                  <input
+                    type="date"
+                    name="date_of_birth"
+                    className="loop-form__control"
+                    value={form.date_of_birth}
+                    onChange={updateField}
+                    required
+                  />
+                </label>
+
+                <label className="loop-form__field">
+                  Profile privacy
+                  <select
+                    name="privacy"
+                    className="loop-form__control"
+                    value={form.privacy}
+                    onChange={updateField}
+                  >
+                    <option value={PROFILE_PRIVACY.PUBLIC}>Public</option>
+                    <option value={PROFILE_PRIVACY.PRIVATE}>Private</option>
+                  </select>
+                </label>
+              </div>
 
               <div className="auth-avatar-field">
                 <label htmlFor="register-avatar">

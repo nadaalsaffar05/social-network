@@ -74,6 +74,61 @@
   flex: 0 0 auto;
 }
 
+.group-tab-icon--expandable {
+  width: auto;
+  min-width: 46px;
+  padding: 0 13.5px;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.group-tab-icon--expandable:hover,
+.group-tab-icon--expandable:focus-visible,
+.group-tab-icon--expandable.active {
+  padding: 0 16px;
+}
+
+.group-tab-icon--expandable svg {
+  transition: transform 0.2s ease;
+}
+
+.group-tab-icon--expandable:hover svg {
+  transform: scale(1.08);
+}
+
+.group-tab-icon__label {
+  display: inline-block;
+  max-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease,
+    margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.group-tab-icon--expandable:hover .group-tab-icon__label,
+.group-tab-icon--expandable:focus-visible .group-tab-icon__label,
+.group-tab-icon--expandable.active .group-tab-icon__label {
+  max-width: 150px;
+  margin-left: 8px;
+  opacity: 1;
+}
+
 .group-tab:focus-visible {
   z-index: 4;
   outline: 2px solid var(--color-primary);
@@ -89,5 +144,16 @@
   .group-tab-icon {
     width: 40px;
     padding: 0;
+  }
+
+  .group-tab-icon--expandable {
+    min-width: 42px;
+    padding: 0 11.5px;
+  }
+
+  .group-tab-icon--expandable:hover,
+  .group-tab-icon--expandable:focus-visible,
+  .group-tab-icon--expandable.active {
+    padding: 0 14px;
   }
 }

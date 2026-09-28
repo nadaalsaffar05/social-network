@@ -61,6 +61,8 @@ function shortTime(value) {
   });
 }
 
+const MESSAGE_REQUEST_STATUS_PENDING = "PENDING";
+
 export default function ChatPage() {
   const { userId } = useParams();
   const { isMobile } = useDevice();
@@ -68,7 +70,13 @@ export default function ChatPage() {
   const navigateTo = usePageNavigate();
   const backToChats = usePageBack("/messages", { preferFallback: true });
   const { error: showError, success: showSuccess } = useToast();
-  const { events, onlineUserIDs, sendEvent, typingUserIDs } = useChatRealtime();
+  const {
+    events,
+    onlineUserIDs,
+    sendEvent,
+    typingUserIDs,
+    refreshAttentionCounts,
+  } = useChatRealtime();
   const typingTimerRef = useRef(null);
   const activeThreadUserIDRef = useRef(userId);
   const isLoadingThreadRef = useRef(Boolean(userId));
@@ -91,6 +99,8 @@ export default function ChatPage() {
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [requestActionConversationID, setRequestActionConversationID] =
+    useState("");
   const [inboxQuery, setInboxQuery] = useState("");
   const [debouncedInboxQuery, setDebouncedInboxQuery] = useState("");
   const {
@@ -504,7 +514,10 @@ export default function ChatPage() {
   }
 
   async function respondToRequest(request, action) {
+    if (requestActionConversationID === request.conversation_id) return;
+
     try {
+      setRequestActionConversationID(request.conversation_id);
       if (action === "accept") await acceptMessageRequest(request.requester_id);
       else await declineMessageRequest(request.requester_id);
       setRequests((current) =>
@@ -512,8 +525,12 @@ export default function ChatPage() {
           (item) => item.conversation_id !== request.conversation_id,
         ),
       );
-      if (action === "accept") navigateTo(`/messages/${request.requester_id}`);
-      await loadInbox();
+      await Promise.all([loadInbox(), refreshAttentionCounts()]);
+      if (action === "accept") {
+        navigateTo(`/messages/${request.requester_id}`, { replace: true });
+      } else if (request.requester_id === userId) {
+        navigateTo("/messages", { replace: true });
+      }
       showSuccess(
         action === "accept"
           ? "Message request accepted"
@@ -524,6 +541,8 @@ export default function ChatPage() {
         "Failed to update message request",
         requestError.message || "Please try again",
       );
+    } finally {
+      setRequestActionConversationID("");
     }
   }
 
@@ -539,13 +558,18 @@ export default function ChatPage() {
     userId && String(location.state?.chatUser?.id) === String(userId)
       ? location.state?.chatUser
       : null;
+  const activeConversation = chats.find(
+    (conversation) => conversation.user.id === userId,
+  );
   const activeUser =
-    chats.find((conversation) => conversation.user.id === userId)?.user ||
+    activeConversation?.user ||
     requests.find((request) => request.requester_id === userId)?.requester ||
     routeUser ||
     (String(fetchedRoutedUser?.id) === String(userId)
       ? fetchedRoutedUser
       : null);
+  const isOutgoingMessageRequest =
+    activeConversation?.request_status === MESSAGE_REQUEST_STATUS_PENDING;
   const isRemoteTyping = typingUserIDs.includes(userId);
 
   return (
@@ -652,13 +676,31 @@ export default function ChatPage() {
                         <p>{request.message?.content}</p>
                         <button
                           type="button"
-                          onClick={() => respondToRequest(request, "accept")}
+                          onClick={() =>
+                            navigateTo(`/messages/${request.requester_id}`)
+                          }
                         >
-                          Accept
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => respondToRequest(request, "accept")}
+                          disabled={
+                            requestActionConversationID ===
+                            request.conversation_id
+                          }
+                        >
+                          {requestActionConversationID === request.conversation_id
+                            ? "Updating…"
+                            : "Accept"}
                         </button>
                         <button
                           type="button"
                           onClick={() => respondToRequest(request, "decline")}
+                          disabled={
+                            requestActionConversationID ===
+                            request.conversation_id
+                          }
                         >
                           Decline
                         </button>
@@ -716,6 +758,24 @@ export default function ChatPage() {
                     <p className="chat-empty">Loading messages…</p>
                   ) : (
                     <>
+                      {isOutgoingMessageRequest && (
+                        <section
+                          className="chat-request-notice chat-request-notice--outgoing"
+                          aria-label="Message request sent"
+                        >
+                          <p className="chat-request-notice__eyebrow">
+                            Message request sent
+                          </p>
+                          <h3>
+                            Your messages are waiting to be accepted
+                          </h3>
+                          <p>
+                            {getUserDisplayName(activeConversation.user, "They")}{" "}
+                            can accept when they’re ready. You can keep sending
+                            messages in the meantime.
+                          </p>
+                        </section>
+                      )}
                       {isLoadingOlder && (
                         <p className="chat-loading-older">
                           Loading older messages…

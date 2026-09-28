@@ -10,7 +10,7 @@ import { INITIAL_CURSOR, PAGINATION_STATUS } from "./pagination.js";
 
 const EVENTS_LIMIT = 10;
 
-export function useGroupEvents(groupID) {
+export function useGroupEvents(groupID, { enabled = true } = {}) {
   const [events, setEvents] = useState([]);
   const [nextCursor, setNextCursor] = useState(INITIAL_CURSOR);
   const [status, setStatus] = useState(PAGINATION_STATUS.LOADING);
@@ -114,12 +114,14 @@ export function useGroupEvents(groupID) {
   );
 
   useEffect(() => {
+    if (!enabled) return;
+
     async function loadInitialEvents() {
       await refresh();
     }
 
     void loadInitialEvents();
-  }, [refresh]);
+  }, [enabled, refresh]);
 
   return {
     events,

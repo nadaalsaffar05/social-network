@@ -454,7 +454,7 @@ func (h *Handler) createMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message, err := createPrivateMessage(h.DB, currentUser.ID, otherUserID, content)
+	message, requestCreated, err := createPrivateMessage(h.DB, currentUser.ID, otherUserID, content)
 	if errors.Is(err, errUserNotFound) {
 		helpers.WriteError(w, http.StatusNotFound, "user not found")
 		return
@@ -473,7 +473,7 @@ func (h *Handler) createMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	eventType := "message:new"
-	if pending, err := isPendingMessageRequest(h.DB, message.ConversationID); err == nil && pending {
+	if requestCreated {
 		eventType = "message-request:new"
 	}
 	h.Hub.SendTo(otherUserID, models.SocketEvent{Type: eventType, Data: message})

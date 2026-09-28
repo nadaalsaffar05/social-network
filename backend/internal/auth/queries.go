@@ -112,13 +112,15 @@ func createUser(
 			INSERT INTO profiles (
 				user_id,
 				nickname,
-				about_me
+				about_me,
+				privacy
 			)
-			VALUES (?, ?, ?)
+			VALUES (?, ?, ?, ?)
 		`,
 			userID.String(),
 			request.Nickname,
 			request.AboutMe,
+			request.Privacy,
 		); err != nil {
 			if strings.Contains(err.Error(), "profiles.nickname") {
 				return errNicknameTaken

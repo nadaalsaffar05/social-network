@@ -69,6 +69,12 @@
   color: #8f9aab;
 }
 
+/* Native select menus are rendered outside the glass surface by the browser. */
+.loop-form__control option {
+  color: #172033;
+  background: #fff;
+}
+
 .loop-form__control:hover:not(:disabled) {
   background: rgb(255 255 255 / 5%);
 }
