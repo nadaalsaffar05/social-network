@@ -3,9 +3,11 @@ package chat
 import (
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
+	"social-network/internal/config"
 	"social-network/internal/models"
 
 	"github.com/gorilla/websocket"
@@ -34,12 +36,12 @@ func isAllowedWebSocketOrigin(request *http.Request) bool {
 		return false
 	}
 
-	requestURL, err := url.Parse("http://" + request.Host)
+	frontendURL, err := url.Parse(config.FrontendOrigin())
 	if err != nil {
 		return false
 	}
 
-	return originURL.Hostname() == requestURL.Hostname()
+	return strings.EqualFold(originURL.Host, frontendURL.Host) && originURL.Scheme == frontendURL.Scheme
 }
 
 // Hub remembers which users currently have an open WebSocket connection.

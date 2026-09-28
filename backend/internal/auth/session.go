@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"social-network/internal/config"
 	"social-network/internal/models"
 
 	"github.com/gofrs/uuid/v5"
@@ -125,25 +126,36 @@ func revokeSession(db *sql.DB, token string) error {
 }
 
 func setSessionCookie(w http.ResponseWriter, token string) {
+	secure, sameSite := sessionCookieSecurity()
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		SameSite: sameSite,
 		MaxAge:   int(sessionDuration.Seconds()),
 	})
 }
 
 func clearSessionCookie(w http.ResponseWriter) {
+	secure, sameSite := sessionCookieSecurity()
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		SameSite: sameSite,
 		MaxAge:   -1,
 	})
+}
+
+func sessionCookieSecurity() (bool, http.SameSite) {
+	if config.UsesSecureCookies() {
+		return true, http.SameSiteNoneMode
+	}
+	return false, http.SameSiteLaxMode
 }
