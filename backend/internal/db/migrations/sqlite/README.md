@@ -41,6 +41,9 @@ Current schema migrations:
 | `000015`–`000018` | group invitations, join requests, events, and attendance responses |
 | `000019` | in-app notifications |
 | `000020`–`000023` | private conversations/messages and group chat/messages |
+| `000024`–`000028` | integer enums, avatar types and seeds, group post privacy, notification types, and reaction constraints |
+| `000029`–`000033` | private-message state, presence, requests, and reactions; group-message receipts and reactions |
+| `000034`–`000035` | birthday and event-reminder notification types |
 
 ## Everyday commands
 
@@ -94,7 +97,7 @@ This removes all schema changes by running down migrations in reverse order. It 
 ### Move to an exact version
 
 ```sh
-migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" goto 23
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" goto 35
 ```
 
 `goto` migrates up or down until the requested version is reached. Use it only with a known safe target version.
@@ -110,8 +113,8 @@ migrate create -ext sql -dir backend/internal/db/migrations/sqlite -seq create_e
 This creates files similar to:
 
 ```text
-000024_create_example_table.up.sql
-000024_create_example_table.down.sql
+000036_create_example_table.up.sql
+000036_create_example_table.down.sql
 ```
 
 The up file contains the change to apply; the down file contains the SQL needed to reverse it.
@@ -119,7 +122,7 @@ The up file contains the change to apply; the down file contains the SQL needed 
 Example:
 
 ```sql
--- 000024_create_example_table.up.sql
+-- 000036_create_example_table.up.sql
 CREATE TABLE example_table (
     id TEXT PRIMARY KEY NOT NULL,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
@@ -127,7 +130,7 @@ CREATE TABLE example_table (
 ```
 
 ```sql
--- 000024_create_example_table.down.sql
+-- 000036_create_example_table.down.sql
 DROP TABLE example_table;
 ```
 
@@ -140,7 +143,7 @@ DROP TABLE example_table;
 5. Apply it again so the local database returns to the latest version.
 6. Commit both SQL files to Git. Do not commit `social-network.db`.
 
-For example, after creating `000024_create_example_table`, test it with:
+For example, after creating `000036_create_example_table`, test it with:
 
 ```sh
 migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" up 1
@@ -153,7 +156,7 @@ migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend
 Do not immediately use `force`: first inspect and fix the failing SQL or database state. Once the schema is known to match a version, mark that version explicitly:
 
 ```sh
-migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" force 23
+migrate -path backend/internal/db/migrations/sqlite -database "sqlite3://backend/internal/db/social-network.db" force 35
 ```
 
 `force` only changes golang-migrate's recorded version; it does not run SQL. Use it only after confirming the real schema is at that version.

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -37,18 +36,17 @@ func initDB() (*sql.DB, error) {
 
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
 	if err != nil {
-		log.Printf("[Migration Warning] Failed to create migration driver: %v", err)
-		return db, nil
+		_ = db.Close()
+		return nil, fmt.Errorf("create migration driver: %w", err)
 	}
 	m, err := migrate.NewWithDatabaseInstance(migrationsPath, "sqlite3", driver)
 	if err != nil {
-		log.Printf("[Migration Warning] Failed to initialize migrations: %v", err)
-		return db, nil
+		_ = db.Close()
+		return nil, fmt.Errorf("initialize migrations: %w", err)
 	}
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Printf("[Migration Warning] Migration error: %v", err)
-	} else {
-		log.Println("Database migrations checked and up to date.")
+		_ = db.Close()
+		return nil, fmt.Errorf("apply database migrations: %w", err)
 	}
 	return db, nil
 }

@@ -24,10 +24,6 @@ COPY --from=backend-builder /app/server /app/server
 
 COPY backend/internal/db/migrations /app/internal/db/migrations
 
-COPY backend/run.sh /app/run.sh
-RUN chmod +x /app/run.sh
-
-
 RUN mkdir -p /app/internal/db /app/uploads /app/tmp
 
 ENV PORT=8080 \
