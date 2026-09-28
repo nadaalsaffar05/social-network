@@ -1,4 +1,8 @@
+const production = import.meta.env.PROD;
+
 export const environment = {
-  production: false,
-  api_path: import.meta.env.VITE_API_URL || "http://localhost:8080",
+  production,
+  api_path: production
+    ? window.location.origin
+    : import.meta.env.VITE_API_URL || "http://localhost:8080",
 };
