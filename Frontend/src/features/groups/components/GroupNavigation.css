@@ -22,6 +22,7 @@
 .group-tab {
   position: relative;
   height: 46px;
+  box-sizing: border-box;
   padding: 0 18px;
   border: 1px solid rgb(255 255 255 / 14%);
   border-bottom: none;
@@ -34,30 +35,32 @@
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transform: translateY(8px);
   transition:
     color var(--transition-fast),
     background-color var(--transition-fast),
     border-color var(--transition-fast),
+    height var(--transition-fast),
     transform var(--transition-fast);
 }
 
 .group-tab:hover {
+  z-index: 4;
+  transform: translateY(-4px);
   color: var(--color-text);
   background: rgb(26 30 41 / 92%);
   border-color: rgb(255 255 255 / 20%);
-  transform: translateY(4px);
 }
 
 .group-tab.active {
   z-index: 3;
+  height: 54px;
   color: var(--color-text);
   background: rgb(26 30 41 / 100%);
   border-color: rgb(255 255 255 / 20%);
-  transform: translateY(0);
 }
 
 .group-tab.active:hover {
+  z-index: 5;
   background: rgb(26 30 41 / 100%);
 }
 
