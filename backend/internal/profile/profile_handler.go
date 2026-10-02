@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 
 	"social-network/internal/auth"
@@ -303,7 +304,7 @@ func UpdateAvatar(db *sql.DB) http.HandlerFunc {
 		keepFile := false
 		defer func() {
 			if !keepFile && relativePath != "" {
-				_ = helpers.RemoveMediaFile(relativePath)
+				_ = os.Remove(relativePath)
 			}
 		}()
 

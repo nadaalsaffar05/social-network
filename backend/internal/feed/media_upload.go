@@ -3,6 +3,7 @@ package feed
 import (
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
 
 	"social-network/internal/enums"
@@ -23,7 +24,7 @@ type pendingMediaUpload struct {
 }
 
 func (upload pendingMediaUpload) removeFile() {
-	_ = helpers.RemoveMediaFile(upload.RelativePath)
+	_ = os.Remove(upload.RelativePath)
 }
 
 func parseMediaUpload(w http.ResponseWriter, r *http.Request, directory string) (pendingMediaUpload, bool) {

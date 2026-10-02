@@ -4,11 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"social-network/internal/enums"
@@ -27,48 +25,6 @@ func PublicMediaPath(path *string) *string {
 
 	publicPath := PublicMediaURL(*path)
 	return &publicPath
-}
-
-// MediaStorageRoot keeps local uploads in ./uploads and places production
-// uploads beside the database when DB_PATH points at a persistent volume.
-func MediaStorageRoot() string {
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		return "uploads"
-	}
-	return filepath.Join(filepath.Dir(dbPath), "uploads")
-}
-
-func MediaStoragePath(mediaPath string) string {
-	if mediaPath == "uploads" {
-		return MediaStorageRoot()
-	}
-	if strings.HasPrefix(mediaPath, "uploads/") {
-		return filepath.Join(MediaStorageRoot(), filepath.FromSlash(strings.TrimPrefix(mediaPath, "uploads/")))
-	}
-	return mediaPath
-}
-
-func RemoveMediaFile(mediaPath string) error {
-	return os.Remove(MediaStoragePath(mediaPath))
-}
-
-func MediaFileServer() http.Handler {
-	storageRoot := MediaStorageRoot()
-	storageServer := http.FileServer(http.Dir(storageRoot))
-	legacyServer := http.FileServer(http.Dir("uploads"))
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		relativePath := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
-		storagePath := filepath.Join(storageRoot, filepath.FromSlash(relativePath))
-		if storageRoot != "uploads" {
-			if _, err := os.Stat(storagePath); errors.Is(err, fs.ErrNotExist) {
-				legacyServer.ServeHTTP(w, r)
-				return
-			}
-		}
-		storageServer.ServeHTTP(w, r)
-	})
 }
 
 func MediaExtension(mimeType enums.MediaMIMEType) string {
@@ -104,14 +60,12 @@ func DetectMediaMIMEType(file io.ReadSeeker) (enums.MediaMIMEType, error) {
 }
 
 func SaveMediaFile(file io.Reader, directory, mediaID string, mimeType enums.MediaMIMEType) (string, int64, error) {
-	storageDirectory := MediaStoragePath(directory)
-	if err := os.MkdirAll(storageDirectory, 0o755); err != nil {
+	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return "", 0, err
 	}
 
 	relativePath := path.Join(directory, mediaID+MediaExtension(mimeType))
-	storagePath := MediaStoragePath(relativePath)
-	destination, err := os.Create(storagePath)
+	destination, err := os.Create(relativePath)
 	if err != nil {
 		return "", 0, err
 	}
@@ -119,15 +73,15 @@ func SaveMediaFile(file io.Reader, directory, mediaID string, mimeType enums.Med
 	fileSize, copyErr := io.Copy(destination, file)
 	closeErr := destination.Close()
 	if copyErr != nil {
-		_ = os.Remove(storagePath)
+		_ = os.Remove(relativePath)
 		return "", 0, copyErr
 	}
 	if closeErr != nil {
-		_ = os.Remove(storagePath)
+		_ = os.Remove(relativePath)
 		return "", 0, closeErr
 	}
 	if fileSize == 0 {
-		_ = os.Remove(storagePath)
+		_ = os.Remove(relativePath)
 		return "", 0, ErrEmptyMediaFile
 	}
 
