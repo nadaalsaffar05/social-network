@@ -48,12 +48,12 @@
   display: block;
 }
 .like-button--liked .like-button__filled {
-  animation: like-button-fill 420ms ease-out;
+  animation: like-button-fill 160ms ease-out;
 }
 .like-button--liked .like-button__celebrate {
   width: 4.4rem;
   height: 4.4rem;
-  animation: like-button-celebrate 520ms ease-out forwards;
+  animation: like-button-celebrate 220ms ease-out forwards;
   fill: var(--like-color);
   stroke: var(--like-color);
   stroke-width: 2px;
