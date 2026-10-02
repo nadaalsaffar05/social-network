@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   useLocation,
   useNavigate,
@@ -64,6 +65,7 @@ export default function ProfilePage() {
   const [reactingPostID, setReactingPostID] = useState("");
   const [deletingPostID, setDeletingPostID] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUnfollowConfirmOpen, setIsUnfollowConfirmOpen] = useState(false);
   const [isFollowingProfile, setIsFollowingProfile] = useState(false);
   const [isFollowRequestedProfile, setIsFollowRequestedProfile] = useState(false);
   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);
@@ -191,6 +193,19 @@ export default function ProfilePage() {
     };
   }, [activeTab, id]);
 
+  useEffect(() => {
+    if (!isUnfollowConfirmOpen) return undefined;
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsUnfollowConfirmOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isUnfollowConfirmOpen]);
+
   async function handleLogout() {
     try {
       await logoutUser();
@@ -263,8 +278,6 @@ export default function ProfilePage() {
   }
 
   async function handleUnfollowProfile() {
-    if (!window.confirm(`Unfollow ${fullName}?`)) return;
-
     try {
       setIsUpdatingFollow(true);
       await unfollowUser(id);
@@ -506,7 +519,7 @@ export default function ProfilePage() {
                     }
                     onClick={
                       isFollowingProfile
-                        ? handleUnfollowProfile
+                        ? () => setIsUnfollowConfirmOpen(true)
                         : isFollowRequestedProfile
                           ? handleCancelFollowRequest
                           : handleFollowProfile
@@ -816,6 +829,55 @@ export default function ProfilePage() {
           onSave={handleProfileSave}
         />
       )}
+
+      {isUnfollowConfirmOpen &&
+        createPortal(
+          <div
+            className="profile-confirm-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setIsUnfollowConfirmOpen(false);
+              }
+            }}
+          >
+            <section
+              className="profile-confirm-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="profile-unfollow-title"
+              aria-describedby="profile-unfollow-description"
+            >
+              <span className="profile-confirm-eyebrow">Confirm action</span>
+              <h2 id="profile-unfollow-title">
+                Unfollow {getUserFullName(profile)}?
+              </h2>
+              <p id="profile-unfollow-description">
+                Their posts will no longer appear in your following feed.
+              </p>
+              <div className="profile-confirm-actions">
+                <button
+                  type="button"
+                  className="profile-confirm-cancel"
+                  onClick={() => setIsUnfollowConfirmOpen(false)}
+                  autoFocus
+                >
+                  Keep following
+                </button>
+                <button
+                  type="button"
+                  className="profile-confirm-unfollow"
+                  onClick={() => {
+                    setIsUnfollowConfirmOpen(false);
+                    handleUnfollowProfile();
+                  }}
+                >
+                  Unfollow
+                </button>
+              </div>
+            </section>
+          </div>,
+          document.body,
+        )}
     </main>
   );
 }

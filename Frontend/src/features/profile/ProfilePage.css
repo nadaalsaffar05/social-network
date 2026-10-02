@@ -10,6 +10,133 @@
   font-family: var(--font-body);
 }
 
+.profile-confirm-backdrop {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(4 7 13 / 72%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: profileConfirmFadeIn 160ms ease-out;
+}
+
+.profile-confirm-dialog {
+  width: min(100%, 420px);
+  padding: 28px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at top left, rgb(76 124 240 / 13%), transparent 55%),
+    rgb(18 22 32 / 98%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    0 24px 80px rgb(0 0 0 / 48%);
+  animation: profileConfirmEnter 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.profile-confirm-eyebrow {
+  color: var(--color-primary, #4c7cf0);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.profile-confirm-dialog h2 {
+  margin: 10px 0 8px;
+  color: var(--color-text, #f1f5f9);
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: clamp(1.35rem, 5vw, 1.7rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.profile-confirm-dialog p {
+  margin: 0;
+  color: var(--color-text-muted, #9aa4b8);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.profile-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.profile-confirm-actions button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.profile-confirm-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.profile-confirm-cancel {
+  color: var(--color-text, #f1f5f9);
+  border-color: rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 5%);
+}
+
+.profile-confirm-cancel:hover {
+  background: rgb(255 255 255 / 9%);
+}
+
+.profile-confirm-unfollow {
+  color: #fff;
+  background: #bd5268;
+}
+
+.profile-confirm-unfollow:hover {
+  background: #d05d75;
+}
+
+.profile-confirm-actions button:focus-visible {
+  outline: 2px solid var(--color-primary, #4c7cf0);
+  outline-offset: 3px;
+}
+
+@keyframes profileConfirmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes profileConfirmEnter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 480px) {
+  .profile-confirm-dialog {
+    padding: 24px 20px 20px;
+    border-radius: 17px;
+  }
+
+  .profile-confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .profile-confirm-actions button {
+    width: 100%;
+  }
+}
+
 .profile-page-content {
   width: 100%;
   max-width: 1200px;
