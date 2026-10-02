@@ -121,6 +121,7 @@ type GroupEventResponse struct {
 	StartsAt          string               `json:"starts_at"`
 	CreatedAt         string               `json:"created_at"`
 	MyResponse        *enums.EventResponse `json:"my_response,omitempty"`
+	GoingCount        int                  `json:"going_count"`
 }
 
 type GroupEventsPageResponse struct {

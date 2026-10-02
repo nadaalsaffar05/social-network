@@ -135,6 +135,10 @@ export default function GroupEvents({
                     <span>{startsAt}</span>
                   </p>
 
+                  <p className="group-event-going-count">
+                    {event.going_count ?? 0} going
+                  </p>
+
                   {event.description && (
                     <EventDescription
                       eventID={event.id}

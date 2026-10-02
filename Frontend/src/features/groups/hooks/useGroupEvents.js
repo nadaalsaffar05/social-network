@@ -89,17 +89,23 @@ export function useGroupEvents(groupID, { enabled = true } = {}) {
         await respondToGroupEvent(groupID, eventID, action);
 
         setEvents((currentEvents) =>
-          currentEvents.map((event) =>
-            event.id === eventID
-              ? {
-                  ...event,
-                  my_response:
-                    action === "going"
-                      ? EVENT_RESPONSE.GOING
-                      : EVENT_RESPONSE.NOT_GOING,
-                }
-              : event,
-          ),
+          currentEvents.map((event) => {
+            if (event.id !== eventID) return event;
+
+            const wasGoing = event.my_response === EVENT_RESPONSE.GOING;
+            const willGo = action === "going";
+
+            return {
+              ...event,
+              my_response: willGo
+                ? EVENT_RESPONSE.GOING
+                : EVENT_RESPONSE.NOT_GOING,
+              going_count: Math.max(
+                0,
+                (event.going_count ?? 0) + Number(willGo) - Number(wasGoing),
+              ),
+            };
+          }),
         );
 
         return true;

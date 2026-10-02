@@ -876,6 +876,7 @@ func createEvent(db sqlExecer, eventID string, groupID string, creatorID string,
 
 func getAllActiveEvents(db *sql.DB, groupID string, userID string, cursor string, limit int) ([]models.GroupEventResponse, string, error) {
 	args := []any{
+		int(enums.EventResponseGoing),
 		userID,
 		groupID,
 	}
@@ -892,7 +893,9 @@ func getAllActiveEvents(db *sql.DB, groupID string, userID string, cursor string
 			ge.description,
 			strftime('%Y-%m-%dT%H:%M:%fZ', ge.starts_at),
 			ge.created_at,
-			ea.response
+			ea.response,
+			(SELECT COUNT(*) FROM event_attendees going
+				WHERE going.event_id = ge.id AND going.response = ?)
 		FROM group_events ge
 		JOIN users u
 			ON u.id = ge.creator_id
@@ -948,7 +951,7 @@ func getAllActiveEvents(db *sql.DB, groupID string, userID string, cursor string
 		var event models.GroupEventResponse
 		var response sql.NullInt64
 		err := rows.Scan(&event.ID, &event.GroupID, &event.CreatorID, &event.CreatorFirstName, &event.CreatorLastName,
-			&event.CreatorNickname, &event.CreatorAvatarPath, &event.Title, &event.Description, &event.StartsAt, &event.CreatedAt, &response)
+			&event.CreatorNickname, &event.CreatorAvatarPath, &event.Title, &event.Description, &event.StartsAt, &event.CreatedAt, &response, &event.GoingCount)
 		if err != nil {
 			return nil, "", err
 		}
@@ -988,7 +991,9 @@ func getEventByID(db *sql.DB, groupID string, eventID string) (models.GroupEvent
 			ge.title,
 			ge.description,
 			strftime('%Y-%m-%dT%H:%M:%fZ', ge.starts_at),
-			ge.created_at
+			ge.created_at,
+			(SELECT COUNT(*) FROM event_attendees going
+				WHERE going.event_id = ge.id AND going.response = ?)
 		FROM group_events ge
 		JOIN users u
 			ON u.id = ge.creator_id
@@ -1000,9 +1005,9 @@ func getEventByID(db *sql.DB, groupID string, eventID string) (models.GroupEvent
 			ON avatar_media.id = avatar.media_id
 		WHERE ge.id = ?
 			AND ge.group_id = ?
-	`, eventID, groupID,
+	`, int(enums.EventResponseGoing), eventID, groupID,
 	).Scan(&event.ID, &event.GroupID, &event.CreatorID, &event.CreatorFirstName, &event.CreatorLastName,
-		&event.CreatorNickname, &event.CreatorAvatarPath, &event.Title, &event.Description, &event.StartsAt, &event.CreatedAt)
+		&event.CreatorNickname, &event.CreatorAvatarPath, &event.Title, &event.Description, &event.StartsAt, &event.CreatedAt, &event.GoingCount)
 
 	return event, err
 }

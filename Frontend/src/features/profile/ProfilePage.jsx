@@ -64,6 +64,7 @@ export default function ProfilePage() {
   const [deletingPostID, setDeletingPostID] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFollowingProfile, setIsFollowingProfile] = useState(false);
+  const [isFollowRequestedProfile, setIsFollowRequestedProfile] = useState(false);
 
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
@@ -120,6 +121,7 @@ export default function ProfilePage() {
           setCurrentUser(myProfile);
           setProfile(userProfile);
           setIsFollowingProfile(relationship?.is_following ?? false);
+          setIsFollowRequestedProfile(relationship?.is_requested ?? false);
         }
       } catch (requestError) {
         if (
@@ -224,6 +226,7 @@ export default function ProfilePage() {
     try {
       const response = await followUser(id);
       setIsFollowingProfile(response.status === "following");
+      setIsFollowRequestedProfile(response.status === "pending");
       if (response.status === "following") {
         setProfile((current) =>
           current
@@ -243,6 +246,7 @@ export default function ProfilePage() {
     try {
       await unfollowUser(id);
       setIsFollowingProfile(false);
+      setIsFollowRequestedProfile(false);
       setProfile((current) =>
         current
           ? {
@@ -464,13 +468,18 @@ export default function ProfilePage() {
                         ? "profile-edit-profile-btn secondary"
                         : "profile-edit-profile-btn primary"
                     }
+                    disabled={isFollowRequestedProfile}
                     onClick={
                       isFollowingProfile
                         ? handleUnfollowProfile
                         : handleFollowProfile
                     }
                   >
-                    {isFollowingProfile ? "Unfollow" : "Follow"}
+                    {isFollowingProfile
+                      ? "Unfollow"
+                      : isFollowRequestedProfile
+                        ? "Requested"
+                        : "Follow"}
                   </button>
                 )}
               </div>
