@@ -53,12 +53,12 @@
   top: 0;
   left: 12px;
   right: 12px;
-  z-index: 3;
+  z-index: 1;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   pointer-events: none;
-  transform: translateY(-16px);
+  transform: translateY(-23px);
 }
 
 .groups-tabs-main,
