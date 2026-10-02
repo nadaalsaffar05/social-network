@@ -64,7 +64,7 @@ export default function GroupsPage() {
     filter === "discover" && selectedGroup?.id === selectedGroupId
       ? selectedGroup
       : null;
-  const hasGroupDetails = Boolean(displayedSelectedGroup);
+  const hasGroupDetails = filter === "discover" && Boolean(selectedGroupId);
 
   // Get current user
   useEffect(() => {
@@ -205,9 +205,10 @@ export default function GroupsPage() {
   }
 
   function handleDiscoverSelection(groupID) {
-    setSelectedGroup((currentGroup) =>
-      currentGroup?.id === groupID ? currentGroup : null,
-    );
+    if (selectedGroup?.id !== groupID) {
+      setSelectedGroup(null);
+      setDetailsLoading(true);
+    }
 
     setSearchParams(
       (currentParams) => {
