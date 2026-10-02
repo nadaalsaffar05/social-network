@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path"
@@ -50,6 +51,24 @@ func MediaStoragePath(mediaPath string) string {
 
 func RemoveMediaFile(mediaPath string) error {
 	return os.Remove(MediaStoragePath(mediaPath))
+}
+
+func MediaFileServer() http.Handler {
+	storageRoot := MediaStorageRoot()
+	storageServer := http.FileServer(http.Dir(storageRoot))
+	legacyServer := http.FileServer(http.Dir("uploads"))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		relativePath := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+		storagePath := filepath.Join(storageRoot, filepath.FromSlash(relativePath))
+		if storageRoot != "uploads" {
+			if _, err := os.Stat(storagePath); errors.Is(err, fs.ErrNotExist) {
+				legacyServer.ServeHTTP(w, r)
+				return
+			}
+		}
+		storageServer.ServeHTTP(w, r)
+	})
 }
 
 func MediaExtension(mimeType enums.MediaMIMEType) string {

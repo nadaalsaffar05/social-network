@@ -16,7 +16,7 @@ import (
 func newRouter(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/tmp/", cacheStaticMedia(http.StripPrefix("/tmp/", http.FileServer(http.Dir("tmp")))))
-	mux.Handle("/uploads/", cacheStaticMedia(http.StripPrefix("/uploads/", http.FileServer(http.Dir(helpers.MediaStorageRoot())))))
+	mux.Handle("/uploads/", cacheStaticMedia(http.StripPrefix("/uploads/", helpers.MediaFileServer())))
 	registerRoutes(mux, db)
 	return mux
 }
