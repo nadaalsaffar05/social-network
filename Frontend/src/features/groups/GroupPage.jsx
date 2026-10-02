@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useLocation,
   useParams,
@@ -31,13 +31,29 @@ export default function GroupPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { error: showError, success: showSuccess } = useToast();
+  const locationStateRef = useRef(location.state);
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
   const activeSection = searchParams.get("tab") || "posts";
+  const [visitedSectionState, setVisitedSectionState] = useState(() => ({
+    groupID: groupId,
+    sections: [activeSection],
+  }));
+  const visitedSections =
+    visitedSectionState.groupID === groupId
+      ? visitedSectionState.sections
+      : [activeSection];
+  const renderedSections = visitedSections.includes(activeSection)
+    ? visitedSections
+    : [...visitedSections, activeSection];
   const groupEvents = useGroupEvents(groupId, {
     enabled: activeSection === "events",
   });
+
+  useEffect(() => {
+    locationStateRef.current = location.state;
+  }, [location.state]);
 
   useEffect(() => {
     let isMounted = true;
@@ -55,7 +71,7 @@ export default function GroupPage() {
         if (!groupData.is_member) {
           navigate(`/groups?selected=${groupId}`, {
             replace: true,
-            state: location.state,
+            state: locationStateRef.current,
           });
           return;
         }
@@ -82,13 +98,40 @@ export default function GroupPage() {
     return () => {
       isMounted = false;
     };
-  }, [groupId, location.state, navigate, showError]);
+  }, [groupId, navigate, showError]);
   
   function handleSectionChange(section) {
-    setSearchParams(section === "posts" ? {} : { tab: section }, {
-      state: location.state,
-      replace: true,
+    if (section === activeSection) {
+      return;
+    }
+
+    setVisitedSectionState((current) => {
+      const currentSections =
+        current.groupID === groupId ? current.sections : [activeSection];
+
+      return {
+        groupID: groupId,
+        sections: [...new Set([...currentSections, activeSection, section])],
+      };
     });
+
+    setSearchParams(
+      (currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+
+        if (section === "posts") {
+          nextParams.delete("tab");
+        } else {
+          nextParams.set("tab", section);
+        }
+
+        return nextParams;
+      },
+      {
+        state: location.state,
+        replace: true,
+      },
+    );
   }
 
   async function handleLeaveGroup() {
@@ -152,42 +195,46 @@ export default function GroupPage() {
 
               <div className="group-content-card">
                 <div className="group-section-content">
-                  {activeSection === "posts" && (
-                    <GroupPosts
-                      groupID={group.id}
-                      currentUserID={currentUser.id}
-                    />
-                  )}
+                  {renderedSections.map((section) => (
+                    <div key={section} hidden={section !== activeSection}>
+                      {section === "posts" && (
+                        <GroupPosts
+                          groupID={group.id}
+                          currentUserID={currentUser.id}
+                        />
+                      )}
 
-                  {activeSection === "chat" && (
-                    <GroupChat
-                      groupID={group.id}
-                      groupTitle={group.title}
-                      currentUserID={currentUser.id}
-                    />
-                  )}
+                      {section === "chat" && (
+                        <GroupChat
+                          groupID={group.id}
+                          groupTitle={group.title}
+                          currentUserID={currentUser.id}
+                        />
+                      )}
 
-                  {activeSection === "events" && (
-                    <GroupEvents
-                      currentUserID={currentUser.id}
-                      eventsState={groupEvents}
-                    />
-                  )}
+                      {section === "events" && (
+                        <GroupEvents
+                          currentUserID={currentUser.id}
+                          eventsState={groupEvents}
+                        />
+                      )}
 
-                  {activeSection === "members" && (
-                    <GroupMembers
-                      groupID={group.id}
-                      memberCount={group.member_count}
-                    />
-                  )}
+                      {section === "members" && (
+                        <GroupMembers
+                          groupID={group.id}
+                          memberCount={group.member_count}
+                        />
+                      )}
 
-                  {activeSection === "invitations" && (
-                    <GroupInvitations groupID={group.id} />
-                  )}
+                      {section === "invitations" && (
+                        <GroupInvitations groupID={group.id} />
+                      )}
 
-                  {activeSection === "requests" && isCreator && (
-                    <GroupJoinRequests groupID={group.id} />
-                  )}
+                      {section === "requests" && isCreator && (
+                        <GroupJoinRequests groupID={group.id} />
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

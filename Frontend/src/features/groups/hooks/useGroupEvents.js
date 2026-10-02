@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   createGroupEvent,
@@ -17,6 +17,8 @@ export function useGroupEvents(groupID, { enabled = true } = {}) {
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
   const [respondingEventID, setRespondingEventID] = useState(null);
+  const loadedGroupIDRef = useRef(null);
+  const loadingGroupIDRef = useRef(null);
   const refresh = useCallback(async () => {
     setStatus(PAGINATION_STATUS.LOADING);
     setError(null);
@@ -28,9 +30,12 @@ export function useGroupEvents(groupID, { enabled = true } = {}) {
       setEvents(nextEvents);
       setNextCursor(cursor);
       setStatus(PAGINATION_STATUS.READY);
+      loadedGroupIDRef.current = groupID;
+      return true;
     } catch (requestError) {
       setError(requestError.message);
       setStatus(PAGINATION_STATUS.ERROR);
+      return false;
     }
   }, [groupID]);
 
@@ -120,14 +125,21 @@ export function useGroupEvents(groupID, { enabled = true } = {}) {
   );
 
   useEffect(() => {
-    if (!enabled) return;
-
-    async function loadInitialEvents() {
-      await refresh();
+    if (
+      !enabled ||
+      loadedGroupIDRef.current === groupID ||
+      loadingGroupIDRef.current === groupID
+    ) {
+      return;
     }
 
-    void loadInitialEvents();
-  }, [enabled, refresh]);
+    loadingGroupIDRef.current = groupID;
+    void refresh().finally(() => {
+      if (loadingGroupIDRef.current === groupID) {
+        loadingGroupIDRef.current = null;
+      }
+    });
+  }, [enabled, groupID, refresh]);
 
   return {
     events,
