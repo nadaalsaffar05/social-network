@@ -17,7 +17,7 @@
   background: rgb(255 91 137 / 8%);
 }
 .like-button:disabled {
-  cursor: wait;
+  cursor: pointer;
   opacity: 0.6;
 }
 .post-card__actions .like-button:hover,
