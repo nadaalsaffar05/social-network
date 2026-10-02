@@ -16,6 +16,7 @@ import {
   UserPlus,
 } from "@phosphor-icons/react";
 import {
+  cancelFollowRequest,
   followUser,
   getFollowers,
   getFollowing,
@@ -65,6 +66,7 @@ export default function ProfilePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFollowingProfile, setIsFollowingProfile] = useState(false);
   const [isFollowRequestedProfile, setIsFollowRequestedProfile] = useState(false);
+  const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);
 
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
@@ -224,6 +226,7 @@ export default function ProfilePage() {
 
   async function handleFollowProfile() {
     try {
+      setIsUpdatingFollow(true);
       const response = await followUser(id);
       setIsFollowingProfile(response.status === "following");
       setIsFollowRequestedProfile(response.status === "pending");
@@ -239,11 +242,31 @@ export default function ProfilePage() {
         "Failed to follow user",
         requestError.message || "Please try again",
       );
+    } finally {
+      setIsUpdatingFollow(false);
+    }
+  }
+
+  async function handleCancelFollowRequest() {
+    try {
+      setIsUpdatingFollow(true);
+      await cancelFollowRequest(id);
+      setIsFollowRequestedProfile(false);
+    } catch (requestError) {
+      showError(
+        "Failed to cancel follow request",
+        requestError.message || "Please try again",
+      );
+    } finally {
+      setIsUpdatingFollow(false);
     }
   }
 
   async function handleUnfollowProfile() {
+    if (!window.confirm(`Unfollow ${fullName}?`)) return;
+
     try {
+      setIsUpdatingFollow(true);
       await unfollowUser(id);
       setIsFollowingProfile(false);
       setIsFollowRequestedProfile(false);
@@ -260,6 +283,8 @@ export default function ProfilePage() {
         "Failed to unfollow user",
         requestError.message || "Please try again",
       );
+    } finally {
+      setIsUpdatingFollow(false);
     }
   }
 
@@ -464,15 +489,27 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     className={
-                      isFollowingProfile
+                      isFollowingProfile || isFollowRequestedProfile
                         ? "profile-edit-profile-btn secondary"
                         : "profile-edit-profile-btn primary"
                     }
-                    disabled={isFollowRequestedProfile}
+                    disabled={isUpdatingFollow}
+                    aria-label={
+                      isFollowRequestedProfile
+                        ? "Requested. Click to cancel follow request"
+                        : undefined
+                    }
+                    title={
+                      isFollowRequestedProfile
+                        ? "Click to cancel follow request"
+                        : undefined
+                    }
                     onClick={
                       isFollowingProfile
                         ? handleUnfollowProfile
-                        : handleFollowProfile
+                        : isFollowRequestedProfile
+                          ? handleCancelFollowRequest
+                          : handleFollowProfile
                     }
                   >
                     {isFollowingProfile
