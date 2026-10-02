@@ -18,7 +18,7 @@
 }
 .like-button:disabled {
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 1;
 }
 .post-card__actions .like-button:hover,
 .post-detail-comment footer .like-button:hover {

@@ -1,3 +1,4 @@
+import { useMemo, useOptimistic, useTransition } from "react";
 import "./LikeButton.css";
 
 const heartPath =
@@ -9,14 +10,33 @@ export default function LikeButton({
   onClick,
   disabled = false,
 }) {
+  const baseState = useMemo(() => ({ liked, count }), [liked, count]);
+  const [displayState, setOptimisticState] = useOptimistic(
+    baseState,
+    (_current, next) => next,
+  );
+  const [isPending, startTransition] = useTransition();
+
+  function handleClick() {
+    const nextLiked = !displayState.liked;
+
+    startTransition(async () => {
+      setOptimisticState({
+        liked: nextLiked,
+        count: Math.max(0, displayState.count + (nextLiked ? 1 : -1)),
+      });
+      await onClick?.();
+    });
+  }
+
   return (
     <button
       type="button"
-      className={`like-button${liked ? " like-button--liked" : ""}`}
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={liked ? "Unlike post" : "Like post"}
-      aria-pressed={liked}
+      className={`like-button${displayState.liked ? " like-button--liked" : ""}`}
+      onClick={handleClick}
+      disabled={disabled || isPending}
+      aria-label={displayState.liked ? "Unlike post" : "Like post"}
+      aria-pressed={displayState.liked}
     >
       <span className="like-button__heart" aria-hidden="true">
         <svg className="like-button__outline" viewBox="0 0 24 24">
@@ -34,7 +54,9 @@ export default function LikeButton({
           <polygon points="80,80 70,70" />
         </svg>
       </span>
-      {count > 0 && <span className="like-button__count">{count}</span>}
+      {displayState.count > 0 && (
+        <span className="like-button__count">{displayState.count}</span>
+      )}
     </button>
   );
 }
