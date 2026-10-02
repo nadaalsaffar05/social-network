@@ -8,7 +8,7 @@
   align-items: flex-end;
   justify-content: space-between;
   pointer-events: none;
-  transform: translateY(-3px);
+  transform: translateY(-12px);
 }
 
 .group-tabs-main,
@@ -34,7 +34,7 @@
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transform: translateY(0);
+  transform: translateY(8px);
   transition:
     color var(--transition-fast),
     background-color var(--transition-fast),
@@ -46,7 +46,7 @@
   color: var(--color-text);
   background: rgb(26 30 41 / 92%);
   border-color: rgb(255 255 255 / 20%);
-  transform: translateY(0);
+  transform: translateY(4px);
 }
 
 .group-tab.active {
