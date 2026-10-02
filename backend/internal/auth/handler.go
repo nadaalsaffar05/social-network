@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -84,6 +85,26 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			w,
 			http.StatusBadRequest,
 			"missing required fields",
+		)
+		return
+	}
+
+	emailCheckContext, cancelEmailCheck := context.WithTimeout(r.Context(), 3*time.Second)
+	emailDomainValid, err := emailDomainCanReceiveMail(emailCheckContext, request.Email)
+	cancelEmailCheck()
+	if err != nil {
+		helpers.WriteError(
+			w,
+			http.StatusServiceUnavailable,
+			"could not validate email domain; please try again",
+		)
+		return
+	}
+	if !emailDomainValid {
+		helpers.WriteError(
+			w,
+			http.StatusBadRequest,
+			"email address has an invalid or unreachable domain",
 		)
 		return
 	}
