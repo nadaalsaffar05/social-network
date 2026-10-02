@@ -90,7 +90,6 @@
     color var(--transition-fast),
     background-color var(--transition-fast),
     border-color var(--transition-fast),
-    height var(--transition-fast),
     transform var(--transition-fast);
 }
 
