@@ -46,7 +46,9 @@ export default function GroupDetails({
   const isDescriptionExpanded = expandedDescriptionGroupID === group.id;
 
   return (
-    <aside className="details-card">
+    <aside
+      className={`details-card${isDescriptionExpanded ? " details-card--expanded" : ""}`}
+    >
       <div className="details-field details-heading">
         <h2 className="details-title">{group.title}</h2>
 

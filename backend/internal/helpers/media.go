@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"social-network/internal/enums"
@@ -25,6 +26,30 @@ func PublicMediaPath(path *string) *string {
 
 	publicPath := PublicMediaURL(*path)
 	return &publicPath
+}
+
+// MediaStorageRoot keeps local uploads in ./uploads and places production
+// uploads beside the database when DB_PATH points at a persistent volume.
+func MediaStorageRoot() string {
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		return "uploads"
+	}
+	return filepath.Join(filepath.Dir(dbPath), "uploads")
+}
+
+func MediaStoragePath(mediaPath string) string {
+	if mediaPath == "uploads" {
+		return MediaStorageRoot()
+	}
+	if strings.HasPrefix(mediaPath, "uploads/") {
+		return filepath.Join(MediaStorageRoot(), filepath.FromSlash(strings.TrimPrefix(mediaPath, "uploads/")))
+	}
+	return mediaPath
+}
+
+func RemoveMediaFile(mediaPath string) error {
+	return os.Remove(MediaStoragePath(mediaPath))
 }
 
 func MediaExtension(mimeType enums.MediaMIMEType) string {
@@ -60,12 +85,14 @@ func DetectMediaMIMEType(file io.ReadSeeker) (enums.MediaMIMEType, error) {
 }
 
 func SaveMediaFile(file io.Reader, directory, mediaID string, mimeType enums.MediaMIMEType) (string, int64, error) {
-	if err := os.MkdirAll(directory, 0o755); err != nil {
+	storageDirectory := MediaStoragePath(directory)
+	if err := os.MkdirAll(storageDirectory, 0o755); err != nil {
 		return "", 0, err
 	}
 
 	relativePath := path.Join(directory, mediaID+MediaExtension(mimeType))
-	destination, err := os.Create(relativePath)
+	storagePath := MediaStoragePath(relativePath)
+	destination, err := os.Create(storagePath)
 	if err != nil {
 		return "", 0, err
 	}
@@ -73,15 +100,15 @@ func SaveMediaFile(file io.Reader, directory, mediaID string, mimeType enums.Med
 	fileSize, copyErr := io.Copy(destination, file)
 	closeErr := destination.Close()
 	if copyErr != nil {
-		_ = os.Remove(relativePath)
+		_ = os.Remove(storagePath)
 		return "", 0, copyErr
 	}
 	if closeErr != nil {
-		_ = os.Remove(relativePath)
+		_ = os.Remove(storagePath)
 		return "", 0, closeErr
 	}
 	if fileSize == 0 {
-		_ = os.Remove(relativePath)
+		_ = os.Remove(storagePath)
 		return "", 0, ErrEmptyMediaFile
 	}
 

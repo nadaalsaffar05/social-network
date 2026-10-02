@@ -7,6 +7,7 @@ import (
 	"social-network/internal/chat"
 	"social-network/internal/feed"
 	"social-network/internal/groups"
+	"social-network/internal/helpers"
 	"social-network/internal/notifications"
 	"social-network/internal/profile"
 	"social-network/internal/search"
@@ -15,7 +16,7 @@ import (
 func newRouter(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/tmp/", cacheStaticMedia(http.StripPrefix("/tmp/", http.FileServer(http.Dir("tmp")))))
-	mux.Handle("/uploads/", cacheStaticMedia(http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads")))))
+	mux.Handle("/uploads/", cacheStaticMedia(http.StripPrefix("/uploads/", http.FileServer(http.Dir(helpers.MediaStorageRoot())))))
 	registerRoutes(mux, db)
 	return mux
 }
