@@ -97,7 +97,7 @@
 
 .groups-tab:hover {
   z-index: 4;
-  transform: translateY(4px);
+  transform: translateY(7px);
   color: var(--color-text);
   background: rgb(26 30 41 / 100%);
   border-color: rgb(255 255 255 / 20%);
@@ -109,7 +109,7 @@
   color: var(--color-text);
   background: rgb(26 30 41 / 100%);
   border-color: rgb(255 255 255 / 20%);
-  transform: translateY(0);
+  transform: translateY(7px);
 }
 
 .groups-tab.active:hover {
