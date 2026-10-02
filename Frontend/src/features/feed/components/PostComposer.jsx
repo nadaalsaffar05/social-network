@@ -295,9 +295,9 @@ export default function PostComposer({
               <>
                 <div className="post-composer__attachment-row">
                   <label
-                    className={`loop-media-dropzone${
+                    className={`loop-media-dropzone post-composer__dropzone${
                       isDraggingMedia ? " loop-media-dropzone--dragging" : ""
-                    }`}
+                    }${previews.length ? " post-composer__dropzone--has-files" : ""}`}
                     onDragEnter={() => setIsDraggingMedia(true)}
                     onDragOver={(event) => event.preventDefault()}
                     onDragLeave={() => setIsDraggingMedia(false)}
@@ -320,41 +320,48 @@ export default function PostComposer({
                       hidden
                     />
 
-                    <ImageSquare size={21} weight="bold" />
+                    {previews.length > 0 ? (
+                      <div
+                        className={`post-composer__media-preview${
+                          previews.length > 1
+                            ? " post-composer__media-preview--multiple"
+                            : ""
+                        }`}
+                        aria-label="Selected media"
+                      >
+                        {previews.map(({ file, url }) => (
+                          <figure key={`${file.name}-${file.lastModified}`}>
+                            <img src={url} alt={`Preview of ${file.name}`} />
 
-                    <span>
-                      <strong>Drop image or GIF</strong>
-                      <small>or choose a JPEG, PNG, or GIF</small>
-                    </span>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setFiles((currentFiles) =>
+                                  currentFiles.filter(
+                                    (currentFile) => currentFile !== file,
+                                  ),
+                                );
+                              }}
+                              disabled={isSubmitting}
+                              aria-label={`Remove ${file.name}`}
+                            >
+                              <X size={15} weight="bold" />
+                            </button>
+                          </figure>
+                        ))}
+                      </div>
+                    ) : (
+                      <>
+                        <ImageSquare size={21} weight="bold" />
+                        <span>
+                          <strong>Drop image or GIF</strong>
+                          <small>or choose a JPEG, PNG, or GIF</small>
+                        </span>
+                      </>
+                    )}
                   </label>
-
-                  {previews.length > 0 && (
-                    <div
-                      className="post-composer__previews"
-                      aria-label="Selected media"
-                    >
-                      {previews.map(({ file, url }) => (
-                        <figure key={`${file.name}-${file.lastModified}`}>
-                          <img src={url} alt={`Preview of ${file.name}`} />
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFiles((currentFiles) =>
-                                currentFiles.filter(
-                                  (currentFile) => currentFile !== file,
-                                ),
-                              )
-                            }
-                            disabled={isSubmitting}
-                            aria-label={`Remove ${file.name}`}
-                          >
-                            <X size={15} weight="bold" />
-                          </button>
-                        </figure>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <textarea
