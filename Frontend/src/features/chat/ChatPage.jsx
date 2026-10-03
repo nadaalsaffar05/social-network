@@ -71,7 +71,6 @@ export default function ChatPage() {
   const backToChats = usePageBack("/messages", { preferFallback: true });
   const { error: showError, success: showSuccess } = useToast();
   const {
-    connectionVersion,
     events,
     onlineUserIDs,
     sendEvent,
@@ -83,7 +82,6 @@ export default function ChatPage() {
   const isLoadingThreadRef = useRef(Boolean(userId));
   const isLoadingOlderRef = useRef(false);
   const threadRequestRef = useRef(0);
-  const lastConnectionVersionRef = useRef(connectionVersion);
   const composerInputRef = useRef(null);
   const composerEmojiRef = useRef(null);
   const [conversations, setConversations] = useState([]);
@@ -127,7 +125,7 @@ export default function ChatPage() {
   }, []);
 
   const loadThread = useCallback(
-    async ({ cursor = "", appendOlder = false, mergeExisting = false } = {}) => {
+    async ({ cursor = "", appendOlder = false } = {}) => {
       if (!userId) return;
 
       if (appendOlder && isLoadingOlderRef.current) return;
@@ -141,13 +139,11 @@ export default function ChatPage() {
           isLoadingOlderRef.current = true;
           setIsLoadingOlder(true);
         } else {
-          if (!mergeExisting) {
-            setMessages([]);
-            setNextCursor("");
-            setLastSeenAt(null);
-            setIsLoadingThread(true);
-          }
+          setMessages([]);
+          setNextCursor("");
+          setLastSeenAt(null);
           isLoadingThreadRef.current = true;
+          setIsLoadingThread(true);
         }
 
         const response = await getPrivateMessages(userId, { cursor });
@@ -166,7 +162,7 @@ export default function ChatPage() {
           capturePrependAnchor();
           queuePrependRestore();
           prependRestoreQueued = true;
-        } else if (!mergeExisting) {
+        } else {
           queueBottomScroll({ force: true });
         }
         setMessages((current) =>
@@ -174,9 +170,7 @@ export default function ChatPage() {
             ? mergeMessagesByPublicID(current, chronologicalMessages, {
                 prepend: true,
               })
-            : mergeExisting
-              ? mergeMessagesByPublicID(current, chronologicalMessages)
-              : chronologicalMessages,
+            : chronologicalMessages,
         );
         setNextCursor(response.next_cursor ?? "");
         setLastSeenAt(response.last_seen_at ?? null);
@@ -207,7 +201,7 @@ export default function ChatPage() {
             setIsLoadingOlder(false);
           } else {
             isLoadingThreadRef.current = false;
-            if (!mergeExisting) setIsLoadingThread(false);
+            setIsLoadingThread(false);
           }
         }
       }
@@ -275,23 +269,6 @@ export default function ChatPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadThread, userId]);
-
-  useEffect(() => {
-    const previousConnectionVersion = lastConnectionVersionRef.current;
-    lastConnectionVersionRef.current = connectionVersion;
-    if (
-      connectionVersion <= previousConnectionVersion ||
-      previousConnectionVersion === 0
-    ) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void loadInbox();
-      if (userId) void loadThread({ mergeExisting: true });
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [connectionVersion, loadInbox, loadThread, userId]);
 
   useEffect(
     () => () => {
