@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  useOutletContext,
   useLocation,
   useNavigate,
   useParams,
@@ -21,7 +22,6 @@ import {
   followUser,
   getFollowers,
   getFollowing,
-  getProfile,
   getPublicProfile,
   isFollowing,
   unfollowUser,
@@ -49,6 +49,7 @@ import { useProfilePosts } from "./hooks/useProfilePosts.js";
 import "./ProfilePage.css";
 
 export default function ProfilePage() {
+  const { currentProfile } = useOutletContext();
   const { isMobile } = useDevice();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -60,7 +61,6 @@ export default function ProfilePage() {
   const activeTab = searchParams.get("tab") || "posts";
 
   const [profile, setProfile] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reactingPostID, setReactingPostID] = useState("");
   const [deletingPostID, setDeletingPostID] = useState("");
@@ -77,9 +77,9 @@ export default function ProfilePage() {
   const [unfollowingID, setUnfollowingID] = useState(null);
   const isOwnProfile =
     !id ||
-    (currentUser?.id &&
+    (currentProfile?.id &&
       profile?.id &&
-      String(currentUser.id) === String(profile.id));
+      String(currentProfile.id) === String(profile.id));
   const {
     posts,
     status: postsStatus,
@@ -111,18 +111,19 @@ export default function ProfilePage() {
     async function loadProfile() {
       try {
         setLoading(true);
-        const myProfile = await getProfile({ includePosts: false });
-        const userProfile = id
-          ? await getPublicProfile(id, { includePosts: false })
-          : myProfile;
+        const isRequestedProfileSelf =
+          !id ||
+          (currentProfile?.id && String(currentProfile.id) === String(id));
+        const userProfile = isRequestedProfileSelf
+          ? currentProfile
+          : await getPublicProfile(id, { includePosts: false });
         const isSelf =
           !id ||
-          (myProfile?.id &&
+          (currentProfile?.id &&
             userProfile?.id &&
-            String(myProfile.id) === String(userProfile.id));
+            String(currentProfile.id) === String(userProfile.id));
         const relationship = id && !isSelf ? await isFollowing(id) : null;
         if (isMounted) {
-          setCurrentUser(myProfile);
           setProfile(userProfile);
           setIsFollowingProfile(relationship?.is_following ?? false);
           setIsFollowRequestedProfile(relationship?.is_requested ?? false);
@@ -154,7 +155,7 @@ export default function ProfilePage() {
     return () => {
       isMounted = false;
     };
-  }, [navigate, id, showError]);
+  }, [navigate, id, showError, currentProfile]);
 
   useEffect(() => {
     let isMounted = true;
@@ -709,7 +710,7 @@ export default function ProfilePage() {
                           author_last_name: profile.last_name,
                           author_avatar_path: profile.avatar_path,
                         }}
-                        currentUserID={currentUser?.id}
+                        currentUserID={currentProfile?.id}
                         isReacting={reactingPostID === post.id}
                         isDeleting={deletingPostID === post.id}
                         onLike={() => handlePostReaction(post.id)}
