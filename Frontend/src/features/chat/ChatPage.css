@@ -309,6 +309,11 @@
   color: rgb(255 255 255 / 66%);
   font-size: 0.68rem;
 }
+.chat-message__status {
+  flex: 0 0 4.2rem;
+  text-align: right;
+  white-space: nowrap;
+}
 .chat-message footer button {
   padding: 0;
   color: inherit;

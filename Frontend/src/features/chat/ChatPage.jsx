@@ -813,12 +813,10 @@ export default function ChatPage() {
                                     {formatChatMessageTime(message.created_at)}
                                   </time>
                                   {!isDeleted && isMine && (
-                                    <span>
+                                    <span className="chat-message__status">
                                       {message.read_at
                                         ? "Read"
-                                        : message.delivered_at
-                                          ? "Delivered"
-                                          : "Sent"}
+                                        : "Sent"}
                                     </span>
                                   )}
                                   {!isDeleted && isMine && (
