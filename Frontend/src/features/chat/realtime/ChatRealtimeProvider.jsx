@@ -20,6 +20,8 @@ const MESSAGE_ATTENTION_EVENT_TYPES = new Set([
   "message-request:accepted",
   "message-request:declined",
 ]);
+// Keep this aligned with the backend WebSocket pong timeout.
+const SOCKET_STALE_AFTER_MS = 45_000;
 
 function activeConversationUserID(pathname) {
   return pathname.match(/^\/messages\/([^/]+)$/)?.[1];
@@ -35,6 +37,7 @@ export function ChatRealtimeProvider({ children }) {
   const hasInitializedAttentionRef = useRef(false);
   const navigateToRef = useRef(navigateTo);
   const [status, setStatus] = useState("disconnected");
+  const [connectionVersion, setConnectionVersion] = useState(0);
   const [onlineUserIDs, setOnlineUserIDs] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [events, setEvents] = useState([]);
@@ -151,7 +154,11 @@ export function ChatRealtimeProvider({ children }) {
     }
 
     const socket = createChatSocket({
-      onStatus: setStatus,
+      onStatus: (nextStatus) => {
+        setStatus(nextStatus);
+        if (nextStatus === "connected")
+          setConnectionVersion((version) => version + 1);
+      },
       onEvent: (event) => {
         setEvents((current) => [...current.slice(-49), event]);
 
@@ -223,11 +230,46 @@ export function ChatRealtimeProvider({ children }) {
       },
     });
 
+    let inactiveSince =
+      document.visibilityState === "visible" ? 0 : Date.now();
+
+    function reconnectWhenActive() {
+      if (document.visibilityState !== "visible" || inactiveSince === 0) return;
+      const inactiveDuration = Date.now() - inactiveSince;
+      inactiveSince = 0;
+      socket.reconnect(inactiveDuration >= SOCKET_STALE_AFTER_MS);
+    }
+
+    function reconnectWhenVisible() {
+      if (document.visibilityState === "hidden") {
+        if (inactiveSince === 0) inactiveSince = Date.now();
+        return;
+      }
+      reconnectWhenActive();
+    }
+
+    function markInactive() {
+      if (inactiveSince === 0) inactiveSince = Date.now();
+    }
+
+    function reconnectWhenOnline() {
+      if (document.visibilityState === "visible") socket.reconnect(true);
+    }
+
+    window.addEventListener("focus", reconnectWhenActive);
+    window.addEventListener("blur", markInactive);
+    window.addEventListener("online", reconnectWhenOnline);
+    document.addEventListener("visibilitychange", reconnectWhenVisible);
     socketRef.current = socket;
     socket.connect();
     return () => {
+      window.removeEventListener("focus", reconnectWhenActive);
+      window.removeEventListener("blur", markInactive);
+      window.removeEventListener("online", reconnectWhenOnline);
+      document.removeEventListener("visibilitychange", reconnectWhenVisible);
       typingTimers.forEach((timer) => window.clearTimeout(timer));
       typingTimers.clear();
+      if (socketRef.current === socket) socketRef.current = null;
       socket.close();
     };
   }, [refreshAttentionCounts, refreshMessageAttention, showToast]);
@@ -235,6 +277,7 @@ export function ChatRealtimeProvider({ children }) {
   const value = useMemo(
     () => ({
       status,
+      connectionVersion,
       onlineUserIDs,
       onlineUsers,
       typingUserIDs,
@@ -245,6 +288,7 @@ export function ChatRealtimeProvider({ children }) {
     }),
     [
       attentionCounts,
+      connectionVersion,
       events,
       onlineUserIDs,
       onlineUsers,

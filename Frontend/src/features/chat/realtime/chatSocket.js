@@ -15,23 +15,49 @@ export function createChatSocket({ onEvent, onStatus }) {
 
   function connect() {
     if (closed) return;
+    if (
+      socket?.readyState === WebSocket.CONNECTING ||
+      socket?.readyState === WebSocket.OPEN
+    ) {
+      return;
+    }
 
-    socket = new WebSocket(websocketURL());
+    const connection = new WebSocket(websocketURL());
+    socket = connection;
     onStatus?.("connecting");
 
-    socket.onopen = () => onStatus?.("connected");
-    socket.onmessage = ({ data }) => {
+    connection.onopen = () => {
+      if (socket === connection) onStatus?.("connected");
+    };
+    connection.onmessage = ({ data }) => {
+      if (socket !== connection) return;
       try {
         onEvent?.(JSON.parse(data));
       } catch {
         return;
       }
     };
-    socket.onclose = () => {
+    connection.onclose = () => {
+      if (socket !== connection) return;
+      socket = null;
       onStatus?.("disconnected");
       if (!closed) reconnectTimer = window.setTimeout(connect, 2000);
     };
-    socket.onerror = () => socket.close();
+    connection.onerror = () => {
+      if (socket === connection) connection.close();
+    };
+  }
+
+  function reconnect(force = false) {
+    if (closed) return;
+    window.clearTimeout(reconnectTimer);
+    if (socket?.readyState === WebSocket.CONNECTING && !force) return;
+    if (socket?.readyState === WebSocket.OPEN && !force) return;
+
+    const previousConnection = socket;
+    socket = null;
+    previousConnection?.close();
+    connect();
   }
 
   function send(type, data) {
@@ -42,11 +68,14 @@ export function createChatSocket({ onEvent, onStatus }) {
 
   return {
     connect,
+    reconnect,
     send,
     close() {
       closed = true;
       window.clearTimeout(reconnectTimer);
-      socket?.close();
+      const connection = socket;
+      socket = null;
+      connection?.close();
     },
   };
 }
